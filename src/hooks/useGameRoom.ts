@@ -290,8 +290,8 @@ export function useGameRoom() {
     setCurrentPlayerId(null);
   }, [currentPlayerId]);
 
-  // Quick start for testing - creates room and starts game immediately
-  const quickStart = useCallback(async () => {
+  // Quick start - creates room and starts game immediately with custom name
+  const quickStart = useCallback(async (hostName: string) => {
     setIsLoading(true);
     try {
       const code = generateRoomCode();
@@ -301,7 +301,7 @@ export function useGameRoom() {
         .from('rooms')
         .insert({
           code,
-          host_name: 'Admin',
+          host_name: hostName,
           deck: deck as any,
           cards_remaining: 52,
           game_started: true // Start immediately
@@ -315,7 +315,7 @@ export function useGameRoom() {
         .from('players')
         .insert({
           room_id: roomData.id,
-          name: 'Admin',
+          name: hostName,
           is_host: true
         })
         .select()

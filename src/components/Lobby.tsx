@@ -1,12 +1,19 @@
 import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Plus, Users, ArrowRight, Loader2, Spade } from 'lucide-react';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Plus, Users, ArrowRight, Loader2, Spade, Zap } from 'lucide-react';
 
 interface LobbyProps {
   onCreateRoom: (hostName: string) => Promise<any>;
   onJoinRoom: (code: string, playerName: string) => Promise<any>;
-  onQuickStart?: () => Promise<any>;
+  onQuickStart?: (hostName: string) => Promise<any>;
   isLoading: boolean;
 }
 
@@ -14,6 +21,8 @@ export function Lobby({ onCreateRoom, onJoinRoom, onQuickStart, isLoading }: Lob
   const [mode, setMode] = useState<'menu' | 'create' | 'join'>('menu');
   const [name, setName] = useState('');
   const [roomCode, setRoomCode] = useState('');
+  const [quickStartName, setQuickStartName] = useState('');
+  const [showQuickStartModal, setShowQuickStartModal] = useState(false);
   const secretCodeRef = useRef('');
 
   // Secret shortcut: type "adminhee444" anywhere to quick start
@@ -32,7 +41,7 @@ export function Lobby({ onCreateRoom, onJoinRoom, onQuickStart, isLoading }: Lob
 
         if (newCode === 'adminhee444' && onQuickStart) {
           secretCodeRef.current = '';
-          void onQuickStart();
+          setShowQuickStartModal(true);
         }
       } else {
         // Reset if wrong key
@@ -52,6 +61,13 @@ export function Lobby({ onCreateRoom, onJoinRoom, onQuickStart, isLoading }: Lob
   const handleJoin = async () => {
     if (!name.trim() || !roomCode.trim()) return;
     await onJoinRoom(roomCode.trim(), name.trim());
+  };
+
+  const handleQuickStart = async () => {
+    if (!quickStartName.trim() || !onQuickStart) return;
+    await onQuickStart(quickStartName.trim());
+    setShowQuickStartModal(false);
+    setQuickStartName('');
   };
 
   return (
@@ -80,6 +96,18 @@ export function Lobby({ onCreateRoom, onJoinRoom, onQuickStart, isLoading }: Lob
               <Plus className="w-5 h-5" />
               สร้างห้องใหม่
             </Button>
+            {onQuickStart && (
+              <Button
+                variant="secondary"
+                size="xl"
+                className="w-full"
+                onClick={() => setShowQuickStartModal(true)}
+                disabled={isLoading}
+              >
+                <Zap className="w-5 h-5" />
+                เริ่มทันที
+              </Button>
+            )}
             <Button
               variant="outline"
               size="xl"
@@ -193,6 +221,49 @@ export function Lobby({ onCreateRoom, onJoinRoom, onQuickStart, isLoading }: Lob
       <p className="mt-8 text-muted-foreground/60 text-sm">
         🍺 ดื่มอย่างมีสติ
       </p>
+
+      {/* Quick Start Modal */}
+      <Dialog open={showQuickStartModal} onOpenChange={setShowQuickStartModal}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="text-center">เริ่มเกมทันที</DialogTitle>
+            <DialogDescription className="text-center">
+              ใส่ชื่อของคุณแล้วเริ่มเล่นเลย!
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 pt-2">
+            <Input
+              placeholder="ชื่อของคุณ"
+              value={quickStartName}
+              onChange={(e) => setQuickStartName(e.target.value)}
+              className="text-center"
+              maxLength={20}
+              autoFocus
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && quickStartName.trim()) {
+                  void handleQuickStart();
+                }
+              }}
+            />
+            <Button
+              variant="default"
+              size="lg"
+              className="w-full"
+              onClick={handleQuickStart}
+              disabled={!quickStartName.trim() || isLoading}
+            >
+              {isLoading ? (
+                <Loader2 className="w-5 h-5 animate-spin" />
+              ) : (
+                <>
+                  <Zap className="w-5 h-5" />
+                  เริ่มเกม!
+                </>
+              )}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
