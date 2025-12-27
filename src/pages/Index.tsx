@@ -1,13 +1,46 @@
-// Update this page (the content is just a fallback if you fail to update the page)
+import { useState } from 'react';
+import { useGameRoom } from '@/hooks/useGameRoom';
+import { Lobby } from '@/components/Lobby';
+import { GameRoom } from '@/components/GameRoom';
 
 const Index = () => {
+  const {
+    room,
+    players,
+    currentPlayerId,
+    isLoading,
+    createRoom,
+    joinRoom,
+    startGame,
+    drawCard,
+    reshuffleDeck,
+    leaveRoom
+  } = useGameRoom();
+
+  const currentPlayer = players.find(p => p.id === currentPlayerId);
+  const isHost = currentPlayer?.is_host ?? false;
+
+  if (!room) {
+    return (
+      <Lobby
+        onCreateRoom={createRoom}
+        onJoinRoom={joinRoom}
+        isLoading={isLoading}
+      />
+    );
+  }
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background">
-      <div className="text-center">
-        <h1 className="mb-4 text-4xl font-bold">Welcome to Your Blank App</h1>
-        <p className="text-xl text-muted-foreground">Start building your amazing project here!</p>
-      </div>
-    </div>
+    <GameRoom
+      room={room}
+      players={players}
+      currentPlayerId={currentPlayerId}
+      isHost={isHost}
+      onStartGame={startGame}
+      onDrawCard={drawCard}
+      onReshuffle={reshuffleDeck}
+      onLeave={leaveRoom}
+    />
   );
 };
 
