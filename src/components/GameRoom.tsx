@@ -48,7 +48,7 @@ export function GameRoom({
   onLeave
 }: GameRoomProps) {
   const { toast } = useToast();
-  const [isCardFlipped, setIsCardFlipped] = useState(false);
+  const [isCardFlipped, setIsCardFlipped] = useState(!!room.current_card);
   const [isDrawing, setIsDrawing] = useState(false);
 
   const copyRoomCode = () => {
