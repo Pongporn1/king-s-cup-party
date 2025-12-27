@@ -5,7 +5,6 @@ import { CardBackPattern } from './CardBackPattern';
 interface PlayingCardProps {
   card: CardType | null;
   isFlipped?: boolean;
-  isDrawing?: boolean;
   size?: 'sm' | 'md' | 'lg';
   showRule?: boolean;
 }
@@ -188,7 +187,7 @@ function CardPattern({ value, suit }: { value: string; suit: Suit }) {
   return getPattern();
 }
 
-export function PlayingCard({ card, isFlipped = true, isDrawing = false, size = 'lg', showRule = false }: PlayingCardProps) {
+export function PlayingCard({ card, isFlipped = true, size = 'lg', showRule = false }: PlayingCardProps) {
   const sizeClasses = {
     sm: 'w-16 h-24',
     md: 'w-24 h-36',
@@ -225,20 +224,19 @@ export function PlayingCard({ card, isFlipped = true, isDrawing = false, size = 
       <div className={cn(
         "card-inner relative",
         sizeClasses[size],
-        isDrawing && "drawing",
         isFlipped && "flipped"
       )}>
-        {/* Card Back (Doraemon image) */}
+        {/* Card Back */}
         <div className={cn(
-          "card-face card-face-back rounded-xl overflow-hidden shadow-xl",
+          "card-face rounded-xl overflow-hidden shadow-xl",
           sizeClasses[size]
         )}>
           <CardBackPattern />
         </div>
 
-        {/* Card Front (the actual card face) */}
+        {/* Card Front */}
         <div className={cn(
-          "card-face card-face-front rounded-xl bg-paper border border-paper-border shadow-xl overflow-hidden",
+          "card-face card-back rounded-xl bg-paper border border-paper-border shadow-xl overflow-hidden",
           sizeClasses[size]
         )}>
           {/* Top Left Corner */}
