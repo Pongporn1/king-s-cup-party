@@ -16,6 +16,7 @@ export type Database = {
     Tables: {
       players: {
         Row: {
+          avatar: number | null
           id: string
           is_active: boolean
           is_host: boolean
@@ -24,6 +25,7 @@ export type Database = {
           room_id: string
         }
         Insert: {
+          avatar?: number | null
           id?: string
           is_active?: boolean
           is_host?: boolean
@@ -32,6 +34,7 @@ export type Database = {
           room_id: string
         }
         Update: {
+          avatar?: number | null
           id?: string
           is_active?: boolean
           is_host?: boolean
