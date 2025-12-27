@@ -114,12 +114,18 @@
 
   .card-face {
     backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
     position: absolute;
     width: 100%;
     height: 100%;
   }
 
-  .card-back {
+  .card-face-back {
+    /* Back of card (Doraemon) - visible initially */
+  }
+
+  .card-face-front {
+    /* Front of card - rotated 180deg so it's hidden initially */
     transform: rotateY(180deg);
   }
 }
