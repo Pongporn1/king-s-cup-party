@@ -231,7 +231,7 @@ export function PlayingCard({ card, isFlipped = true, size = 'lg', showRule = fa
           sizeClasses[size],
           "bg-primary shadow-xl"
         )}>
-          <div className="absolute inset-1 rounded-lg bg-white flex items-center justify-center">
+          <div className="absolute inset-1 rounded-lg bg-paper flex items-center justify-center">
             {/* Decorative pattern */}
             <div className="absolute inset-2 rounded border-2 border-primary/30" />
             <div className="text-center z-10">
@@ -244,7 +244,7 @@ export function PlayingCard({ card, isFlipped = true, size = 'lg', showRule = fa
 
         {/* Card Front */}
         <div className={cn(
-          "card-face card-back rounded-xl bg-white border border-gray-300 shadow-xl overflow-hidden",
+          "card-face card-back rounded-xl bg-paper border border-paper-border shadow-xl overflow-hidden",
           sizeClasses[size]
         )}>
           {/* Top Left Corner */}

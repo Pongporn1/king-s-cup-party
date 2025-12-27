@@ -29,12 +29,10 @@ export function Lobby({ onCreateRoom, onJoinRoom, onQuickStart, isLoading }: Lob
       
       if ('adminhee444'.startsWith(newCode)) {
         secretCodeRef.current = newCode;
-        console.log('Secret code progress:', newCode);
-        
+
         if (newCode === 'adminhee444' && onQuickStart) {
-          console.log('Quick start triggered!');
           secretCodeRef.current = '';
-          onQuickStart();
+          void onQuickStart();
         }
       } else {
         // Reset if wrong key

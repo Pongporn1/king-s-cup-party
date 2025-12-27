@@ -15,6 +15,11 @@
     --popover: 225 25% 16%;
     --popover-foreground: 220 10% 95%;
 
+    /* "Paper" surface for playing cards (light) */
+    --paper: 0 0% 100%;
+    --paper-foreground: 225 25% 10%;
+    --paper-border: 220 8% 82%;
+
     --primary: 220 70% 55%;
     --primary-foreground: 0 0% 100%;
 

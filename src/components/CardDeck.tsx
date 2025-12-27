@@ -50,11 +50,11 @@ export function CardDeck({ cardsRemaining, onDraw, disabled }: CardDeckProps) {
               }}
               onClick={isTop && !disabled ? onDraw : undefined}
             >
-              {/* Inner white card with pattern */}
-              <div className="absolute inset-1 rounded-lg bg-white flex items-center justify-center overflow-hidden">
+              {/* Inner card with pattern */}
+              <div className="absolute inset-1 rounded-lg bg-paper flex items-center justify-center overflow-hidden">
                 {/* Decorative border */}
                 <div className="absolute inset-2 rounded border-2 border-primary/20" />
-                
+
                 {/* Center design */}
                 <div className="text-center z-10">
                   <span className="text-xl sm:text-2xl font-bold text-primary">ไผ่</span>
