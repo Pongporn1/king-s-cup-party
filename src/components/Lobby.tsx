@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Plus, Users, ArrowRight, Loader2, Spade } from 'lucide-react';
@@ -14,26 +14,37 @@ export function Lobby({ onCreateRoom, onJoinRoom, onQuickStart, isLoading }: Lob
   const [mode, setMode] = useState<'menu' | 'create' | 'join'>('menu');
   const [name, setName] = useState('');
   const [roomCode, setRoomCode] = useState('');
-  const [secretCode, setSecretCode] = useState('');
+  const secretCodeRef = useRef('');
 
   // Secret shortcut: type "adminhee444" anywhere to quick start
   useEffect(() => {
-    const handleKeyPress = (e: KeyboardEvent) => {
-      const newCode = secretCode + e.key;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Ignore if typing in input
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
+        return;
+      }
+      
+      const key = e.key.toLowerCase();
+      const newCode = secretCodeRef.current + key;
+      
       if ('adminhee444'.startsWith(newCode)) {
-        setSecretCode(newCode);
+        secretCodeRef.current = newCode;
+        console.log('Secret code progress:', newCode);
+        
         if (newCode === 'adminhee444' && onQuickStart) {
-          setSecretCode('');
+          console.log('Quick start triggered!');
+          secretCodeRef.current = '';
           onQuickStart();
         }
       } else {
-        setSecretCode(e.key);
+        // Reset if wrong key
+        secretCodeRef.current = 'adminhee444'.startsWith(key) ? key : '';
       }
     };
 
-    window.addEventListener('keypress', handleKeyPress);
-    return () => window.removeEventListener('keypress', handleKeyPress);
-  }, [secretCode, onQuickStart]);
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onQuickStart]);
 
   const handleCreate = async () => {
     if (!name.trim()) return;
