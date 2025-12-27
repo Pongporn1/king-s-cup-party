@@ -73,24 +73,24 @@ export function PlayingCard({ card, isFlipped = true, size = 'lg', showRule = fa
           "card-face card-back rounded-2xl bg-white shadow-xl overflow-hidden",
           sizeClasses[size]
         )}>
-          <div className="absolute inset-0 p-4 flex flex-col justify-between">
+          <div className="absolute inset-0 p-3 sm:p-4">
             {/* Top Left - Value and Symbol */}
-            <div className={cn("flex flex-col items-start leading-tight", SUIT_COLORS[card.suit])}>
+            <div className={cn("absolute top-3 left-3 sm:top-4 sm:left-4 flex flex-col items-center leading-tight", SUIT_COLORS[card.suit])}>
               <span className={cn("font-bold leading-none", fontSizes[size])}>{card.value}</span>
-              <span className={cn("leading-none mt-0.5", symbolSizes[size])}>{SUIT_SYMBOLS[card.suit]}</span>
+              <span className={cn("leading-none", symbolSizes[size])}>{SUIT_SYMBOLS[card.suit]}</span>
             </div>
 
             {/* Center Symbol */}
-            <div className="flex items-center justify-center flex-1">
+            <div className="absolute inset-0 flex items-center justify-center">
               <span className={cn(centerSymbolSizes[size], SUIT_COLORS[card.suit])}>
                 {SUIT_SYMBOLS[card.suit]}
               </span>
             </div>
 
             {/* Bottom Right - Rotated Value and Symbol */}
-            <div className={cn("flex flex-col items-end leading-tight rotate-180", SUIT_COLORS[card.suit])}>
+            <div className={cn("absolute bottom-3 right-3 sm:bottom-4 sm:right-4 flex flex-col items-center leading-tight rotate-180", SUIT_COLORS[card.suit])}>
               <span className={cn("font-bold leading-none", fontSizes[size])}>{card.value}</span>
-              <span className={cn("leading-none mt-0.5", symbolSizes[size])}>{SUIT_SYMBOLS[card.suit]}</span>
+              <span className={cn("leading-none", symbolSizes[size])}>{SUIT_SYMBOLS[card.suit]}</span>
             </div>
           </div>
         </div>
