@@ -150,24 +150,22 @@ export function GameRoom({
             </div>
           </div>
         ) : (
-          <div className="flex flex-col items-center gap-8">
-            {/* Current Card */}
+          <div className="flex flex-col items-center justify-center gap-6 w-full">
+            {/* Current Card - centered */}
             {room.current_card ? (
-              <div>
-                <PlayingCard 
-                  card={room.current_card} 
-                  isFlipped={isCardFlipped}
-                  showRule
-                />
-              </div>
+              <PlayingCard 
+                card={room.current_card} 
+                isFlipped={isCardFlipped}
+                showRule
+              />
             ) : (
-              <div className="text-center mb-4">
+              <div className="text-center">
                 <p className="text-muted-foreground">กดที่กองไพ่เพื่อจั่ว</p>
               </div>
             )}
 
-            {/* Draw Area */}
-            <div className="flex flex-col items-center gap-6">
+            {/* Draw Area - centered */}
+            <div className="flex flex-col items-center gap-4">
               <CardDeck 
                 cardsRemaining={room.cards_remaining}
                 onDraw={handleDrawCard}
@@ -179,7 +177,6 @@ export function GameRoom({
                 size="xl"
                 onClick={handleDrawCard}
                 disabled={room.cards_remaining === 0}
-                className="mt-2"
               >
                 <Spade className="w-5 h-5" />
                 จั่วไพ่

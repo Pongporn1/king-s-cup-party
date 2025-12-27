@@ -5,9 +5,10 @@ interface CardDeckProps {
   cardsRemaining: number;
   onDraw: () => void;
   disabled?: boolean;
+  showCount?: boolean;
 }
 
-export function CardDeck({ cardsRemaining, onDraw, disabled }: CardDeckProps) {
+export function CardDeck({ cardsRemaining, onDraw, disabled, showCount = false }: CardDeckProps) {
   // Generate random rotations for realistic deck look
   const cardRotations = useMemo(() => {
     return Array.from({ length: 8 }).map(() => ({
@@ -67,11 +68,13 @@ export function CardDeck({ cardsRemaining, onDraw, disabled }: CardDeckProps) {
         })}
       </div>
 
-      {/* Cards remaining badge */}
-      <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 px-4 py-1.5 rounded-full bg-card border border-border text-sm font-medium shadow-lg">
-        <span className="text-primary font-semibold">{cardsRemaining}</span>
-        <span className="text-muted-foreground"> ใบ</span>
-      </div>
+      {/* Cards remaining badge - only show if showCount is true */}
+      {showCount && (
+        <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 px-4 py-1.5 rounded-full bg-card border border-border text-sm font-medium shadow-lg">
+          <span className="text-primary font-semibold">{cardsRemaining}</span>
+          <span className="text-muted-foreground"> ใบ</span>
+        </div>
+      )}
     </div>
   );
 }
