@@ -1,5 +1,6 @@
 import { PlayingCard as CardType, SUIT_SYMBOLS, SUIT_COLORS, CARD_RULES, Suit } from '@/lib/cardRules';
 import { cn } from '@/lib/utils';
+import { CardBackPattern } from './CardBackPattern';
 
 interface PlayingCardProps {
   card: CardType | null;
@@ -227,19 +228,10 @@ export function PlayingCard({ card, isFlipped = true, size = 'lg', showRule = fa
       )}>
         {/* Card Back */}
         <div className={cn(
-          "card-face rounded-xl overflow-hidden border-4 border-primary",
-          sizeClasses[size],
-          "bg-primary shadow-xl"
+          "card-face rounded-xl overflow-hidden shadow-xl",
+          sizeClasses[size]
         )}>
-          <div className="absolute inset-1 rounded-lg bg-paper flex items-center justify-center">
-            {/* Decorative pattern */}
-            <div className="absolute inset-2 rounded border-2 border-primary/30" />
-            <div className="text-center z-10">
-              <span className="text-2xl sm:text-3xl font-bold text-primary">ไผ่</span>
-              <br />
-              <span className="text-sm text-primary/70">โดเรม่อน</span>
-            </div>
-          </div>
+          <CardBackPattern />
         </div>
 
         {/* Card Front */}

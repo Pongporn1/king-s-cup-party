@@ -1,5 +1,6 @@
 import { cn } from '@/lib/utils';
 import { useMemo } from 'react';
+import { CardBackPattern } from './CardBackPattern';
 
 interface CardDeckProps {
   cardsRemaining: number;
@@ -40,8 +41,8 @@ export function CardDeck({ cardsRemaining, onDraw, disabled, showCount = false }
             <div
               key={i}
               className={cn(
-                "absolute w-full h-full rounded-xl transition-all duration-200",
-                "bg-primary border-4 border-primary shadow-md",
+                "absolute w-full h-full rounded-xl transition-all duration-200 overflow-hidden",
+                "shadow-md",
                 isTop && !disabled && "hover:scale-[1.02] hover:-translate-y-2 cursor-pointer hover:shadow-xl"
               )}
               style={{
@@ -51,18 +52,7 @@ export function CardDeck({ cardsRemaining, onDraw, disabled, showCount = false }
               }}
               onClick={isTop && !disabled ? onDraw : undefined}
             >
-              {/* Inner card with pattern */}
-              <div className="absolute inset-1 rounded-lg bg-paper flex items-center justify-center overflow-hidden">
-                {/* Decorative border */}
-                <div className="absolute inset-2 rounded border-2 border-primary/20" />
-
-                {/* Center design */}
-                <div className="text-center z-10">
-                  <span className="text-xl sm:text-2xl font-bold text-primary">ไผ่</span>
-                  <br />
-                  <span className="text-xs sm:text-sm text-primary/60">โดเรม่อน</span>
-                </div>
-              </div>
+              <CardBackPattern />
             </div>
           );
         })}
