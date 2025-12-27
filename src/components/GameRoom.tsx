@@ -49,6 +49,7 @@ export function GameRoom({
 }: GameRoomProps) {
   const { toast } = useToast();
   const [isCardFlipped, setIsCardFlipped] = useState(false);
+  const [isDrawing, setIsDrawing] = useState(false);
 
   const copyRoomCode = () => {
     navigator.clipboard.writeText(room.code);
@@ -61,10 +62,15 @@ export function GameRoom({
   const handleDrawCard = () => {
     if (room.cards_remaining === 0) return;
     setIsCardFlipped(false);
+    setIsDrawing(false);
+    
+    // Start draw animation
     setTimeout(() => {
       onDrawCard();
-      setTimeout(() => setIsCardFlipped(true), 100);
-    }, 100);
+      setIsDrawing(true);
+      // Flip after draw animation starts
+      setTimeout(() => setIsCardFlipped(true), 200);
+    }, 50);
   };
 
   const gameOver = room.cards_remaining === 0 && room.current_card !== null;
@@ -156,6 +162,7 @@ export function GameRoom({
               <PlayingCard 
                 card={room.current_card} 
                 isFlipped={isCardFlipped}
+                isDrawing={isDrawing}
                 showRule
               />
             ) : (

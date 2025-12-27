@@ -5,6 +5,7 @@ import { CardBackPattern } from './CardBackPattern';
 interface PlayingCardProps {
   card: CardType | null;
   isFlipped?: boolean;
+  isDrawing?: boolean;
   size?: 'sm' | 'md' | 'lg';
   showRule?: boolean;
 }
@@ -187,7 +188,7 @@ function CardPattern({ value, suit }: { value: string; suit: Suit }) {
   return getPattern();
 }
 
-export function PlayingCard({ card, isFlipped = true, size = 'lg', showRule = false }: PlayingCardProps) {
+export function PlayingCard({ card, isFlipped = true, isDrawing = false, size = 'lg', showRule = false }: PlayingCardProps) {
   const sizeClasses = {
     sm: 'w-16 h-24',
     md: 'w-24 h-36',
@@ -224,6 +225,7 @@ export function PlayingCard({ card, isFlipped = true, size = 'lg', showRule = fa
       <div className={cn(
         "card-inner relative",
         sizeClasses[size],
+        isDrawing && "drawing",
         isFlipped && "flipped"
       )}>
         {/* Card Back */}
