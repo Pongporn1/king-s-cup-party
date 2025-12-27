@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Plus, Users, ArrowRight, Loader2, Spade } from 'lucide-react';
@@ -6,13 +6,34 @@ import { Plus, Users, ArrowRight, Loader2, Spade } from 'lucide-react';
 interface LobbyProps {
   onCreateRoom: (hostName: string) => Promise<any>;
   onJoinRoom: (code: string, playerName: string) => Promise<any>;
+  onQuickStart?: () => Promise<any>;
   isLoading: boolean;
 }
 
-export function Lobby({ onCreateRoom, onJoinRoom, isLoading }: LobbyProps) {
+export function Lobby({ onCreateRoom, onJoinRoom, onQuickStart, isLoading }: LobbyProps) {
   const [mode, setMode] = useState<'menu' | 'create' | 'join'>('menu');
   const [name, setName] = useState('');
   const [roomCode, setRoomCode] = useState('');
+  const [secretCode, setSecretCode] = useState('');
+
+  // Secret shortcut: type "adminhee444" anywhere to quick start
+  useEffect(() => {
+    const handleKeyPress = (e: KeyboardEvent) => {
+      const newCode = secretCode + e.key;
+      if ('adminhee444'.startsWith(newCode)) {
+        setSecretCode(newCode);
+        if (newCode === 'adminhee444' && onQuickStart) {
+          setSecretCode('');
+          onQuickStart();
+        }
+      } else {
+        setSecretCode(e.key);
+      }
+    };
+
+    window.addEventListener('keypress', handleKeyPress);
+    return () => window.removeEventListener('keypress', handleKeyPress);
+  }, [secretCode, onQuickStart]);
 
   const handleCreate = async () => {
     if (!name.trim()) return;

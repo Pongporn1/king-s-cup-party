@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { useGameRoom } from '@/hooks/useGameRoom';
 import { Lobby } from '@/components/Lobby';
 import { GameRoom } from '@/components/GameRoom';
@@ -14,7 +13,8 @@ const Index = () => {
     startGame,
     drawCard,
     reshuffleDeck,
-    leaveRoom
+    leaveRoom,
+    quickStart
   } = useGameRoom();
 
   const currentPlayer = players.find(p => p.id === currentPlayerId);
@@ -25,6 +25,7 @@ const Index = () => {
       <Lobby
         onCreateRoom={createRoom}
         onJoinRoom={joinRoom}
+        onQuickStart={quickStart}
         isLoading={isLoading}
       />
     );

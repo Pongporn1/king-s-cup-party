@@ -290,6 +290,65 @@ export function useGameRoom() {
     setCurrentPlayerId(null);
   }, [currentPlayerId]);
 
+  // Quick start for testing - creates room and starts game immediately
+  const quickStart = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const code = generateRoomCode();
+      const deck = shuffleDeck(createDeck());
+
+      const { data: roomData, error: roomError } = await supabase
+        .from('rooms')
+        .insert({
+          code,
+          host_name: 'Admin',
+          deck: deck as any,
+          cards_remaining: 52,
+          game_started: true // Start immediately
+        })
+        .select()
+        .single();
+
+      if (roomError) throw roomError;
+
+      const { data: playerData, error: playerError } = await supabase
+        .from('players')
+        .insert({
+          room_id: roomData.id,
+          name: 'Admin',
+          is_host: true
+        })
+        .select()
+        .single();
+
+      if (playerError) throw playerError;
+
+      setRoom({
+        ...roomData,
+        deck: (roomData.deck as unknown) as PlayingCard[],
+        current_card: (roomData.current_card as unknown) as PlayingCard | null
+      });
+      setPlayers([playerData]);
+      setCurrentPlayerId(playerData.id);
+
+      toast({
+        title: '🚀 Quick Start!',
+        description: `ห้อง ${code} พร้อมเล่น`
+      });
+
+      return roomData;
+    } catch (error: any) {
+      toast({
+        title: 'เกิดข้อผิดพลาด',
+        description: error.message,
+        variant: 'destructive'
+      });
+      return null;
+    } finally {
+      setIsLoading(false);
+    }
+  }, [toast]);
+
   return {
     room,
     players,
@@ -300,6 +359,7 @@ export function useGameRoom() {
     startGame,
     drawCard,
     reshuffleDeck,
-    leaveRoom
+    leaveRoom,
+    quickStart
   };
 }
