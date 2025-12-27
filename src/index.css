@@ -113,15 +113,16 @@
   }
 
   .card-face {
-    backface-visibility: hidden;
-    -webkit-backface-visibility: hidden;
     position: absolute;
     width: 100%;
     height: 100%;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
   }
 
   .card-face-back {
-    /* Back of card (Doraemon) - visible initially */
+    /* Back of card (Doraemon) - visible initially, no rotation */
+    transform: rotateY(0deg);
   }
 
   .card-face-front {
