@@ -132,9 +132,7 @@ export function Lobby({
       </div>
 
       {/* Footer */}
-      <p className="mt-8 text-muted-foreground/60 text-sm">
-        🍺 ดื่มอย่างมีสติ
-      </p>
+      <p className="mt-8 text-muted-foreground/60 text-sm">ดืมให้ตายไปข้าง</p>
 
       {/* Quick Start Modal */}
       <Dialog open={showQuickStartModal} onOpenChange={setShowQuickStartModal}>
