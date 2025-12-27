@@ -14,8 +14,8 @@ interface PlayerListProps {
 
 export function PlayerList({ players, currentPlayerId }: PlayerListProps) {
   return (
-    <div className="glass-card p-4">
-      <h3 className="text-sm font-semibold text-muted-foreground mb-3 flex items-center gap-2">
+    <div className="bg-card border border-border rounded-xl p-4 shadow-sm">
+      <h3 className="text-sm font-medium text-muted-foreground mb-3 flex items-center gap-2">
         <User className="w-4 h-4" />
         ผู้เล่น ({players.length})
       </h3>
@@ -24,14 +24,14 @@ export function PlayerList({ players, currentPlayerId }: PlayerListProps) {
           <div
             key={player.id}
             className={cn(
-              "flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium transition-all duration-300",
+              "flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-all",
               player.id === currentPlayerId
-                ? "bg-primary/20 border border-primary/50 text-primary"
-                : "bg-muted/50 text-foreground"
+                ? "bg-primary/10 text-primary border border-primary/30"
+                : "bg-muted text-foreground"
             )}
           >
             {player.is_host && (
-              <Crown className="w-4 h-4 text-neon-yellow" />
+              <Crown className="w-3.5 h-3.5 text-amber-500" />
             )}
             <span>{player.name}</span>
             {player.id === currentPlayerId && (
