@@ -9,7 +9,7 @@ interface CardDeckProps {
   showCount?: boolean;
 }
 
-export function CardDeck({ cardsRemaining, onDraw, disabled, showCount = false }: CardDeckProps) {
+export function CardDeck({ cardsRemaining, onDraw, disabled, showCount = true }: CardDeckProps) {
   // Generate random rotations for realistic deck look
   const cardRotations = useMemo(() => {
     return Array.from({ length: 8 }).map(() => ({
