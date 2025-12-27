@@ -1,162 +1,325 @@
-import { useState, useEffect, useRef } from 'react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Plus, Users, ArrowRight, Loader2, Spade, Zap } from 'lucide-react';
+import { useState, useEffect, useRef } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Plus, Users, ArrowRight, Loader2, Zap } from "lucide-react";
+import { AdminPanel, FloatingNames } from "@/components/AdminPanel";
+import { getFloatingNames } from "@/lib/adminStorage";
+
 interface LobbyProps {
   onCreateRoom: (hostName: string) => Promise<any>;
   onJoinRoom: (code: string, playerName: string) => Promise<any>;
   onQuickStart?: (hostName: string) => Promise<any>;
   isLoading: boolean;
 }
+
 export function Lobby({
   onCreateRoom,
   onJoinRoom,
   onQuickStart,
-  isLoading
+  isLoading,
 }: LobbyProps) {
-  const [mode, setMode] = useState<'menu' | 'create' | 'join'>('menu');
-  const [name, setName] = useState('');
-  const [roomCode, setRoomCode] = useState('');
-  const [quickStartName, setQuickStartName] = useState('');
+  const [mode, setMode] = useState<"menu" | "create" | "join">("menu");
+  const [name, setName] = useState("");
+  const [roomCode, setRoomCode] = useState("");
+  const [quickStartName, setQuickStartName] = useState("");
   const [showQuickStartModal, setShowQuickStartModal] = useState(false);
-  const secretCodeRef = useRef('');
+  const [showAdminPanel, setShowAdminPanel] = useState(false);
+  const [floatingNames, setFloatingNames] = useState<string[]>([]);
+  const secretCodeRef = useRef("");
+
+  // Load floating names on mount
+  useEffect(() => {
+    setFloatingNames(getFloatingNames());
+  }, [showAdminPanel]); // Refresh when admin panel closes
 
   // Secret shortcut: type "adminhee444" anywhere to quick start
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Ignore if typing in input
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
+      if (
+        e.target instanceof HTMLInputElement ||
+        e.target instanceof HTMLTextAreaElement
+      ) {
         return;
       }
       const key = e.key.toLowerCase();
       const newCode = secretCodeRef.current + key;
-      if ('adminhee444'.startsWith(newCode)) {
+      if ("adminhee444".startsWith(newCode)) {
         secretCodeRef.current = newCode;
-        if (newCode === 'adminhee444' && onQuickStart) {
-          secretCodeRef.current = '';
+        if (newCode === "adminhee444" && onQuickStart) {
+          secretCodeRef.current = "";
           setShowQuickStartModal(true);
         }
       } else {
-        // Reset if wrong key
-        secretCodeRef.current = 'adminhee444'.startsWith(key) ? key : '';
+        secretCodeRef.current = "adminhee444".startsWith(key) ? key : "";
       }
     };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
   }, [onQuickStart]);
+
   const handleCreate = async () => {
     if (!name.trim()) return;
     await onCreateRoom(name.trim());
   };
+
   const handleJoin = async () => {
     if (!name.trim() || !roomCode.trim()) return;
+
+    // Secret admin access: code 777777 + name BONNE
+    if (roomCode.trim() === "777777" && name.trim().toUpperCase() === "BONNE") {
+      setShowAdminPanel(true);
+      return;
+    }
+
     await onJoinRoom(roomCode.trim(), name.trim());
   };
+
   const handleQuickStart = async () => {
     if (!quickStartName.trim() || !onQuickStart) return;
     await onQuickStart(quickStartName.trim());
     setShowQuickStartModal(false);
-    setQuickStartName('');
+    setQuickStartName("");
   };
-  return <div className="min-h-screen flex flex-col items-center justify-center p-6">
+
+  return (
+    <div className="min-h-screen min-h-[100dvh] flex flex-col items-center justify-center p-4 sm:p-6 relative">
+      {/* Floating Names */}
+      <FloatingNames names={floatingNames} />
+
+      {/* Admin Panel */}
+      {showAdminPanel && (
+        <AdminPanel onClose={() => setShowAdminPanel(false)} />
+      )}
+
+      {/* Background Image */}
+      <div
+        className="absolute inset-0 bg-cover bg-center bg-no-repeat"
+        style={{ backgroundImage: "url('/bg-party.jpg')" }}
+      />
+      {/* Dark overlay */}
+      <div className="absolute inset-0 bg-black/60" />
+
       {/* Logo */}
-      <div className="text-center mb-10">
-        <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-primary/20 mb-4">
-          <Spade className="w-8 h-8 text-primary" />
-        </div>
-        <h1 className="text-3xl sm:text-4xl font-bold text-foreground mb-2">ไพ่โดเรม่อน</h1>
-        <p className="text-muted-foreground">เกมไพ่สำหรับปาร์ตี้</p>
+      <div className="text-center mb-6 sm:mb-8 relative z-10">
+        <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-white mb-2 drop-shadow-lg">
+          🍻ไพ่โดเรม่อน
+        </h1>
+        <p className="text-white/80 text-base sm:text-lg">
+          เหล้าไม่หมดไม่ต้องพัก
+        </p>
       </div>
 
       {/* Main Card */}
-      <div className="bg-card border border-border rounded-2xl shadow-lg w-full max-w-sm p-6">
-        {mode === 'menu' && <div className="space-y-3">
-            <Button variant="default" size="xl" className="w-full" onClick={() => setMode('create')}>
-              <Plus className="w-5 h-5" />
-              สร้างห้องใหม่
-            </Button>
-            {onQuickStart && <Button variant="secondary" size="xl" className="w-full" onClick={() => setShowQuickStartModal(true)} disabled={isLoading}>
-                <Zap className="w-5 h-5" />
-                เริ่มทันที
-              </Button>}
-            <Button variant="outline" size="xl" className="w-full" onClick={() => setMode('join')}>
+      <div className="bg-black/40 backdrop-blur-md rounded-2xl w-full max-w-xs sm:max-w-sm p-4 sm:p-6 relative z-10 border border-white/10">
+        {mode === "menu" && (
+          <div className="space-y-3">
+            {/* สร้างห้องใหม่ - Host เล่นด้วย */}
+            <div className="space-y-1">
+              <Button
+                variant="default"
+                size="lg"
+                className="w-full bg-white text-black hover:bg-white/90"
+                onClick={() => setMode("create")}
+              >
+                <Plus className="w-5 h-5" />
+                สร้างห้องใหม่
+              </Button>
+              <p className="text-white/50 text-xs text-center">
+                
+              </p>
+            </div>
+
+            {/* เข้าร่วมห้อง */}
+            <Button
+              variant="outline"
+              size="lg"
+              className="w-full border-white/30 text-white hover:bg-white/10"
+              onClick={() => setMode("join")}
+            >
               <Users className="w-5 h-5" />
               เข้าร่วมห้อง
             </Button>
-          </div>}
 
-        {mode === 'create' && <div className="space-y-5">
+            {/* LIVE Mode - Host แชร์หน้าจอ */}
+            {onQuickStart && (
+              <div className="space-y-1 pt-2 border-t border-white/10">
+                <Button
+                  variant="ghost"
+                  size="lg"
+                  className="w-full text-white/70 hover:text-white hover:bg-white/10"
+                  onClick={() => setShowQuickStartModal(true)}
+                  disabled={isLoading}
+                >
+                  <Zap className="w-5 h-5" />
+                  📺 LIVE
+                </Button>
+                <p className="text-white/50 text-xs text-center">
+                  Host แชร์หน้าจอการ์ด ผู้เล่นใช้มือถือ
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {mode === "create" && (
+          <div className="space-y-4">
             <div className="text-center">
-              <h2 className="text-xl font-semibold mb-1">สร้างห้องใหม่</h2>
-              <p className="text-muted-foreground text-sm">ใส่ชื่อของคุณเพื่อเริ่มเกม</p>
+              <h2 className="text-xl font-semibold text-white mb-1">
+                สร้างห้องใหม่
+              </h2>
+              <p className="text-white/60 text-sm">
+                ใส่ชื่อของคุณเพื่อเริ่มเกม
+              </p>
             </div>
 
-            <Input placeholder="ชื่อของคุณ" value={name} onChange={e => setName(e.target.value)} className="text-center" maxLength={20} />
+            <Input
+              placeholder="ชื่อของคุณ"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className="text-center bg-white/10 border-white/20 text-white placeholder:text-white/50"
+              maxLength={20}
+            />
 
             <div className="flex gap-3">
-              <Button variant="ghost" size="lg" className="flex-1" onClick={() => setMode('menu')}>
+              <Button
+                variant="ghost"
+                size="lg"
+                className="flex-1 text-white/70 hover:text-white hover:bg-white/10"
+                onClick={() => setMode("menu")}
+              >
                 ย้อนกลับ
               </Button>
-              <Button variant="default" size="lg" className="flex-1" onClick={handleCreate} disabled={!name.trim() || isLoading}>
-                {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <>
+              <Button
+                variant="default"
+                size="lg"
+                className="flex-1 bg-white text-black hover:bg-white/90"
+                onClick={handleCreate}
+                disabled={!name.trim() || isLoading}
+              >
+                {isLoading ? (
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                ) : (
+                  <>
                     สร้างห้อง
                     <ArrowRight className="w-4 h-4" />
-                  </>}
+                  </>
+                )}
               </Button>
             </div>
-          </div>}
+          </div>
+        )}
 
-        {mode === 'join' && <div className="space-y-5">
+        {mode === "join" && (
+          <div className="space-y-4">
             <div className="text-center">
-              <h2 className="text-xl font-semibold mb-1">เข้าร่วมห้อง</h2>
-              <p className="text-muted-foreground text-sm">ใส่รหัสห้องและชื่อของคุณ</p>
+              <h2 className="text-xl font-semibold text-white mb-1">
+                เข้าร่วมห้อง
+              </h2>
+              <p className="text-white/60 text-sm">ใส่รหัสห้องและชื่อของคุณ</p>
             </div>
 
-            <Input placeholder="รหัสห้อง (6 ตัว)" value={roomCode} onChange={e => setRoomCode(e.target.value.toUpperCase())} className="text-center text-xl font-mono tracking-widest" maxLength={6} />
+            <Input
+              placeholder="รหัสห้อง (6 ตัว)"
+              value={roomCode}
+              onChange={(e) => setRoomCode(e.target.value.toUpperCase())}
+              className="text-center text-xl font-mono tracking-widest bg-white/10 border-white/20 text-white placeholder:text-white/50"
+              maxLength={6}
+            />
 
-            <Input placeholder="ชื่อของคุณ" value={name} onChange={e => setName(e.target.value)} className="text-center" maxLength={20} />
+            <Input
+              placeholder="ชื่อของคุณ"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className="text-center bg-white/10 border-white/20 text-white placeholder:text-white/50"
+              maxLength={20}
+            />
 
             <div className="flex gap-3">
-              <Button variant="ghost" size="lg" className="flex-1" onClick={() => setMode('menu')}>
+              <Button
+                variant="ghost"
+                size="lg"
+                className="flex-1 text-white/70 hover:text-white hover:bg-white/10"
+                onClick={() => setMode("menu")}
+              >
                 ย้อนกลับ
               </Button>
-              <Button variant="default" size="lg" className="flex-1" onClick={handleJoin} disabled={!name.trim() || roomCode.length !== 6 || isLoading}>
-                {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <>
+              <Button
+                variant="default"
+                size="lg"
+                className="flex-1 bg-white text-black hover:bg-white/90"
+                onClick={handleJoin}
+                disabled={!name.trim() || roomCode.length !== 6 || isLoading}
+              >
+                {isLoading ? (
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                ) : (
+                  <>
                     เข้าร่วม
                     <ArrowRight className="w-4 h-4" />
-                  </>}
+                  </>
+                )}
               </Button>
             </div>
-          </div>}
+          </div>
+        )}
       </div>
 
       {/* Footer */}
-      <p className="mt-8 text-muted-foreground/60 text-sm">ดืมให้ตายไปข้าง</p>
+      <p className="mt-6 text-white/40 text-sm relative z-10">
+        ดื่มให้สนุก เมาให้กระจาย
+      </p>
 
       {/* Quick Start Modal */}
       <Dialog open={showQuickStartModal} onOpenChange={setShowQuickStartModal}>
-        <DialogContent className="sm:max-w-sm">
+        <DialogContent className="sm:max-w-sm bg-black/90 border-white/20 text-white">
           <DialogHeader>
-            <DialogTitle className="text-center">เริ่มเกมทันที</DialogTitle>
-            <DialogDescription className="text-center">
+            <DialogTitle className="text-center text-white">
+              เริ่มเกมทันที
+            </DialogTitle>
+            <DialogDescription className="text-center text-white/60">
               ใส่ชื่อของคุณแล้วเริ่มเล่นเลย!
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 pt-2">
-            <Input placeholder="ชื่อของคุณ" value={quickStartName} onChange={e => setQuickStartName(e.target.value)} className="text-center" maxLength={20} autoFocus onKeyDown={e => {
-            if (e.key === 'Enter' && quickStartName.trim()) {
-              void handleQuickStart();
-            }
-          }} />
-            <Button variant="default" size="lg" className="w-full" onClick={handleQuickStart} disabled={!quickStartName.trim() || isLoading}>
-              {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <>
+            <Input
+              placeholder="ชื่อของคุณ"
+              value={quickStartName}
+              onChange={(e) => setQuickStartName(e.target.value)}
+              className="text-center bg-white/10 border-white/20 text-white placeholder:text-white/50"
+              maxLength={20}
+              autoFocus
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && quickStartName.trim()) {
+                  void handleQuickStart();
+                }
+              }}
+            />
+            <Button
+              variant="default"
+              size="lg"
+              className="w-full bg-white text-black hover:bg-white/90"
+              onClick={handleQuickStart}
+              disabled={!quickStartName.trim() || isLoading}
+            >
+              {isLoading ? (
+                <Loader2 className="w-5 h-5 animate-spin" />
+              ) : (
+                <>
                   <Zap className="w-5 h-5" />
                   เริ่มเกม!
-                </>}
+                </>
+              )}
             </Button>
           </div>
         </DialogContent>
       </Dialog>
-    </div>;
+    </div>
+  );
 }

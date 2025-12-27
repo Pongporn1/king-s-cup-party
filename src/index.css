@@ -1,45 +1,45 @@
+@import url("https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap");
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-@import url('https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap');
-
 @layer base {
   :root {
-    --background: 225 25% 12%;
-    --foreground: 220 10% 95%;
+    --background: 250 30% 8%;
+    --foreground: 0 0% 98%;
 
-    --card: 225 25% 16%;
-    --card-foreground: 220 10% 95%;
+    --card: 250 25% 12%;
+    --card-foreground: 0 0% 98%;
 
-    --popover: 225 25% 16%;
-    --popover-foreground: 220 10% 95%;
+    --popover: 250 25% 12%;
+    --popover-foreground: 0 0% 98%;
 
     /* "Paper" surface for playing cards (light) */
-    --paper: 0 0% 100%;
-    --paper-foreground: 225 25% 10%;
-    --paper-border: 220 8% 82%;
+    --paper: 45 100% 97%;
+    --paper-foreground: 250 30% 10%;
+    --paper-border: 45 30% 80%;
 
-    --primary: 220 70% 55%;
+    --primary: 280 100% 65%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 225 20% 22%;
-    --secondary-foreground: 220 10% 90%;
+    --secondary: 250 20% 18%;
+    --secondary-foreground: 0 0% 90%;
 
-    --muted: 225 20% 20%;
-    --muted-foreground: 220 10% 55%;
+    --muted: 250 20% 15%;
+    --muted-foreground: 250 10% 55%;
 
-    --accent: 160 60% 45%;
-    --accent-foreground: 0 0% 100%;
+    --accent: 45 100% 60%;
+    --accent-foreground: 250 30% 10%;
 
-    --destructive: 0 65% 50%;
+    --destructive: 0 70% 55%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 225 20% 25%;
-    --input: 225 20% 22%;
-    --ring: 220 70% 55%;
+    --border: 250 20% 20%;
+    --input: 250 20% 18%;
+    --ring: 280 100% 65%;
 
-    --radius: 0.75rem;
+    --radius: 1rem;
   }
 }
 
@@ -54,10 +54,37 @@
 
   body {
     @apply bg-background text-foreground font-prompt antialiased;
+    background: linear-gradient(
+      135deg,
+      hsl(250 30% 8%) 0%,
+      hsl(280 40% 12%) 50%,
+      hsl(250 30% 8%) 100%
+    );
+    min-height: 100vh;
+    min-height: 100dvh; /* Dynamic viewport height for mobile */
+    overflow-x: hidden;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Safe area padding for notch devices */
+  .safe-area-top {
+    padding-top: env(safe-area-inset-top);
+  }
+  .safe-area-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
   }
 }
 
 @layer components {
+  /* Hide scrollbar for player list on mobile */
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+
   .card-flip {
     perspective: 1000px;
   }
@@ -81,10 +108,131 @@
   .card-back {
     transform: rotateY(180deg);
   }
+
+  /* Glow effects */
+  .glow-primary {
+    box-shadow: 0 0 20px hsl(280 100% 65% / 0.3),
+      0 0 40px hsl(280 100% 65% / 0.2), 0 0 60px hsl(280 100% 65% / 0.1);
+  }
+
+  .glow-accent {
+    box-shadow: 0 0 20px hsl(45 100% 60% / 0.3), 0 0 40px hsl(45 100% 60% / 0.2);
+  }
+
+  /* Floating animation */
+  @keyframes float {
+    0%,
+    100% {
+      transform: translateY(0px);
+    }
+    50% {
+      transform: translateY(-10px);
+    }
+  }
+
+  .animate-float {
+    animation: float 3s ease-in-out infinite;
+  }
+
+  /* Pulse glow animation */
+  @keyframes pulse-glow {
+    0%,
+    100% {
+      box-shadow: 0 0 20px hsl(280 100% 65% / 0.4),
+        0 0 40px hsl(280 100% 65% / 0.2);
+    }
+    50% {
+      box-shadow: 0 0 30px hsl(280 100% 65% / 0.6),
+        0 0 60px hsl(280 100% 65% / 0.3);
+    }
+  }
+
+  .animate-pulse-glow {
+    animation: pulse-glow 2s ease-in-out infinite;
+  }
+
+  /* Shimmer effect */
+  @keyframes shimmer {
+    0% {
+      background-position: -200% center;
+    }
+    100% {
+      background-position: 200% center;
+    }
+  }
+
+  .shimmer {
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      hsl(280 100% 80% / 0.2) 50%,
+      transparent 100%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 2s infinite;
+  }
+
+  /* Gradient text */
+  .gradient-text {
+    background: linear-gradient(
+      135deg,
+      hsl(280 100% 70%) 0%,
+      hsl(45 100% 60%) 50%,
+      hsl(280 100% 70%) 100%
+    );
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* Glass morphism */
+  .glass {
+    background: hsl(250 25% 12% / 0.8);
+    backdrop-filter: blur(20px);
+    border: 1px solid hsl(280 100% 65% / 0.2);
+  }
+
+  /* Gradient border */
+  .gradient-border {
+    position: relative;
+    background: hsl(250 25% 12%);
+    border-radius: 1rem;
+  }
+
+  .gradient-border::before {
+    content: "";
+    position: absolute;
+    inset: -2px;
+    border-radius: 1.125rem;
+    background: linear-gradient(
+      135deg,
+      hsl(280 100% 65%) 0%,
+      hsl(45 100% 60%) 50%,
+      hsl(280 100% 65%) 100%
+    );
+    z-index: -1;
+  }
+
+  /* Sparkle animation */
+  @keyframes sparkle {
+    0%,
+    100% {
+      opacity: 0;
+      transform: scale(0);
+    }
+    50% {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
+  .sparkle {
+    animation: sparkle 1.5s ease-in-out infinite;
+  }
 }
 
 @layer utilities {
   .font-prompt {
-    font-family: 'Prompt', sans-serif;
+    font-family: "Prompt", sans-serif;
   }
 }

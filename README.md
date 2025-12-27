@@ -1,73 +1,61 @@
-# Welcome to your Lovable project
+# ไพ่โดเรม่อน 🍺👑
 
-## Project info
+เกมไพ่โดเรม่อนสุดมันส์ เล่นกับเพื่อนออนไลน์ได้!
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+## เกี่ยวกับโปรเจกต์
 
-## How can I edit this code?
+ไพ่โดเรม่อน เป็นเกมไพ่ดื่มออนไลน์ที่สามารถเล่นกับเพื่อนได้แบบเรียลไทม์ผ่านเว็บบราวเซอร์
 
-There are several ways of editing your application.
+## เทคโนโลยีที่ใช้
 
-**Use Lovable**
+- **Vite** - Build tool ที่เร็วสุดๆ
+- **React** - UI Framework
+- **TypeScript** - Type-safe JavaScript
+- **Tailwind CSS** - Utility-first CSS
+- **shadcn/ui** - UI Components
+- **Supabase** - Backend และ Realtime Database
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
+## วิธีติดตั้ง
 
-Changes made via Lovable will be committed automatically to this repo.
-
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
-
-```sh
-# Step 1: Clone the repository using the project's Git URL.
+```bash
+# Clone โปรเจกต์
 git clone <YOUR_GIT_URL>
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+# เข้าไปในโฟลเดอร์
+cd kings-cup-party
 
-# Step 3: Install the necessary dependencies.
-npm i
+# ติดตั้ง dependencies
+npm install
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
+# รันโปรเจกต์
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+## คำสั่งที่ใช้งานได้
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+| คำสั่ง            | รายละเอียด               |
+| ----------------- | ------------------------ |
+| `npm run dev`     | รัน development server   |
+| `npm run build`   | Build สำหรับ production  |
+| `npm run preview` | Preview production build |
+| `npm run lint`    | ตรวจสอบ code ด้วย ESLint |
 
-**Use GitHub Codespaces**
+## โครงสร้างโปรเจกต์
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+```
+src/
+├── components/     # React components
+├── hooks/          # Custom hooks
+├── integrations/   # External integrations (Supabase)
+├── lib/            # Utility functions
+├── pages/          # Page components
+└── main.tsx        # Entry point
+```
 
-## What technologies are used for this project?
+## ผู้พัฒนา
 
-This project is built with:
+สร้างโดย **ballb**
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+## License
 
-## How can I deploy this project?
-
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+MIT License
