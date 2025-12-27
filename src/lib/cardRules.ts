@@ -106,10 +106,10 @@ export const SUIT_SYMBOLS: Record<Suit, string> = {
 };
 
 export const SUIT_COLORS: Record<Suit, string> = {
-  hearts: 'text-red-500',
-  diamonds: 'text-red-500',
-  clubs: 'text-foreground',
-  spades: 'text-foreground'
+  hearts: 'text-destructive',
+  diamonds: 'text-destructive',
+  clubs: 'text-paper-foreground',
+  spades: 'text-paper-foreground'
 };
 
 export function createDeck(): PlayingCard[] {
