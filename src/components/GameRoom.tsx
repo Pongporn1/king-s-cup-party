@@ -150,7 +150,9 @@ export function GameRoom({
       {/* Background Image */}
       <div
         className="absolute inset-0 bg-cover bg-center bg-no-repeat blur-sm scale-105"
-        style={{ backgroundImage: "url('/bg-game.jpg')" }}
+        style={{
+          backgroundImage: `url('${import.meta.env.BASE_URL}bg-game.jpg')`,
+        }}
       />
       {/* Dark overlay */}
       <div className="absolute inset-0 bg-black/50" />

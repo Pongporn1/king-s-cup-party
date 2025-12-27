@@ -101,7 +101,9 @@ export function Lobby({
       {/* Background Image */}
       <div
         className="absolute inset-0 bg-cover bg-center bg-no-repeat"
-        style={{ backgroundImage: "url('/bg-party.jpg')" }}
+        style={{
+          backgroundImage: `url('${import.meta.env.BASE_URL}bg-party.jpg')`,
+        }}
       />
       {/* Dark overlay */}
       <div className="absolute inset-0 bg-black/60" />
@@ -131,9 +133,7 @@ export function Lobby({
                 <Plus className="w-5 h-5" />
                 สร้างห้องใหม่
               </Button>
-              <p className="text-white/50 text-xs text-center">
-                
-              </p>
+              <p className="text-white/50 text-xs text-center"></p>
             </div>
 
             {/* เข้าร่วมห้อง */}

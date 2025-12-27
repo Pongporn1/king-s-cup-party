@@ -35,7 +35,7 @@ export function PlayerList({ players, currentPlayerId }: PlayerListProps) {
             {/* Avatar - bigger */}
             <div className="relative">
               <img
-                src={`/${player.avatar || 1}.jpg`}
+                src={`${import.meta.env.BASE_URL}${player.avatar || 1}.jpg`}
                 alt={player.name}
                 className="w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 rounded-full object-cover border-2 sm:border-3 border-white/40 shadow-lg"
               />
