@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Sparkles, Users, ArrowRight, Loader2 } from 'lucide-react';
+import { Plus, Users, ArrowRight, Loader2, Spade } from 'lucide-react';
 
 interface LobbyProps {
   onCreateRoom: (hostName: string) => Promise<any>;
@@ -25,27 +25,29 @@ export function Lobby({ onCreateRoom, onJoinRoom, isLoading }: LobbyProps) {
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-6">
+    <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-gradient-to-b from-background to-muted/30">
       {/* Logo */}
-      <div className="text-center mb-10 animate-fade-in">
-        <h1 className="font-orbitron text-5xl sm:text-7xl font-black mb-2">
-          <span className="neon-text-pink">ไผ่</span>
-          <span className="neon-text-cyan">โดเรม่อน</span>
+      <div className="text-center mb-10">
+        <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-primary/10 mb-4">
+          <Spade className="w-8 h-8 text-primary" />
+        </div>
+        <h1 className="text-3xl sm:text-4xl font-bold text-foreground mb-2">
+          ไผ่โดเรม่อน
         </h1>
-        <p className="text-muted-foreground text-lg">เกมไพ่สำหรับปาร์ตี้</p>
+        <p className="text-muted-foreground">เกมไพ่สำหรับปาร์ตี้</p>
       </div>
 
       {/* Main Card */}
-      <div className="glass-card w-full max-w-md p-6 sm:p-8 animate-scale-in">
+      <div className="bg-card border border-border rounded-2xl shadow-lg w-full max-w-sm p-6">
         {mode === 'menu' && (
-          <div className="space-y-4">
+          <div className="space-y-3">
             <Button
-              variant="neon"
+              variant="default"
               size="xl"
               className="w-full"
               onClick={() => setMode('create')}
             >
-              <Sparkles className="w-6 h-6" />
+              <Plus className="w-5 h-5" />
               สร้างห้องใหม่
             </Button>
             <Button
@@ -54,16 +56,16 @@ export function Lobby({ onCreateRoom, onJoinRoom, isLoading }: LobbyProps) {
               className="w-full"
               onClick={() => setMode('join')}
             >
-              <Users className="w-6 h-6" />
+              <Users className="w-5 h-5" />
               เข้าร่วมห้อง
             </Button>
           </div>
         )}
 
         {mode === 'create' && (
-          <div className="space-y-6">
+          <div className="space-y-5">
             <div className="text-center">
-              <h2 className="text-2xl font-bold mb-2">สร้างห้องใหม่</h2>
+              <h2 className="text-xl font-semibold mb-1">สร้างห้องใหม่</h2>
               <p className="text-muted-foreground text-sm">ใส่ชื่อของคุณเพื่อเริ่มเกม</p>
             </div>
 
@@ -71,7 +73,7 @@ export function Lobby({ onCreateRoom, onJoinRoom, isLoading }: LobbyProps) {
               placeholder="ชื่อของคุณ"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="text-center text-lg"
+              className="text-center"
               maxLength={20}
             />
 
@@ -85,7 +87,7 @@ export function Lobby({ onCreateRoom, onJoinRoom, isLoading }: LobbyProps) {
                 ย้อนกลับ
               </Button>
               <Button
-                variant="neon"
+                variant="default"
                 size="lg"
                 className="flex-1"
                 onClick={handleCreate}
@@ -96,7 +98,7 @@ export function Lobby({ onCreateRoom, onJoinRoom, isLoading }: LobbyProps) {
                 ) : (
                   <>
                     สร้างห้อง
-                    <ArrowRight className="w-5 h-5" />
+                    <ArrowRight className="w-4 h-4" />
                   </>
                 )}
               </Button>
@@ -105,9 +107,9 @@ export function Lobby({ onCreateRoom, onJoinRoom, isLoading }: LobbyProps) {
         )}
 
         {mode === 'join' && (
-          <div className="space-y-6">
+          <div className="space-y-5">
             <div className="text-center">
-              <h2 className="text-2xl font-bold mb-2">เข้าร่วมห้อง</h2>
+              <h2 className="text-xl font-semibold mb-1">เข้าร่วมห้อง</h2>
               <p className="text-muted-foreground text-sm">ใส่รหัสห้องและชื่อของคุณ</p>
             </div>
 
@@ -115,7 +117,7 @@ export function Lobby({ onCreateRoom, onJoinRoom, isLoading }: LobbyProps) {
               placeholder="รหัสห้อง (6 ตัว)"
               value={roomCode}
               onChange={(e) => setRoomCode(e.target.value.toUpperCase())}
-              className="text-center text-2xl font-orbitron tracking-widest"
+              className="text-center text-xl font-mono tracking-widest"
               maxLength={6}
             />
 
@@ -123,7 +125,7 @@ export function Lobby({ onCreateRoom, onJoinRoom, isLoading }: LobbyProps) {
               placeholder="ชื่อของคุณ"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="text-center text-lg"
+              className="text-center"
               maxLength={20}
             />
 
@@ -137,7 +139,7 @@ export function Lobby({ onCreateRoom, onJoinRoom, isLoading }: LobbyProps) {
                 ย้อนกลับ
               </Button>
               <Button
-                variant="neon"
+                variant="default"
                 size="lg"
                 className="flex-1"
                 onClick={handleJoin}
@@ -148,7 +150,7 @@ export function Lobby({ onCreateRoom, onJoinRoom, isLoading }: LobbyProps) {
                 ) : (
                   <>
                     เข้าร่วม
-                    <ArrowRight className="w-5 h-5" />
+                    <ArrowRight className="w-4 h-4" />
                   </>
                 )}
               </Button>
@@ -158,7 +160,7 @@ export function Lobby({ onCreateRoom, onJoinRoom, isLoading }: LobbyProps) {
       </div>
 
       {/* Footer */}
-      <p className="mt-8 text-muted-foreground/50 text-sm">
+      <p className="mt-8 text-muted-foreground/60 text-sm">
         🍺 ดื่มอย่างมีสติ
       </p>
     </div>

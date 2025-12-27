@@ -7,31 +7,31 @@ interface CardDeckProps {
 }
 
 export function CardDeck({ cardsRemaining, onDraw, disabled }: CardDeckProps) {
-  const stackCards = Math.min(cardsRemaining, 5);
+  const stackCards = Math.min(cardsRemaining, 4);
   
   return (
     <div className="relative">
       {/* Card stack effect */}
-      <div className="relative w-32 h-48 sm:w-40 sm:h-60">
+      <div className="relative w-28 h-40 sm:w-36 sm:h-52">
         {Array.from({ length: stackCards }).map((_, i) => (
           <div
             key={i}
             className={cn(
-              "absolute w-full h-full rounded-2xl bg-gradient-to-br from-primary via-neon-purple to-secondary transition-transform duration-300",
-              i === stackCards - 1 && !disabled && "hover:scale-105 cursor-pointer pulse-glow"
+              "absolute w-full h-full rounded-xl bg-primary border-2 border-primary/80 transition-all duration-200",
+              i === stackCards - 1 && !disabled && "hover:scale-[1.02] hover:-translate-y-1 cursor-pointer shadow-md"
             )}
             style={{
-              top: `${i * -3}px`,
-              left: `${i * 2}px`,
+              top: `${i * -2}px`,
+              left: `${i * 1}px`,
               zIndex: i,
             }}
             onClick={i === stackCards - 1 ? onDraw : undefined}
           >
-            <div className="absolute inset-2 rounded-xl bg-card/90 flex items-center justify-center">
+            <div className="absolute inset-1.5 rounded-lg bg-card flex items-center justify-center">
               <div className="text-center">
-                <span className="font-orbitron text-xl sm:text-2xl font-bold neon-text-pink">ไผ่</span>
+                <span className="text-lg sm:text-xl font-bold text-primary">ไผ่</span>
                 <br />
-                <span className="font-orbitron text-xs text-muted-foreground">โดเรม่อน</span>
+                <span className="text-xs text-muted-foreground">โดเรม่อน</span>
               </div>
             </div>
           </div>
@@ -39,8 +39,8 @@ export function CardDeck({ cardsRemaining, onDraw, disabled }: CardDeckProps) {
       </div>
 
       {/* Cards remaining badge */}
-      <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 px-4 py-1 rounded-full bg-card border border-border text-sm font-semibold">
-        <span className="neon-text-cyan">{cardsRemaining}</span>
+      <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full bg-card border border-border text-sm font-medium shadow-sm">
+        <span className="text-primary">{cardsRemaining}</span>
         <span className="text-muted-foreground"> ใบ</span>
       </div>
     </div>

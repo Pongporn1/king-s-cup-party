@@ -12,28 +12,28 @@ export function PlayingCard({ card, isFlipped = true, size = 'lg', showRule = fa
   const sizeClasses = {
     sm: 'w-16 h-24',
     md: 'w-24 h-36',
-    lg: 'w-40 h-60 sm:w-48 sm:h-72'
+    lg: 'w-36 h-52 sm:w-44 sm:h-64'
   };
 
   const fontSizes = {
     sm: 'text-lg',
     md: 'text-2xl',
-    lg: 'text-5xl sm:text-6xl'
+    lg: 'text-4xl sm:text-5xl'
   };
 
   const symbolSizes = {
     sm: 'text-2xl',
     md: 'text-4xl',
-    lg: 'text-6xl sm:text-7xl'
+    lg: 'text-5xl sm:text-6xl'
   };
 
   if (!card) {
     return (
       <div className={cn(
         sizeClasses[size],
-        "rounded-2xl bg-gradient-to-br from-primary/20 to-secondary/20 border-2 border-dashed border-muted-foreground/30 flex items-center justify-center"
+        "rounded-xl bg-muted border-2 border-dashed border-border flex items-center justify-center"
       )}>
-        <span className="text-muted-foreground text-4xl">?</span>
+        <span className="text-muted-foreground text-3xl">?</span>
       </div>
     );
   }
@@ -49,25 +49,25 @@ export function PlayingCard({ card, isFlipped = true, size = 'lg', showRule = fa
       )}>
         {/* Card Back */}
         <div className={cn(
-          "card-face rounded-2xl flex items-center justify-center overflow-hidden",
+          "card-face rounded-xl flex items-center justify-center overflow-hidden border-2 border-border",
           sizeClasses[size],
-          "bg-gradient-to-br from-primary via-neon-purple to-secondary"
+          "bg-primary"
         )}>
-          <div className="absolute inset-2 rounded-xl bg-card/90 flex items-center justify-center">
+          <div className="absolute inset-2 rounded-lg bg-card flex items-center justify-center">
             <div className="text-center">
-              <span className="font-orbitron text-2xl sm:text-3xl font-bold neon-text-pink">ไผ่</span>
+              <span className="text-xl sm:text-2xl font-bold text-primary">ไผ่</span>
               <br />
-              <span className="font-orbitron text-xs sm:text-sm text-muted-foreground">โดเรม่อน</span>
+              <span className="text-xs text-muted-foreground">โดเรม่อน</span>
             </div>
           </div>
         </div>
 
         {/* Card Front */}
         <div className={cn(
-          "card-face card-back rounded-2xl bg-gradient-to-br from-white to-gray-100 shadow-2xl overflow-hidden",
+          "card-face card-back rounded-xl bg-white border-2 border-border shadow-lg overflow-hidden",
           sizeClasses[size]
         )}>
-          <div className="absolute inset-0 p-3 sm:p-4 flex flex-col">
+          <div className="absolute inset-0 p-3 flex flex-col">
             {/* Top Left */}
             <div className={cn("flex flex-col items-start leading-none", SUIT_COLORS[card.suit])}>
               <span className={cn("font-bold", fontSizes[size])}>{card.value}</span>
@@ -76,7 +76,7 @@ export function PlayingCard({ card, isFlipped = true, size = 'lg', showRule = fa
 
             {/* Center Symbol */}
             <div className="flex-1 flex items-center justify-center">
-              <span className={cn("text-7xl sm:text-8xl", SUIT_COLORS[card.suit])}>
+              <span className={cn("text-6xl sm:text-7xl", SUIT_COLORS[card.suit])}>
                 {SUIT_SYMBOLS[card.suit]}
               </span>
             </div>
@@ -92,11 +92,11 @@ export function PlayingCard({ card, isFlipped = true, size = 'lg', showRule = fa
 
       {/* Rule Display */}
       {showRule && isFlipped && rule && (
-        <div className="mt-6 sm:mt-8 animate-fade-in text-center max-w-sm mx-auto">
-          <div className="glass-card p-4 sm:p-6">
-            <div className="text-4xl sm:text-5xl mb-3">{rule.emoji}</div>
-            <h3 className="text-xl sm:text-2xl font-bold neon-text-pink mb-2">{rule.title}</h3>
-            <p className="text-muted-foreground text-sm sm:text-base">{rule.description}</p>
+        <div className="mt-6 text-center max-w-xs mx-auto">
+          <div className="bg-card border border-border rounded-xl p-4 shadow-sm">
+            <div className="text-3xl mb-2">{rule.emoji}</div>
+            <h3 className="text-lg font-semibold text-foreground mb-1">{rule.title}</h3>
+            <p className="text-muted-foreground text-sm">{rule.description}</p>
           </div>
         </div>
       )}
