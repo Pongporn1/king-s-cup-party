@@ -59,16 +59,57 @@
 
 @layer components {
   .card-flip {
-    perspective: 1000px;
+    perspective: 1200px;
   }
 
   .card-inner {
-    transition: transform 0.5s ease-out;
+    transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1), 
+                opacity 0.3s ease-out;
     transform-style: preserve-3d;
+  }
+
+  .card-inner.drawing {
+    animation: draw-card 0.4s ease-out forwards;
   }
 
   .card-inner.flipped {
     transform: rotateY(180deg);
+  }
+
+  .card-inner.drawing.flipped {
+    animation: draw-and-flip 0.8s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  }
+
+  @keyframes draw-card {
+    0% {
+      transform: translateY(40px) scale(0.9);
+      opacity: 0;
+    }
+    50% {
+      transform: translateY(-20px) scale(1.02);
+      opacity: 1;
+    }
+    100% {
+      transform: translateY(0) scale(1);
+      opacity: 1;
+    }
+  }
+
+  @keyframes draw-and-flip {
+    0% {
+      transform: translateY(60px) rotateY(0deg) scale(0.85);
+      opacity: 0;
+    }
+    30% {
+      transform: translateY(-30px) rotateY(0deg) scale(1.05);
+      opacity: 1;
+    }
+    50% {
+      transform: translateY(-15px) rotateY(90deg) scale(1.02);
+    }
+    100% {
+      transform: translateY(0) rotateY(180deg) scale(1);
+    }
   }
 
   .card-face {
