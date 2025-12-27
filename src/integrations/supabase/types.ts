@@ -14,6 +14,24 @@ export type Database = {
   }
   public: {
     Tables: {
+      floating_names: {
+        Row: {
+          created_at: string | null
+          id: string
+          name: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          name: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
       players: {
         Row: {
           avatar: number | null
