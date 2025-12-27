@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/dialog";
 import { Plus, Users, ArrowRight, Loader2, Zap } from "lucide-react";
 import { AdminPanel, FloatingNames } from "@/components/AdminPanel";
-import { getFloatingNames } from "@/lib/adminStorage";
+import { getFloatingNamesFromDB } from "@/lib/adminStorage";
 
 interface LobbyProps {
   onCreateRoom: (hostName: string) => Promise<any>;
@@ -34,9 +34,13 @@ export function Lobby({
   const [floatingNames, setFloatingNames] = useState<string[]>([]);
   const secretCodeRef = useRef("");
 
-  // Load floating names on mount
+  // Load floating names from Supabase on mount and when admin panel closes
   useEffect(() => {
-    setFloatingNames(getFloatingNames());
+    const loadNames = async () => {
+      const names = await getFloatingNamesFromDB();
+      setFloatingNames(names);
+    };
+    loadNames();
   }, [showAdminPanel]); // Refresh when admin panel closes
 
   // Secret shortcut: type "adminhee444" anywhere to quick start

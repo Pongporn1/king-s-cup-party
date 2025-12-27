@@ -2,8 +2,13 @@ import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { X, Plus, Trash2, LogOut, Users } from "lucide-react";
-import { getFloatingNames, saveFloatingNames } from "@/lib/adminStorage";
+import { X, Plus, Trash2, LogOut, Users, Loader2 } from "lucide-react";
+import {
+  getFloatingNamesFromDB,
+  addFloatingName,
+  removeFloatingName,
+  clearAllFloatingNames,
+} from "@/lib/adminStorage";
 
 interface AdminPanelProps {
   onClose: () => void;
@@ -12,28 +17,43 @@ interface AdminPanelProps {
 export function AdminPanel({ onClose }: AdminPanelProps) {
   const [names, setNames] = useState<string[]>([]);
   const [newName, setNewName] = useState("");
+  const [isLoading, setIsLoading] = useState(true);
 
+  // Load names from Supabase on mount
   useEffect(() => {
-    setNames(getFloatingNames());
+    loadNames();
   }, []);
 
-  const addName = () => {
+  const loadNames = async () => {
+    setIsLoading(true);
+    const fetchedNames = await getFloatingNamesFromDB();
+    setNames(fetchedNames);
+    setIsLoading(false);
+  };
+
+  const addName = async () => {
     if (!newName.trim()) return;
-    const updated = [...names, newName.trim()];
-    setNames(updated);
-    saveFloatingNames(updated);
+    const trimmedName = newName.trim();
     setNewName("");
+
+    // Optimistic update
+    setNames((prev) => [...prev, trimmedName]);
+
+    await addFloatingName(trimmedName);
   };
 
-  const removeName = (index: number) => {
-    const updated = names.filter((_, i) => i !== index);
-    setNames(updated);
-    saveFloatingNames(updated);
+  const removeName = async (index: number) => {
+    const nameToRemove = names[index];
+
+    // Optimistic update
+    setNames((prev) => prev.filter((_, i) => i !== index));
+
+    await removeFloatingName(nameToRemove);
   };
 
-  const clearAll = () => {
+  const clearAll = async () => {
     setNames([]);
-    saveFloatingNames([]);
+    await clearAllFloatingNames();
   };
 
   return (
@@ -92,7 +112,11 @@ export function AdminPanel({ onClose }: AdminPanelProps) {
           {/* Names list */}
           <ScrollArea className="h-48 rounded-lg bg-black/30 border border-purple-500/20">
             <div className="p-3 space-y-2">
-              {names.length === 0 ? (
+              {isLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="w-6 h-6 text-purple-400 animate-spin" />
+                </div>
+              ) : names.length === 0 ? (
                 <p className="text-center text-white/40 text-sm py-8">
                   ยังไม่มีชื่อเพื่อน
                 </p>
