@@ -25,10 +25,10 @@ export function Lobby({ onCreateRoom, onJoinRoom, isLoading }: LobbyProps) {
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-gradient-to-b from-background to-muted/30">
+    <div className="min-h-screen flex flex-col items-center justify-center p-6">
       {/* Logo */}
       <div className="text-center mb-10">
-        <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-primary/10 mb-4">
+        <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-primary/20 mb-4">
           <Spade className="w-8 h-8 text-primary" />
         </div>
         <h1 className="text-3xl sm:text-4xl font-bold text-foreground mb-2">

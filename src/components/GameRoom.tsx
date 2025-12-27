@@ -70,7 +70,7 @@ export function GameRoom({
   const gameOver = room.cards_remaining === 0 && room.current_card !== null;
 
   return (
-    <div className="min-h-screen flex flex-col p-4 sm:p-6 bg-gradient-to-b from-background to-muted/30">
+    <div className="min-h-screen flex flex-col p-4 sm:p-6">
       {/* Header */}
       <header className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-3">
@@ -112,8 +112,8 @@ export function GameRoom({
       <div className="flex-1 flex flex-col items-center justify-center py-8">
         {!room.game_started ? (
           <div className="text-center">
-            <div className="bg-card border border-border rounded-2xl p-8 mb-6 shadow-sm">
-              <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
+            <div className="bg-card border border-border rounded-2xl p-8 mb-6 shadow-lg">
+              <div className="w-14 h-14 rounded-full bg-primary/20 flex items-center justify-center mx-auto mb-4">
                 <Spade className="w-7 h-7 text-primary" />
               </div>
               <h2 className="text-xl font-semibold mb-2">รอผู้เล่น...</h2>
@@ -125,7 +125,7 @@ export function GameRoom({
               </p>
             </div>
 
-            <div className="bg-card border border-border rounded-xl p-4 inline-block shadow-sm">
+            <div className="bg-card border border-border rounded-xl p-4 inline-block shadow-lg">
               <p className="text-xs text-muted-foreground mb-1">รหัสห้อง</p>
               <button
                 onClick={copyRoomCode}
@@ -137,7 +137,7 @@ export function GameRoom({
           </div>
         ) : gameOver ? (
           <div className="text-center">
-            <div className="bg-card border border-border rounded-2xl p-8 shadow-sm">
+            <div className="bg-card border border-border rounded-2xl p-8 shadow-lg">
               <div className="text-5xl mb-4">🎉</div>
               <h2 className="text-2xl font-bold text-foreground mb-2">จบเกม!</h2>
               <p className="text-muted-foreground mb-6">ไพ่หมดแล้ว</p>
@@ -161,13 +161,13 @@ export function GameRoom({
                 />
               </div>
             ) : (
-              <div className="text-center">
-                <p className="text-muted-foreground mb-4">กดที่กองไพ่เพื่อจั่ว</p>
+              <div className="text-center mb-4">
+                <p className="text-muted-foreground">กดที่กองไพ่เพื่อจั่ว</p>
               </div>
             )}
 
             {/* Draw Area */}
-            <div className="flex flex-col items-center gap-4">
+            <div className="flex flex-col items-center gap-6">
               <CardDeck 
                 cardsRemaining={room.cards_remaining}
                 onDraw={handleDrawCard}
@@ -179,7 +179,7 @@ export function GameRoom({
                 size="xl"
                 onClick={handleDrawCard}
                 disabled={room.cards_remaining === 0}
-                className="mt-4"
+                className="mt-2"
               >
                 <Spade className="w-5 h-5" />
                 จั่วไพ่
