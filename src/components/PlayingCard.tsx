@@ -228,17 +228,17 @@ export function PlayingCard({ card, isFlipped = true, isDrawing = false, size = 
         isDrawing && "drawing",
         isFlipped && "flipped"
       )}>
-        {/* Card Back */}
+        {/* Card Back (Doraemon image) */}
         <div className={cn(
-          "card-face rounded-xl overflow-hidden shadow-xl",
+          "card-face card-face-back rounded-xl overflow-hidden shadow-xl",
           sizeClasses[size]
         )}>
           <CardBackPattern />
         </div>
 
-        {/* Card Front */}
+        {/* Card Front (the actual card face) */}
         <div className={cn(
-          "card-face card-back rounded-xl bg-paper border border-paper-border shadow-xl overflow-hidden",
+          "card-face card-face-front rounded-xl bg-paper border border-paper-border shadow-xl overflow-hidden",
           sizeClasses[size]
         )}>
           {/* Top Left Corner */}
