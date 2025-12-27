@@ -63,8 +63,8 @@ export function GameRoom({
     setIsCardFlipped(false);
     setTimeout(() => {
       onDrawCard();
-      setTimeout(() => setIsCardFlipped(true), 100);
-    }, 100);
+      setTimeout(() => setIsCardFlipped(true), 300);
+    }, 200);
   };
 
   const gameOver = room.cards_remaining === 0 && room.current_card !== null;
