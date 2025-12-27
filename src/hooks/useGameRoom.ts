@@ -117,8 +117,8 @@ export function useGameRoom() {
 
       setRoom({
         ...roomData,
-        deck: roomData.deck as PlayingCard[],
-        current_card: roomData.current_card as PlayingCard | null
+        deck: (roomData.deck as unknown) as PlayingCard[],
+        current_card: (roomData.current_card as unknown) as PlayingCard | null
       });
       setPlayers([playerData]);
       setCurrentPlayerId(playerData.id);
@@ -175,8 +175,8 @@ export function useGameRoom() {
 
       setRoom({
         ...roomData,
-        deck: roomData.deck as PlayingCard[],
-        current_card: roomData.current_card as PlayingCard | null
+        deck: (roomData.deck as unknown) as PlayingCard[],
+        current_card: (roomData.current_card as unknown) as PlayingCard | null
       });
       setPlayers([...(existingPlayers || []), playerData]);
       setCurrentPlayerId(playerData.id);
