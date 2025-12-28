@@ -324,14 +324,27 @@ export function useGameRoom() {
   }, [room, toast]);
 
   const leaveRoom = useCallback(async () => {
-    if (!currentPlayerId) return;
+    if (!currentPlayerId || !room) return;
 
+    // ลบ player ออกจากห้อง
     await supabase.from("players").delete().eq("id", currentPlayerId);
+
+    // เช็คว่ายังมีผู้เล่นเหลืออยู่ไหม ถ้าไม่มีให้ลบห้อง
+    const { data: remainingPlayers } = await supabase
+      .from("players")
+      .select("id")
+      .eq("room_id", room.id)
+      .eq("is_active", true);
+
+    if (!remainingPlayers || remainingPlayers.length === 0) {
+      // ลบห้องเมื่อไม่มีผู้เล่นเหลือ
+      await supabase.from("rooms").delete().eq("id", room.id);
+    }
 
     setRoom(null);
     setPlayers([]);
     setCurrentPlayerId(null);
-  }, [currentPlayerId]);
+  }, [currentPlayerId, room]);
 
   // Quick start - creates room and starts game immediately with custom name
   const quickStart = useCallback(

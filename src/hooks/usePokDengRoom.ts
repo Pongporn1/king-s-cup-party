@@ -153,6 +153,7 @@ export function usePokDengRoom() {
       try {
         const code = generateRoomCode();
         const deck = shuffleDeck(createDeck());
+        const hostAvatar = getRandomAvatar([]);
 
         const { data: roomData, error: roomError } = await supabase
           .from("rooms")
@@ -176,6 +177,7 @@ export function usePokDengRoom() {
             name: hostName,
             is_host: true,
             is_dealer: true, // Host เป็นเจ้ามือคนแรก
+            avatar: hostAvatar,
             player_order: 0,
             cards: [] as any,
             points: 0,
@@ -494,6 +496,21 @@ export function usePokDengRoom() {
       .eq("id", dealer.id);
   }, [room, currentPlayerId, players]);
 
+  // เจ้ามือไม่จั่ว (หยุด)
+  const dealerStand = useCallback(async () => {
+    if (!room || !currentPlayerId) return;
+
+    const dealer = players.find((p) => p.is_dealer);
+    if (!dealer || dealer.id !== currentPlayerId) return;
+    if (dealer.has_drawn) return;
+
+    // Mark dealer as done without drawing
+    await supabase
+      .from("players")
+      .update({ has_drawn: true })
+      .eq("id", dealer.id);
+  }, [room, currentPlayerId, players]);
+
   // เปิดไพ่ - คำนวณผลแพ้ชนะ
   const showdown = useCallback(async () => {
     if (!room) return;
@@ -602,14 +619,27 @@ export function usePokDengRoom() {
   }, [room, players, toast]);
 
   const leaveRoom = useCallback(async () => {
-    if (!currentPlayerId) return;
+    if (!currentPlayerId || !room) return;
 
+    // ลบ player ออกจากห้อง
     await supabase.from("players").delete().eq("id", currentPlayerId);
+
+    // เช็คว่ายังมีผู้เล่นเหลืออยู่ไหม ถ้าไม่มีให้ลบห้อง
+    const { data: remainingPlayers } = await supabase
+      .from("players")
+      .select("id")
+      .eq("room_id", room.id)
+      .eq("is_active", true);
+
+    if (!remainingPlayers || remainingPlayers.length === 0) {
+      // ลบห้องเมื่อไม่มีผู้เล่นเหลือ
+      await supabase.from("rooms").delete().eq("id", room.id);
+    }
 
     setRoom(null);
     setPlayers([]);
     setCurrentPlayerId(null);
-  }, [currentPlayerId]);
+  }, [currentPlayerId, room]);
 
   // Quick start
   const quickStart = useCallback(
@@ -699,6 +729,7 @@ export function usePokDengRoom() {
     drawCard,
     standCard,
     dealerDraw,
+    dealerStand,
     showdown,
     nextRound,
     leaveRoom,

@@ -1,5 +1,8 @@
-import { useState, useRef } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { PlayerList } from "@/components/PlayerList";
+import { WaitingForPlayersAnimation } from "@/components/WaitingForPlayersAnimation";
+import { CardBackPattern } from "@/components/CardBackPattern";
 import {
   PokDengCard,
   getSuitEmoji,
@@ -10,168 +13,178 @@ import {
 import { PokDengRoom, PokDengPlayer } from "@/hooks/usePokDengRoom";
 import { Copy, LogOut, Play, RotateCcw, Hand, Square, Eye } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { motion } from "framer-motion";
 
 interface PokDengGameRoomMultiplayerProps {
   room: PokDengRoom;
   players: PokDengPlayer[];
   currentPlayerId: string | null;
   isHost: boolean;
+  isLiveMode?: boolean; // เปิดโหมด LIVE แยกจาก dealer
   onStartGame: () => void;
   onDrawCard: () => void;
   onStandCard: () => void;
   onDealerDraw: () => void;
+  onDealerStand: () => void;
   onShowdown: () => void;
   onNextRound: () => void;
   onLeave: () => void;
 }
 
-// Component แสดงไพ่
-function PokDengCardDisplay({
+// Component แสดงไพ่ขนาดใหญ่สำหรับ LIVE Display - ไพ่ใหญ่มากสำหรับจอ TV
+function DisplayCard({
   card,
   faceDown = false,
-  small = false,
 }: {
   card: PokDengCard;
   faceDown?: boolean;
-  small?: boolean;
 }) {
-  const sizeClass = small
-    ? "w-10 h-14 sm:w-12 sm:h-18"
-    : "w-14 h-20 sm:w-16 sm:h-24";
-
   if (faceDown) {
     return (
-      <div
-        className={`${sizeClass} rounded-lg bg-gradient-to-br from-blue-600 to-blue-800 border-2 border-blue-400 shadow-lg flex items-center justify-center`}
-      >
-        <span className="text-xl">🎴</span>
+      <div className="w-20 h-28 sm:w-28 sm:h-40 md:w-32 md:h-48 lg:w-40 lg:h-56 rounded-xl shadow-xl overflow-hidden relative">
+        <CardBackPattern />
       </div>
     );
   }
 
   return (
-    <div
-      className={`${sizeClass} rounded-lg bg-white border-2 border-gray-300 shadow-lg flex flex-col items-center justify-center p-1`}
+    <motion.div
+      initial={{ rotateY: 180, scale: 0.8 }}
+      animate={{ rotateY: 0, scale: 1 }}
+      transition={{ duration: 0.4 }}
+      className="w-20 h-28 sm:w-28 sm:h-40 md:w-32 md:h-48 lg:w-40 lg:h-56 rounded-xl bg-white border-2 border-gray-200 shadow-xl flex flex-col items-center justify-center"
     >
       <span
-        className={`${small ? "text-lg" : "text-xl"} font-bold ${getSuitColor(
+        className={`text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold ${getSuitColor(
           card.suit
         )}`}
       >
         {card.value}
       </span>
-      <span className={`${small ? "text-xl" : "text-2xl"}`}>
+      <span className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl">
         {getSuitEmoji(card.suit)}
       </span>
-    </div>
+    </motion.div>
   );
 }
 
-// Component แสดงผู้เล่นในรอ lobby
-function WaitingPlayer({
-  player,
-  isCurrentUser,
+// Component แสดงไพ่ขนาดใหญ่สำหรับ Player view (มือถือ)
+function LargeCard({
+  card,
+  faceDown = false,
 }: {
-  player: PokDengPlayer;
-  isCurrentUser: boolean;
+  card: PokDengCard;
+  faceDown?: boolean;
 }) {
+  if (faceDown) {
+    return (
+      <div className="w-20 h-28 sm:w-24 sm:h-36 rounded-xl shadow-xl overflow-hidden relative">
+        <CardBackPattern />
+      </div>
+    );
+  }
+
   return (
-    <div
-      className={`flex items-center gap-3 p-3 rounded-lg ${
-        isCurrentUser ? "bg-green-500/20 border border-green-500" : "bg-white/5"
-      }`}
+    <motion.div
+      initial={{ rotateY: 180, scale: 0.8 }}
+      animate={{ rotateY: 0, scale: 1 }}
+      transition={{ duration: 0.4 }}
+      className="w-20 h-28 sm:w-24 sm:h-36 rounded-xl bg-white border-2 border-gray-200 shadow-xl flex flex-col items-center justify-center"
     >
-      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-green-400 to-green-600 flex items-center justify-center text-white font-bold">
-        {player.name.charAt(0).toUpperCase()}
-      </div>
-      <div className="flex-1">
-        <p className="text-white font-medium">
-          {player.name}
-          {isCurrentUser && (
-            <span className="text-green-400 text-xs ml-2">(คุณ)</span>
-          )}
-        </p>
-        {player.is_dealer && (
-          <span className="text-xs bg-amber-500 text-black px-2 py-0.5 rounded-full">
-            เจ้ามือ
-          </span>
-        )}
-        {player.is_host && !player.is_dealer && (
-          <span className="text-xs bg-blue-500 text-white px-2 py-0.5 rounded-full">
-            Host
-          </span>
-        )}
-      </div>
-    </div>
+      <span
+        className={`text-2xl sm:text-3xl font-bold ${getSuitColor(card.suit)}`}
+      >
+        {card.value}
+      </span>
+      <span className="text-3xl sm:text-4xl">{getSuitEmoji(card.suit)}</span>
+    </motion.div>
   );
 }
 
-// Component แสดงมือของผู้เล่น
-function PlayerHand({
+// Component แสดงมือของผู้เล่นบน Display (LIVE view) - ไพ่ใหญ่สำหรับ TV
+function DisplayPlayerHand({
   player,
-  isCurrentTurn,
-  isCurrentUser,
   showCards,
-  phase,
-  onDraw,
-  onStand,
+  isCurrentTurn,
+  isLarge = false,
 }: {
   player: PokDengPlayer;
-  isCurrentTurn: boolean;
-  isCurrentUser: boolean;
   showCards: boolean;
-  phase: string;
-  onDraw?: () => void;
-  onStand?: () => void;
+  isCurrentTurn: boolean;
+  isLarge?: boolean;
 }) {
   const pok =
     player.cards.length === 2
       ? isPok(player.cards)
-      : { isPok: false, pokValue: null as 8 | 9 | null };
+      : { isPok: false, pokValue: null };
   const special = player.cards.length > 0 ? getSpecialHand(player.cards) : null;
-
-  // ผู้เล่นเห็นไพ่ตัวเองเสมอ, คนอื่นเห็นเฉพาะตอน showdown
-  const canSeeCards = isCurrentUser || showCards;
 
   return (
     <div
-      className={`p-3 sm:p-4 rounded-xl border-2 transition-all ${
+      className={`${
+        isLarge ? "p-5 sm:p-8" : "p-3 sm:p-4"
+      } rounded-xl border-2 transition-all ${
         player.is_dealer
           ? "bg-amber-500/20 border-amber-500"
           : isCurrentTurn
           ? "bg-green-500/20 border-green-500 animate-pulse"
-          : isCurrentUser
-          ? "bg-blue-500/10 border-blue-500/50"
           : "bg-white/5 border-white/20"
       }`}
     >
-      <div className="flex items-center justify-between mb-2">
+      <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
-          <span className="text-white font-bold text-sm">
+          {/* Avatar */}
+          {player.avatar && (
+            <img
+              src={`${import.meta.env.BASE_URL}${player.avatar}.jpg`}
+              alt={player.name}
+              className={`${
+                isLarge ? "w-10 h-10 sm:w-12 sm:h-12" : "w-8 h-8"
+              } rounded-full object-cover border-2 border-white/40`}
+            />
+          )}
+          <span
+            className={`text-white font-bold ${
+              isLarge ? "text-base sm:text-lg" : "text-sm sm:text-base"
+            }`}
+          >
             {player.is_dealer ? "🎰 " : ""}
             {player.name}
-            {isCurrentUser && (
-              <span className="text-blue-400 text-xs ml-1">(คุณ)</span>
-            )}
           </span>
           {player.is_dealer && (
-            <span className="text-xs bg-amber-500 text-black px-2 py-0.5 rounded-full">
+            <span
+              className={`${
+                isLarge ? "text-sm" : "text-xs"
+              } bg-amber-500 text-black px-2 py-0.5 rounded-full`}
+            >
               เจ้ามือ
             </span>
           )}
         </div>
-        {canSeeCards && player.cards.length > 0 && (
+        {showCards && player.cards.length > 0 && (
           <div className="flex items-center gap-2">
-            <span className="text-xl font-bold text-amber-400">
+            <span
+              className={`${
+                isLarge ? "text-2xl sm:text-3xl" : "text-xl sm:text-2xl"
+              } font-bold text-amber-400`}
+            >
               {player.points}
             </span>
             {pok.isPok && pok.pokValue !== null && (
-              <span className="text-xs bg-green-500 text-white px-2 py-0.5 rounded-full animate-bounce">
+              <span
+                className={`${
+                  isLarge ? "text-sm" : "text-xs"
+                } bg-green-500 text-white px-2 py-0.5 rounded-full animate-bounce`}
+              >
                 ป๊อก {pok.pokValue}!
               </span>
             )}
             {special && special.type !== "normal" && !pok.isPok && (
-              <span className="text-xs bg-purple-500 text-white px-2 py-0.5 rounded-full">
+              <span
+                className={`${
+                  isLarge ? "text-sm" : "text-xs"
+                } bg-purple-500 text-white px-2 py-0.5 rounded-full`}
+              >
                 {special.name}
               </span>
             )}
@@ -179,62 +192,42 @@ function PlayerHand({
         )}
       </div>
 
-      {/* ไพ่ในมือ */}
-      <div className="flex gap-1.5 justify-center mb-2">
+      {/* ไพ่ในมือ - gap ใหญ่ขึ้นสำหรับ LIVE */}
+      <div
+        className={`flex ${
+          isLarge ? "gap-4 sm:gap-6" : "gap-2"
+        } justify-center`}
+      >
         {player.cards.map((card, i) => (
-          <PokDengCardDisplay
-            key={i}
-            card={card}
-            faceDown={!canSeeCards}
-            small
-          />
+          <DisplayCard key={i} card={card} faceDown={!showCards} />
         ))}
         {player.cards.length === 0 && (
-          <div className="w-10 h-14 rounded-lg border-2 border-dashed border-white/30 flex items-center justify-center">
+          <div
+            className={`${
+              isLarge ? "w-28 h-40 sm:w-32 sm:h-48" : "w-16 h-24"
+            } rounded-lg border-2 border-dashed border-white/30 flex items-center justify-center`}
+          >
             <span className="text-white/30 text-xs">-</span>
           </div>
         )}
       </div>
 
-      {/* ปุ่มจั่ว/หยุด - แสดงเฉพาะผู้เล่นตัวเอง */}
-      {isCurrentTurn &&
-        isCurrentUser &&
-        !player.has_drawn &&
-        player.cards.length < 3 &&
-        phase === "drawing" && (
-          <div className="flex gap-2 justify-center mt-2">
-            <Button
-              onClick={onDraw}
-              className="bg-green-500 hover:bg-green-600 text-white"
-              size="sm"
-            >
-              <Hand className="w-4 h-4 mr-1" />
-              จั่ว
-            </Button>
-            <Button
-              onClick={onStand}
-              variant="outline"
-              className="border-white/30 text-white hover:bg-white/10"
-              size="sm"
-            >
-              <Square className="w-4 h-4 mr-1" />
-              หยุด
-            </Button>
-          </div>
-        )}
-
       {/* สถานะ */}
-      {player.has_drawn && phase === "drawing" && (
-        <div className="text-center mt-1">
-          <span className="text-xs text-white/50">✓ จบตาแล้ว</span>
+      {player.has_drawn && !showCards && (
+        <div className="text-center mt-2">
+          <span className={`${isLarge ? "text-sm" : "text-xs"} text-white/50`}>
+            ✓ จบตาแล้ว
+          </span>
         </div>
       )}
 
       {/* ผลลัพธ์ */}
-      {player.result && (phase === "showdown" || phase === "ended") && (
-        <div className="mt-2 text-center">
+      {player.result && showCards && (
+        <div className="mt-3 text-center">
           <span
-            className={`text-sm font-bold px-3 py-1 rounded-full ${
+            className={`${
+              isLarge ? "text-base" : "text-sm"
+            } font-bold px-4 py-1 rounded-full ${
               player.result === "player_win"
                 ? "bg-green-500 text-white"
                 : "bg-red-500 text-white"
@@ -256,10 +249,12 @@ export function PokDengGameRoomMultiplayer({
   players,
   currentPlayerId,
   isHost,
+  isLiveMode = false,
   onStartGame,
   onDrawCard,
   onStandCard,
   onDealerDraw,
+  onDealerStand,
   onShowdown,
   onNextRound,
   onLeave,
@@ -276,8 +271,8 @@ export function PokDengGameRoomMultiplayer({
         await navigator.clipboard.writeText(code);
         copied = true;
       }
-    } catch (err) {
-      // Clipboard API failed, try fallback
+    } catch {
+      // Clipboard API failed
     }
 
     if (!copied) {
@@ -291,7 +286,7 @@ export function PokDengGameRoomMultiplayer({
         document.execCommand("copy");
         document.body.removeChild(textArea);
         copied = true;
-      } catch (err) {
+      } catch {
         // execCommand failed
       }
     }
@@ -315,102 +310,122 @@ export function PokDengGameRoomMultiplayer({
       ? nonDealerPlayers[room.current_player_index]
       : null;
 
-  // เช็คว่าทุกคนจั่วแล้วหรือยัง
-  const allPlayersDrawn = nonDealerPlayers.every((p) => p.has_drawn);
+  // เป็นตาของผู้เล่นปัจจุบันหรือไม่
+  const isMyTurn = currentTurnPlayer?.id === currentPlayerId;
 
-  // เช็คว่าเป็นตาของเจ้ามือหรือยัง
+  // เจ้ามือยังไม่ได้เลือกจั่ว/ไม่จั่ว
   const isDealerTurn =
     room.game_phase === "showdown" && dealer && !dealer.has_drawn;
+  const isCurrentPlayerDealer = currentPlayer?.is_dealer;
+
+  // ทุกคนเล่นเสร็จแล้วหรือยัง
+  const showCards =
+    room.game_phase === "showdown" || room.game_phase === "ended";
+
+  // ใช้ LIVE mode หรือไม่ (isHost + isLiveMode = แสดงหน้าจอ LIVE)
+  const showLiveDisplay = isHost && isLiveMode;
 
   return (
-    <div className="min-h-screen min-h-[100dvh] flex flex-col p-2 sm:p-4 relative overflow-hidden">
-      {/* Background */}
+    <div className="min-h-screen min-h-[100dvh] flex flex-col p-2 sm:p-4 md:p-6 relative overflow-hidden">
+      {/* Background Image - same as Doraemon */}
       <div
-        className="absolute inset-0 bg-cover bg-center bg-no-repeat"
+        className="absolute inset-0 bg-cover bg-center bg-no-repeat blur-sm scale-105"
         style={{
-          backgroundImage: `url('${import.meta.env.BASE_URL}bg-party.jpg')`,
+          backgroundImage: `url('${import.meta.env.BASE_URL}bg-game.jpg')`,
         }}
       />
-      <div className="absolute inset-0 bg-gradient-to-b from-green-900/80 to-black/80" />
+      {/* Dark overlay */}
+      <div className="absolute inset-0 bg-black/50" />
 
-      {/* Content */}
-      <div className="relative z-10 flex flex-col h-full">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={copyRoomCode}
-              className="text-white/70 hover:text-white hover:bg-white/10"
-            >
-              <span className="font-mono font-bold mr-1">{room.code}</span>
-              <Copy className="w-4 h-4" />
-            </Button>
-          </div>
-          <h1 className="text-lg font-bold text-white">🎰 ป๊อกเด้ง</h1>
+      {/* Header */}
+      <header className="flex items-center justify-between mb-2 sm:mb-4 relative z-10">
+        <div className="flex items-center gap-2 sm:gap-3">
           <Button
             variant="ghost"
             size="icon"
             onClick={onLeave}
-            className="text-red-400 hover:text-red-300 hover:bg-red-500/20"
+            className="text-white/70 hover:text-red-400 hover:bg-red-400/10 w-8 h-8 sm:w-10 sm:h-10"
           >
-            <LogOut className="w-5 h-5" />
+            <LogOut className="w-4 h-4 sm:w-5 sm:h-5" />
           </Button>
+          <div>
+            <h1 className="font-semibold text-white text-sm sm:text-lg">
+              🎰 ไพ่ป๊อกเด้ง{" "}
+              {showLiveDisplay && (
+                <span className="text-amber-400">📺 LIVE</span>
+              )}
+            </h1>
+            <button
+              onClick={copyRoomCode}
+              className="flex items-center gap-1 text-xs sm:text-sm text-white/60 hover:text-white transition-colors"
+            >
+              <span className="font-mono bg-white/10 px-1.5 sm:px-2 py-0.5 rounded text-xs sm:text-sm">
+                {room.code}
+              </span>
+              <Copy className="w-3 h-3" />
+            </button>
+          </div>
         </div>
 
-        {/* Waiting for players */}
-        {!room.game_started && (
-          <div className="flex-1 flex flex-col items-center justify-center">
-            <div className="bg-black/40 backdrop-blur-md rounded-2xl p-4 sm:p-6 w-full max-w-md border border-green-500/30">
-              <h2 className="text-xl font-bold text-white text-center mb-4">
-                รอผู้เล่น ({players.length}/8)
-              </h2>
+        <div className="flex items-center gap-2">
+          {isHost && !room.game_started && (
+            <Button
+              variant="default"
+              onClick={onStartGame}
+              disabled={players.length < 2}
+              className="bg-white text-black hover:bg-white/90 text-xs sm:text-sm px-3 sm:px-4"
+            >
+              <Play className="w-3 h-3 sm:w-4 sm:h-4" />
+              <span className="hidden sm:inline">เริ่มเกม</span>
+              <span className="sm:hidden">เริ่ม</span>
+            </Button>
+          )}
+        </div>
+      </header>
 
-              <div className="space-y-2 mb-6">
-                {players.map((player) => (
-                  <WaitingPlayer
-                    key={player.id}
-                    player={player}
-                    isCurrentUser={player.id === currentPlayerId}
-                  />
-                ))}
-              </div>
+      {/* Player List */}
+      <div className="mb-2 sm:mb-4">
+        <PlayerList
+          players={players.map((p) => ({
+            id: p.id,
+            name: p.name,
+            is_host: p.is_host,
+            avatar: p.avatar,
+          }))}
+          currentPlayerId={currentPlayerId ?? undefined}
+        />
+      </div>
 
-              <div className="text-center mb-4">
-                <p className="text-white/60 text-sm">
-                  แชร์รหัส{" "}
-                  <span className="font-mono font-bold text-green-400">
-                    {room.code}
-                  </span>{" "}
-                  ให้เพื่อน
-                </p>
-              </div>
+      {/* Game Area */}
+      <div className="flex-1 flex flex-col items-center justify-center py-2 sm:py-4 md:py-6 relative z-10 overflow-y-auto">
+        {!room.game_started ? (
+          /* Waiting Room */
+          <div className="text-center px-2">
+            <div className="bg-black/40 backdrop-blur-md rounded-2xl p-5 sm:p-8 mb-4 sm:mb-6 border border-white/10">
+              <WaitingForPlayersAnimation />
+              <p className="text-white/60 text-xs sm:text-sm mt-2">
+                {isHost
+                  ? 'แชร์รหัสห้องให้เพื่อนๆ แล้วกด "เริ่มเกม"'
+                  : "รอ Host เริ่มเกม"}
+              </p>
+            </div>
 
-              {isHost ? (
-                <Button
-                  className="w-full bg-green-500 hover:bg-green-600 text-white"
-                  onClick={onStartGame}
-                  disabled={players.length < 2}
-                >
-                  <Play className="w-4 h-4 mr-2" />
-                  เริ่มเกม ({players.length} คน)
-                </Button>
-              ) : (
-                <div className="text-center text-white/60">
-                  <p>รอ Host เริ่มเกม...</p>
-                </div>
-              )}
+            <div className="bg-black/40 backdrop-blur-md rounded-xl p-4 sm:p-5 inline-block border border-white/10">
+              <p className="text-xs text-white/50 mb-1 sm:mb-2">รหัสห้อง</p>
+              <button
+                onClick={copyRoomCode}
+                className="font-mono text-3xl sm:text-4xl font-bold text-white tracking-widest hover:opacity-80 transition-opacity"
+              >
+                {room.code}
+              </button>
             </div>
           </div>
-        )}
-
-        {/* Game in progress */}
-        {room.game_started && (
-          <>
-            {/* Phase indicator */}
-            <div className="text-center mb-3">
-              <span className="bg-amber-500/20 text-amber-400 px-4 py-1 rounded-full text-sm">
+        ) : showLiveDisplay ? (
+          /* ========== LIVE DISPLAY - จอใหญ่แสดงให้ทุกคนดู ========== */
+          <div className="flex flex-col items-center justify-start w-full h-full">
+            {/* Phase indicator - ใหญ่ขึ้น */}
+            <div className="text-center mb-4 sm:mb-6">
+              <span className="bg-amber-500/20 text-amber-400 px-6 sm:px-8 py-2 sm:py-3 rounded-full text-lg sm:text-xl md:text-2xl font-medium">
                 {room.game_phase === "dealing" && "🃏 กำลังแจกไพ่..."}
                 {room.game_phase === "drawing" &&
                   `🎴 ตา: ${currentTurnPlayer?.name || "..."}`}
@@ -420,110 +435,313 @@ export function PokDengGameRoomMultiplayer({
               </span>
             </div>
 
-            {/* เจ้ามือ */}
+            {/* เจ้ามือ - ขนาดใหญ่ */}
             {dealer && (
-              <div className="mb-4">
-                <PlayerHand
+              <div className="w-full max-w-xl mb-4 sm:mb-6">
+                <DisplayPlayerHand
                   player={dealer}
-                  isCurrentTurn={isDealerTurn && dealer.id === currentPlayerId}
-                  isCurrentUser={dealer.id === currentPlayerId}
-                  showCards={
-                    room.game_phase === "showdown" ||
-                    room.game_phase === "ended"
-                  }
-                  phase={room.game_phase}
-                  onDraw={onDealerDraw}
-                  onStand={() => {}}
+                  showCards={showCards}
+                  isCurrentTurn={isDealerTurn}
+                  isLarge={true}
                 />
               </div>
             )}
 
-            {/* ผู้เล่น */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 flex-1 overflow-y-auto mb-4">
+            {/* ผู้เล่นทั้งหมด - Grid responsive */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 w-full max-w-4xl px-2">
               {nonDealerPlayers.map((player, index) => (
-                <PlayerHand
+                <DisplayPlayerHand
                   key={player.id}
                   player={player}
+                  showCards={showCards}
                   isCurrentTurn={
                     room.current_player_index === index &&
                     room.game_phase === "drawing"
                   }
-                  isCurrentUser={player.id === currentPlayerId}
-                  showCards={
-                    room.game_phase === "showdown" ||
-                    room.game_phase === "ended"
-                  }
-                  phase={room.game_phase}
-                  onDraw={onDrawCard}
-                  onStand={onStandCard}
+                  isLarge={true}
                 />
               ))}
             </div>
 
-            {/* ปุ่มควบคุม */}
-            <div className="flex justify-center gap-3 py-3">
-              {/* เจ้ามือกดจั่ว */}
-              {isDealerTurn &&
-                dealer?.id === currentPlayerId &&
-                !dealer.has_drawn &&
-                dealer.cards.length < 3 && (
-                  <Button
-                    onClick={onDealerDraw}
-                    className="bg-amber-500 hover:bg-amber-600 text-black font-bold"
-                  >
-                    <Hand className="w-4 h-4 mr-2" />
-                    จั่วไพ่
-                  </Button>
-                )}
+            {/* Host controls on LIVE display - แค่เปิดไพ่และเล่นรอบต่อไป */}
+            <div className="flex flex-col items-center gap-3 py-4 sm:py-6 mt-4">
+              {/* ตาเจ้ามือ - แสดงแค่ข้อความให้ใช้มือถือ */}
+              {isDealerTurn && !currentPlayer?.has_drawn && (
+                <div className="bg-amber-500/20 border border-amber-500/50 rounded-xl px-6 py-4">
+                  <p className="text-amber-400 font-medium text-center text-lg">
+                    🎰 ถึงตาเจ้ามือแล้ว
+                    <br />
+                    <span className="text-sm text-amber-300/70">
+                      เจ้ามือใช้มือถือเลือกจั่วหรือไม่จั่ว
+                    </span>
+                  </p>
+                </div>
+              )}
 
-              {/* Host กดเปิดไพ่ */}
-              {room.game_phase === "showdown" && isHost && !isDealerTurn && (
+              {room.game_phase === "showdown" && !isDealerTurn && (
                 <Button
                   onClick={onShowdown}
-                  className="bg-purple-500 hover:bg-purple-600 text-white font-bold"
+                  size="lg"
+                  className="bg-purple-500 hover:bg-purple-600 text-white font-bold text-lg px-8"
                 >
-                  <Eye className="w-4 h-4 mr-2" />
+                  <Eye className="w-5 h-5 mr-2" />
                   เปิดไพ่ตัดสิน
                 </Button>
               )}
 
-              {/* Host กดรอบต่อไป */}
-              {room.game_phase === "ended" && isHost && (
+              {room.game_phase === "ended" && (
                 <Button
                   onClick={onNextRound}
-                  className="bg-green-500 hover:bg-green-600 text-white font-bold"
+                  size="lg"
+                  className="bg-green-500 hover:bg-green-600 text-white font-bold text-lg px-8"
                 >
-                  <RotateCcw className="w-4 h-4 mr-2" />
+                  <RotateCcw className="w-5 h-5 mr-2" />
                   เล่นรอบต่อไป
                 </Button>
               )}
             </div>
-          </>
-        )}
 
-        {/* Rules toggle */}
-        <div className="mt-auto">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setShowRules(!showRules)}
-            className="w-full text-white/50 hover:text-white/80"
-          >
-            {showRules ? "ซ่อนกติกา ▲" : "ดูกติกา ▼"}
-          </Button>
-
-          {showRules && (
-            <div className="bg-black/50 rounded-xl p-3 mt-2 border border-white/10">
-              <ul className="text-white/60 text-xs space-y-1">
-                <li>• ป๊อก 8/9 = ชนะทันที (จ่าย 2 เท่า)</li>
-                <li>• ไพ่ตอง = จ่าย 5 เท่า</li>
-                <li>• สามเหลือง/เรียง/สี = จ่าย 3 เท่า</li>
-                <li>• เด้ง (คู่/ดอกเดียวกัน) = จ่าย 2 เท่า</li>
-                <li>• แต้มเท่ากัน = เจ้ามือชนะ</li>
-              </ul>
+            {/* Instructions for LIVE display */}
+            {room.game_phase === "drawing" && (
+              <div className="mt-4 bg-black/40 backdrop-blur-md rounded-xl px-6 py-4 border border-white/10">
+                <p className="text-white/50 text-sm sm:text-base text-center">
+                  📺 หน้าจอ LIVE แสดงให้ทุกคนดู
+                  <br />
+                  ผู้เล่นใช้มือถือเลือกจั่วหรือหยุด
+                </p>
+              </div>
+            )}
+          </div>
+        ) : (
+          /* ========== PLAYER VIEW - มือถือทุกคน (รวมเจ้ามือ) ========== */
+          <div className="flex flex-col items-center justify-center w-full h-full">
+            {/* Phase indicator */}
+            <div className="text-center mb-4">
+              <span className="bg-amber-500/20 text-amber-400 px-4 py-1 rounded-full text-sm">
+                {room.game_phase === "dealing" && "🃏 กำลังแจกไพ่..."}
+                {room.game_phase === "drawing" &&
+                  (isMyTurn
+                    ? "🎴 ถึงตาคุณแล้ว!"
+                    : isCurrentPlayerDealer
+                    ? "🎰 รอผู้เล่นอื่นเล่นก่อน..."
+                    : `🎴 ตา: ${currentTurnPlayer?.name || "..."}`)}
+                {room.game_phase === "showdown" &&
+                  (isDealerTurn && isCurrentPlayerDealer
+                    ? "🎰 ถึงตาคุณแล้ว!"
+                    : isDealerTurn
+                    ? "🎰 รอเจ้ามือ"
+                    : "🏆 รอเปิดไพ่")}
+                {room.game_phase === "ended" && "🎊 จบรอบ"}
+              </span>
             </div>
-          )}
-        </div>
+
+            {/* My cards (large display) */}
+            {currentPlayer && (
+              <div className="bg-black/40 backdrop-blur-md rounded-2xl p-4 sm:p-6 border border-white/10 mb-4 w-full max-w-sm">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    {currentPlayer.avatar && (
+                      <img
+                        src={`${import.meta.env.BASE_URL}${
+                          currentPlayer.avatar
+                        }.jpg`}
+                        alt={currentPlayer.name}
+                        className="w-10 h-10 rounded-full object-cover border-2 border-white/40"
+                      />
+                    )}
+                    <span className="text-white font-bold text-lg">
+                      {currentPlayer.is_dealer
+                        ? "🎰 คุณ (เจ้ามือ)"
+                        : "🎮 ไพ่ของคุณ"}
+                    </span>
+                  </div>
+                  {currentPlayer.cards.length > 0 && (
+                    <div className="flex items-center gap-2">
+                      <span className="text-2xl font-bold text-amber-400">
+                        {currentPlayer.points}
+                      </span>
+                      {currentPlayer.cards.length === 2 &&
+                        isPok(currentPlayer.cards).isPok && (
+                          <span className="text-xs bg-green-500 text-white px-2 py-0.5 rounded-full animate-bounce">
+                            ป๊อก {isPok(currentPlayer.cards).pokValue}!
+                          </span>
+                        )}
+                      {currentPlayer.cards.length > 0 &&
+                        getSpecialHand(currentPlayer.cards)?.type !==
+                          "normal" &&
+                        !isPok(currentPlayer.cards).isPok && (
+                          <span className="text-xs bg-purple-500 text-white px-2 py-0.5 rounded-full">
+                            {getSpecialHand(currentPlayer.cards)?.name}
+                          </span>
+                        )}
+                    </div>
+                  )}
+                </div>
+
+                {/* Large cards */}
+                <div className="flex gap-3 justify-center mb-4">
+                  {currentPlayer.cards.map((card, i) => (
+                    <LargeCard key={i} card={card} />
+                  ))}
+                  {currentPlayer.cards.length === 0 && (
+                    <div className="w-20 h-28 rounded-xl border-2 border-dashed border-white/30 flex items-center justify-center">
+                      <span className="text-white/30">-</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Player result */}
+                {currentPlayer.result &&
+                  showCards &&
+                  !currentPlayer.is_dealer && (
+                    <div className="text-center">
+                      <span
+                        className={`text-lg font-bold px-4 py-2 rounded-full ${
+                          currentPlayer.result === "player_win"
+                            ? "bg-green-500 text-white"
+                            : "bg-red-500 text-white"
+                        }`}
+                      >
+                        {currentPlayer.result === "player_win"
+                          ? "🎉 คุณชนะ!"
+                          : "😢 คุณแพ้"}
+                        {currentPlayer.multiplier > 1 &&
+                          ` x${currentPlayer.multiplier}`}
+                      </span>
+                    </div>
+                  )}
+              </div>
+            )}
+
+            {/* Action buttons for regular players */}
+            {!isCurrentPlayerDealer &&
+              isMyTurn &&
+              !currentPlayer?.has_drawn &&
+              currentPlayer!.cards.length < 3 &&
+              room.game_phase === "drawing" && (
+                <div className="flex gap-4 justify-center">
+                  <Button
+                    onClick={onDrawCard}
+                    size="lg"
+                    className="bg-green-500 hover:bg-green-600 text-white text-lg px-8 py-6"
+                  >
+                    <Hand className="w-5 h-5 mr-2" />
+                    จั่ว
+                  </Button>
+                  <Button
+                    onClick={onStandCard}
+                    variant="outline"
+                    size="lg"
+                    className="border-white/30 text-white hover:bg-white/10 text-lg px-8 py-6"
+                  >
+                    <Square className="w-5 h-5 mr-2" />
+                    หยุด
+                  </Button>
+                </div>
+              )}
+
+            {/* Action buttons for dealer */}
+            {isCurrentPlayerDealer &&
+              isDealerTurn &&
+              !currentPlayer?.has_drawn && (
+                <div className="flex flex-col items-center gap-3">
+                  <p className="text-amber-400 font-medium text-center mb-2">
+                    ถึงตาคุณแล้ว เลือกจั่วหรือไม่จั่ว
+                  </p>
+                  <div className="flex gap-4 justify-center">
+                    {currentPlayer!.cards.length < 3 && (
+                      <Button
+                        onClick={onDealerDraw}
+                        size="lg"
+                        className="bg-amber-500 hover:bg-amber-600 text-black text-lg px-8 py-6 font-bold"
+                      >
+                        <Hand className="w-5 h-5 mr-2" />
+                        จั่วไพ่
+                      </Button>
+                    )}
+                    <Button
+                      onClick={onDealerStand}
+                      variant="outline"
+                      size="lg"
+                      className="border-amber-500/50 text-amber-400 hover:bg-amber-500/20 text-lg px-8 py-6"
+                    >
+                      <Square className="w-5 h-5 mr-2" />
+                      ไม่จั่ว
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+            {/* Host controls (when not in LIVE mode, host controls from phone) */}
+            {isHost && !isLiveMode && (
+              <div className="flex justify-center gap-3 py-4">
+                {room.game_phase === "showdown" && !isDealerTurn && (
+                  <Button
+                    onClick={onShowdown}
+                    className="bg-purple-500 hover:bg-purple-600 text-white font-bold"
+                  >
+                    <Eye className="w-4 h-4 mr-2" />
+                    เปิดไพ่ตัดสิน
+                  </Button>
+                )}
+
+                {room.game_phase === "ended" && (
+                  <Button
+                    onClick={onNextRound}
+                    className="bg-green-500 hover:bg-green-600 text-white font-bold"
+                  >
+                    <RotateCcw className="w-4 h-4 mr-2" />
+                    เล่นรอบต่อไป
+                  </Button>
+                )}
+              </div>
+            )}
+
+            {/* Waiting message */}
+            {!isMyTurn &&
+              !isDealerTurn &&
+              room.game_phase === "drawing" &&
+              currentPlayer?.has_drawn && (
+                <div className="text-center text-white/50">
+                  <p>✓ คุณจบตาแล้ว รอผู้เล่นอื่น...</p>
+                </div>
+              )}
+
+            {!isMyTurn &&
+              !isDealerTurn &&
+              room.game_phase === "drawing" &&
+              !currentPlayer?.has_drawn &&
+              !isCurrentPlayerDealer && (
+                <div className="text-center text-white/50">
+                  <p>รอตาคุณ...</p>
+                </div>
+              )}
+          </div>
+        )}
+      </div>
+
+      {/* Rules toggle */}
+      <div className="relative z-10 mt-auto">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => setShowRules(!showRules)}
+          className="w-full text-white/50 hover:text-white/80"
+        >
+          {showRules ? "ซ่อนกติกา ▲" : "ดูกติกา ▼"}
+        </Button>
+
+        {showRules && (
+          <div className="bg-black/60 backdrop-blur-md rounded-xl p-3 mt-2 border border-white/10">
+            <ul className="text-white/60 text-xs space-y-1">
+              <li>• ป๊อก 8/9 = ชนะทันที (จ่าย 2 เท่า)</li>
+              <li>• ไพ่ตอง = จ่าย 5 เท่า</li>
+              <li>• สามเหลือง/เรียง/สี = จ่าย 3 เท่า</li>
+              <li>• เด้ง (คู่/ดอกเดียวกัน) = จ่าย 2 เท่า</li>
+              <li>• แต้มเท่ากัน = เจ้ามือชนะ</li>
+            </ul>
+          </div>
+        )}
       </div>
     </div>
   );
