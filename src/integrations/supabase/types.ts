@@ -35,29 +35,53 @@ export type Database = {
       players: {
         Row: {
           avatar: number | null
+          bet: number | null
+          cards: Json | null
+          has_drawn: boolean | null
           id: string
           is_active: boolean
+          is_dealer: boolean | null
           is_host: boolean
           joined_at: string
+          multiplier: number | null
           name: string
+          player_order: number | null
+          points: number | null
+          result: string | null
           room_id: string
         }
         Insert: {
           avatar?: number | null
+          bet?: number | null
+          cards?: Json | null
+          has_drawn?: boolean | null
           id?: string
           is_active?: boolean
+          is_dealer?: boolean | null
           is_host?: boolean
           joined_at?: string
+          multiplier?: number | null
           name: string
+          player_order?: number | null
+          points?: number | null
+          result?: string | null
           room_id: string
         }
         Update: {
           avatar?: number | null
+          bet?: number | null
+          cards?: Json | null
+          has_drawn?: boolean | null
           id?: string
           is_active?: boolean
+          is_dealer?: boolean | null
           is_host?: boolean
           joined_at?: string
+          multiplier?: number | null
           name?: string
+          player_order?: number | null
+          points?: number | null
+          result?: string | null
           room_id?: string
         }
         Relationships: [
@@ -76,8 +100,12 @@ export type Database = {
           code: string
           created_at: string
           current_card: Json | null
+          current_player_index: number | null
           deck: Json
+          game_phase: string | null
           game_started: boolean
+          game_state: Json | null
+          game_type: string
           host_name: string
           id: string
           is_active: boolean
@@ -88,8 +116,12 @@ export type Database = {
           code: string
           created_at?: string
           current_card?: Json | null
+          current_player_index?: number | null
           deck?: Json
+          game_phase?: string | null
           game_started?: boolean
+          game_state?: Json | null
+          game_type?: string
           host_name: string
           id?: string
           is_active?: boolean
@@ -100,8 +132,12 @@ export type Database = {
           code?: string
           created_at?: string
           current_card?: Json | null
+          current_player_index?: number | null
           deck?: Json
+          game_phase?: string | null
           game_started?: boolean
+          game_state?: Json | null
+          game_type?: string
           host_name?: string
           id?: string
           is_active?: boolean
