@@ -17,6 +17,7 @@ interface LobbyProps {
   onJoinRoom: (code: string, playerName: string) => Promise<any>;
   onQuickStart?: (hostName: string) => Promise<any>;
   isLoading: boolean;
+  onBack?: () => void;
 }
 
 export function Lobby({
@@ -24,6 +25,7 @@ export function Lobby({
   onJoinRoom,
   onQuickStart,
   isLoading,
+  onBack,
 }: LobbyProps) {
   const [mode, setMode] = useState<"menu" | "create" | "join">("menu");
   const [name, setName] = useState("");
@@ -111,6 +113,20 @@ export function Lobby({
       />
       {/* Dark overlay */}
       <div className="absolute inset-0 bg-black/60" />
+
+      {/* Back button */}
+      {onBack && (
+        <div className="absolute top-4 left-4 z-20">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onBack}
+            className="text-white/70 hover:text-white hover:bg-white/10"
+          >
+            <ArrowRight className="w-5 h-5 rotate-180" />
+          </Button>
+        </div>
+      )}
 
       {/* Logo */}
       <div className="text-center mb-6 sm:mb-8 relative z-10">
