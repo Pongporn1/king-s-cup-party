@@ -643,7 +643,7 @@ export function usePokDengRoom() {
 
   // Quick start
   const quickStart = useCallback(
-    async (hostName: string) => {
+    async (hostName: string, isLiveMode = false) => {
       setIsLoading(true);
       try {
         const code = generateRoomCode();
@@ -665,6 +665,30 @@ export function usePokDengRoom() {
 
         if (roomError) throw roomError;
 
+        // ถ้าเป็น LIVE mode - Host ไม่เล่น (ไม่สร้าง player)
+        if (isLiveMode) {
+          setRoom({
+            id: roomData.id,
+            code: roomData.code,
+            host_name: roomData.host_name,
+            is_active: roomData.is_active,
+            deck: roomData.deck as unknown as PokDengCard[],
+            game_started: roomData.game_started,
+            game_phase: (roomData.game_phase as any) || "waiting",
+            current_player_index: 0,
+          });
+          setPlayers([]);
+          setCurrentPlayerId(null); // Host ไม่มี player ID
+
+          toast({
+            title: "📺 LIVE Mode!",
+            description: `ห้อง ${code} พร้อมแล้ว - แชร์จอให้เพื่อนดู`,
+          });
+
+          return roomData;
+        }
+
+        // โหมดปกติ - Host เล่นด้วย
         const { data: playerData, error: playerError } = await supabase
           .from("players")
           .insert({
@@ -718,6 +742,41 @@ export function usePokDengRoom() {
     [toast]
   );
 
+  // ตั้งเจ้ามือ (เฉพาะ Host)
+  const setDealer = useCallback(
+    async (playerId: string) => {
+      if (!room) return;
+
+      try {
+        // ยกเลิกเจ้ามือคนเก่า
+        await supabase
+          .from("players")
+          .update({ is_dealer: false })
+          .eq("room_id", room.id)
+          .eq("is_dealer", true);
+
+        // ตั้งเจ้ามือคนใหม่
+        await supabase
+          .from("players")
+          .update({ is_dealer: true })
+          .eq("id", playerId);
+
+        toast({
+          title: "✅ ตั้งเจ้ามือสำเร็จ",
+          duration: 2000,
+        });
+      } catch (error) {
+        console.error("Error setting dealer:", error);
+        toast({
+          title: "❌ ไม่สามารถตั้งเจ้ามือได้",
+          variant: "destructive",
+          duration: 3000,
+        });
+      }
+    },
+    [room, toast]
+  );
+
   return {
     room,
     players,
@@ -734,5 +793,6 @@ export function usePokDengRoom() {
     nextRound,
     leaveRoom,
     quickStart,
+    setDealer,
   };
 }

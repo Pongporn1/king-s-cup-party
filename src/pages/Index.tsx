@@ -49,6 +49,7 @@ const Index = () => {
     nextRound: pokDengNextRound,
     leaveRoom: pokDengLeaveRoom,
     quickStart: pokDengQuickStart,
+    setDealer: pokDengSetDealer,
   } = usePokDengRoom();
 
   const currentPlayer = players.find((p) => p.id === currentPlayerId);
@@ -154,7 +155,7 @@ const Index = () => {
           onJoinRoom={pokDengJoinRoom}
           onQuickStart={async (name) => {
             setIsPokDengLiveMode(true);
-            return pokDengQuickStart(name);
+            return pokDengQuickStart(name, true); // true = LIVE mode
           }}
           isLoading={pokDengIsLoading}
           onBack={() => setGameMode("select")}
@@ -182,6 +183,7 @@ const Index = () => {
           setIsPokDengLiveMode(false);
           setGameMode("select");
         }}
+        onSetDealer={pokDengSetDealer}
       />
     );
   }

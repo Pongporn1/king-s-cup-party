@@ -29,6 +29,7 @@ interface PokDengGameRoomMultiplayerProps {
   onShowdown: () => void;
   onNextRound: () => void;
   onLeave: () => void;
+  onSetDealer?: (playerId: string) => void;
 }
 
 // Component แสดงไพ่ขนาดใหญ่สำหรับ LIVE Display - ไพ่ใหญ่มากสำหรับจอ TV
@@ -258,6 +259,7 @@ export function PokDengGameRoomMultiplayer({
   onShowdown,
   onNextRound,
   onLeave,
+  onSetDealer,
 }: PokDengGameRoomMultiplayerProps) {
   const { toast } = useToast();
   const [showRules, setShowRules] = useState(false);
@@ -372,7 +374,9 @@ export function PokDengGameRoomMultiplayer({
             <Button
               variant="default"
               onClick={onStartGame}
-              disabled={players.length < 2}
+              disabled={
+                players.length < 2 || (isLiveMode && players.length < 2)
+              }
               className="bg-white text-black hover:bg-white/90 text-xs sm:text-sm px-3 sm:px-4"
             >
               <Play className="w-3 h-3 sm:w-4 sm:h-4" />
@@ -400,15 +404,52 @@ export function PokDengGameRoomMultiplayer({
       <div className="flex-1 flex flex-col items-center justify-center py-2 sm:py-4 md:py-6 relative z-10 overflow-y-auto">
         {!room.game_started ? (
           /* Waiting Room */
-          <div className="text-center px-2">
+          <div className="text-center px-2 w-full max-w-2xl">
             <div className="bg-black/40 backdrop-blur-md rounded-2xl p-5 sm:p-8 mb-4 sm:mb-6 border border-white/10">
               <WaitingForPlayersAnimation />
               <p className="text-white/60 text-xs sm:text-sm mt-2">
                 {isHost
-                  ? 'แชร์รหัสห้องให้เพื่อนๆ แล้วกด "เริ่มเกม"'
+                  ? isLiveMode
+                    ? "📺 โหมด LIVE - แชร์รหัสห้องให้เพื่อนๆ เข้ามาเล่น"
+                    : 'แชร์รหัสห้องให้เพื่อนๆ แล้วกด "เริ่มเกม"'
                   : "รอ Host เริ่มเกม"}
               </p>
             </div>
+
+            {/* เลือกเจ้ามือ - สำหรับ Host */}
+            {isHost && onSetDealer && players.length >= 2 && (
+              <div className="bg-black/40 backdrop-blur-md rounded-xl p-4 sm:p-5 mb-4 sm:mb-6 border border-white/10">
+                <p className="text-white text-sm sm:text-base mb-3 font-medium">
+                  🎰 เลือกเจ้ามือ
+                </p>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                  {players.map((player) => (
+                    <Button
+                      key={player.id}
+                      onClick={() => onSetDealer(player.id)}
+                      variant={player.is_dealer ? "default" : "outline"}
+                      className={`${
+                        player.is_dealer
+                          ? "bg-amber-500 hover:bg-amber-600 text-black"
+                          : "border-white/30 text-white hover:bg-white/10"
+                      }`}
+                    >
+                      {player.avatar && (
+                        <img
+                          src={`${import.meta.env.BASE_URL}${
+                            player.avatar
+                          }.jpg`}
+                          alt={player.name}
+                          className="w-6 h-6 rounded-full object-cover mr-2"
+                        />
+                      )}
+                      <span className="truncate">{player.name}</span>
+                      {player.is_dealer && <span className="ml-1">👑</span>}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+            )}
 
             <div className="bg-black/40 backdrop-blur-md rounded-xl p-4 sm:p-5 inline-block border border-white/10">
               <p className="text-xs text-white/50 mb-1 sm:mb-2">รหัสห้อง</p>
