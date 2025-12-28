@@ -276,7 +276,9 @@ export function PokDengGameRoomMultiplayer({
         await navigator.clipboard.writeText(code);
         copied = true;
       }
-    } catch (err) {}
+    } catch (err) {
+      // Clipboard API failed, try fallback
+    }
 
     if (!copied) {
       try {
@@ -289,7 +291,9 @@ export function PokDengGameRoomMultiplayer({
         document.execCommand("copy");
         document.body.removeChild(textArea);
         copied = true;
-      } catch (err) {}
+      } catch (err) {
+        // execCommand failed
+      }
     }
 
     toast({
