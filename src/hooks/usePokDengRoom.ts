@@ -71,6 +71,33 @@ export function usePokDengRoom() {
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
 
+  // ออกจากห้องเมื่อปิดหน้าเว็บ
+  useEffect(() => {
+    const handleBeforeUnload = async () => {
+      if (currentPlayerId && room) {
+        // ลบ player
+        await supabase.from("players").delete().eq("id", currentPlayerId);
+
+        // เช็คว่ายังมีผู้เล่นเหลืออยู่ไหม
+        const { data: remainingPlayers } = await supabase
+          .from("players")
+          .select("id")
+          .eq("room_id", room.id)
+          .eq("is_active", true);
+
+        // ลบห้องถ้าไม่มีผู้เล่น
+        if (!remainingPlayers || remainingPlayers.length === 0) {
+          await supabase.from("rooms").delete().eq("id", room.id);
+        }
+      }
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+    };
+  }, [currentPlayerId, room]);
+
   // Subscribe to room and player changes
   useEffect(() => {
     if (!room?.id) return;
@@ -326,53 +353,64 @@ export function usePokDengRoom() {
     const deck = shuffleDeck(createDeck());
     const newDeck = [...deck];
 
-    // แจกไพ่ 2 ใบให้ทุกคน
-    const playerUpdates = players.map((player) => {
-      const cards = [newDeck.pop()!, newDeck.pop()!];
-      const points = calculateTotalPoints(cards);
-      return {
-        id: player.id,
-        cards,
-        points,
-        has_drawn: false,
-        result: null,
-        multiplier: 1,
-      };
-    });
-
-    // Update room
-    const { error: roomError } = await supabase
+    // เปลี่ยน phase เป็น dealing
+    await supabase
       .from("rooms")
       .update({
         game_started: true,
         deck: newDeck as any,
-        game_phase: "drawing",
+        game_phase: "dealing",
         current_player_index: 0,
       })
       .eq("id", room.id);
 
-    if (roomError) {
-      toast({
-        title: "เกิดข้อผิดพลาด",
-        description: roomError.message,
-        variant: "destructive",
-      });
-      return;
-    }
-
-    // Update all players
-    for (const update of playerUpdates) {
+    // แจกไพ่ทีละใบ แบบวนไป - รอบที่ 1
+    for (let i = 0; i < players.length; i++) {
+      const card = newDeck.pop()!;
       await supabase
         .from("players")
         .update({
-          cards: update.cards as any,
-          points: update.points,
-          has_drawn: update.has_drawn,
-          result: update.result,
-          multiplier: update.multiplier,
+          cards: [card] as any,
+          points: calculateTotalPoints([card]),
         })
-        .eq("id", update.id);
+        .eq("id", players[i].id);
+
+      // รอ 500ms ก่อนแจกคนต่อไป
+      await new Promise((resolve) => setTimeout(resolve, 500));
     }
+
+    // แจกไพ่ทีละใบ แบบวนไป - รอบที่ 2
+    for (let i = 0; i < players.length; i++) {
+      const currentCards =
+        players[i].cards.length > 0
+          ? [...players[i].cards, newDeck.pop()!]
+          : [newDeck.pop()!, newDeck.pop()!]; // fallback
+
+      const points = calculateTotalPoints(currentCards);
+
+      await supabase
+        .from("players")
+        .update({
+          cards: currentCards as any,
+          points: points,
+          has_drawn: false,
+          result: null,
+          multiplier: 1,
+        })
+        .eq("id", players[i].id);
+
+      // รอ 500ms ก่อนแจกคนต่อไป
+      await new Promise((resolve) => setTimeout(resolve, 500));
+    }
+
+    // เปลี่ยนเป็น drawing phase หลังแจกไพ่เสร็จ
+    await supabase
+      .from("rooms")
+      .update({
+        deck: newDeck as any,
+        game_phase: "drawing",
+      })
+      .eq("id", room.id);
 
     toast({
       title: "🎴 เริ่มเกม!",

@@ -52,6 +52,33 @@ export function useGameRoom() {
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
 
+  // ออกจากห้องเมื่อปิดหน้าเว็บ
+  useEffect(() => {
+    const handleBeforeUnload = async () => {
+      if (currentPlayerId && room) {
+        // ลบ player
+        await supabase.from("players").delete().eq("id", currentPlayerId);
+
+        // เช็คว่ายังมีผู้เล่นเหลืออยู่ไหม
+        const { data: remainingPlayers } = await supabase
+          .from("players")
+          .select("id")
+          .eq("room_id", room.id)
+          .eq("is_active", true);
+
+        // ลบห้องถ้าไม่มีผู้เล่น
+        if (!remainingPlayers || remainingPlayers.length === 0) {
+          await supabase.from("rooms").delete().eq("id", room.id);
+        }
+      }
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+    };
+  }, [currentPlayerId, room]);
+
   // Subscribe to room changes
   useEffect(() => {
     if (!room?.id) return;
