@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { PlayerList } from "@/components/PlayerList";
 import { WaitingForPlayersAnimation } from "@/components/WaitingForPlayersAnimation";
@@ -347,6 +347,30 @@ export function PokDengGameRoomMultiplayer({
 
   // LIVE mode: Host ไม่มี player แต่ยังควบคุมจอได้
   const isLiveHost = isLiveMode && !currentPlayerId;
+
+  // Auto-showdown: เปิดไพ่อัตโนมัติเมื่อทุกคนพร้อมแล้ว
+  const hasAutoShowdown = useRef(false);
+
+  useEffect(() => {
+    // ถ้าทุกคนพร้อมแล้วใน showdown phase และยังไม่ได้เปิดไพ่อัตโนมัติ
+    if (
+      room.game_phase === "showdown" &&
+      allPlayersReady &&
+      !hasAutoShowdown.current
+    ) {
+      hasAutoShowdown.current = true;
+      // รอ 1 วินาที แล้วเปิดไพ่อัตโนมัติ
+      const timer = setTimeout(() => {
+        onShowdown();
+      }, 1000);
+      return () => clearTimeout(timer);
+    }
+
+    // Reset flag เมื่อเริ่มเกมใหม่
+    if (room.game_phase === "drawing" || room.game_phase === "waiting") {
+      hasAutoShowdown.current = false;
+    }
+  }, [room.game_phase, allPlayersReady, onShowdown]);
 
   return (
     <div className="min-h-screen min-h-[100dvh] flex flex-col p-2 sm:p-4 md:p-6 relative overflow-hidden">
