@@ -415,40 +415,42 @@ export function PokDengGameRoomMultiplayer({
               </p>
             </div>
 
-            {/* เลือกเจ้ามือ - สำหรับ Host */}
-            {isHost && onSetDealer && players.length >= 2 && (
-              <div className="bg-black/40 backdrop-blur-md rounded-xl p-4 sm:p-5 mb-4 sm:mb-6 border border-white/10">
-                <p className="text-white text-sm sm:text-base mb-3 font-medium">
-                  🎰 เลือกเจ้ามือ
-                </p>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                  {players.map((player) => (
-                    <Button
-                      key={player.id}
-                      onClick={() => onSetDealer(player.id)}
-                      variant={player.is_dealer ? "default" : "outline"}
-                      className={`${
-                        player.is_dealer
-                          ? "bg-amber-500 hover:bg-amber-600 text-black"
-                          : "border-white/30 text-white hover:bg-white/10"
-                      }`}
-                    >
-                      {player.avatar && (
-                        <img
-                          src={`${import.meta.env.BASE_URL}${
-                            player.avatar
-                          }.jpg`}
-                          alt={player.name}
-                          className="w-6 h-6 rounded-full object-cover mr-2"
-                        />
-                      )}
-                      <span className="truncate">{player.name}</span>
-                      {player.is_dealer && <span className="ml-1">👑</span>}
-                    </Button>
-                  ))}
+            {/* เลือกเจ้ามือ - สำหรับ Host (รวมโหมด LIVE) */}
+            {(isHost || (isLiveMode && !currentPlayerId)) &&
+              onSetDealer &&
+              players.length >= 1 && (
+                <div className="bg-black/40 backdrop-blur-md rounded-xl p-4 sm:p-5 mb-4 sm:mb-6 border border-white/10">
+                  <p className="text-white text-sm sm:text-base mb-3 font-medium">
+                    🎰 เลือกเจ้ามือ
+                  </p>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                    {players.map((player) => (
+                      <Button
+                        key={player.id}
+                        onClick={() => onSetDealer(player.id)}
+                        variant={player.is_dealer ? "default" : "outline"}
+                        className={`${
+                          player.is_dealer
+                            ? "bg-amber-500 hover:bg-amber-600 text-black"
+                            : "border-white/30 text-white hover:bg-white/10"
+                        }`}
+                      >
+                        {player.avatar && (
+                          <img
+                            src={`${import.meta.env.BASE_URL}${
+                              player.avatar
+                            }.jpg`}
+                            alt={player.name}
+                            className="w-6 h-6 rounded-full object-cover mr-2"
+                          />
+                        )}
+                        <span className="truncate">{player.name}</span>
+                        {player.is_dealer && <span className="ml-1">👑</span>}
+                      </Button>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
 
             <div className="bg-black/40 backdrop-blur-md rounded-xl p-4 sm:p-5 inline-block border border-white/10">
               <p className="text-xs text-white/50 mb-1 sm:mb-2">รหัสห้อง</p>
@@ -714,14 +716,16 @@ export function PokDengGameRoomMultiplayer({
               )}
 
             {/* Host controls (when not in LIVE mode, host controls from phone) */}
-            {isHost && !isLiveMode && (
+            {(isHost || (isLiveMode && !currentPlayerId)) && !isLiveMode && (
               <div className="flex justify-center gap-3 py-4">
-                {room.game_phase === "showdown" && !isDealerTurn && (
+                {/* ปุ่มเปิดไพ่ - แสดงเมื่อเจ้ามือเลือกเสร็จแล้ว */}
+                {room.game_phase === "showdown" && dealer?.has_drawn && (
                   <Button
                     onClick={onShowdown}
-                    className="bg-purple-500 hover:bg-purple-600 text-white font-bold"
+                    size="lg"
+                    className="bg-purple-500 hover:bg-purple-600 text-white font-bold px-8 py-6 animate-pulse"
                   >
-                    <Eye className="w-4 h-4 mr-2" />
+                    <Eye className="w-5 h-5 mr-2" />
                     เปิดไพ่ตัดสิน
                   </Button>
                 )}
