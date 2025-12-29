@@ -370,20 +370,19 @@ export function PokDengGameRoomMultiplayer({
         </div>
 
         <div className="flex items-center gap-2">
-          {isHost && !room.game_started && (
-            <Button
-              variant="default"
-              onClick={onStartGame}
-              disabled={
-                players.length < 2 || (isLiveMode && players.length < 2)
-              }
-              className="bg-white text-black hover:bg-white/90 text-xs sm:text-sm px-3 sm:px-4"
-            >
-              <Play className="w-3 h-3 sm:w-4 sm:h-4" />
-              <span className="hidden sm:inline">เริ่มเกม</span>
-              <span className="sm:hidden">เริ่ม</span>
-            </Button>
-          )}
+          {(isHost || (isLiveMode && !currentPlayerId)) &&
+            !room.game_started && (
+              <Button
+                variant="default"
+                onClick={onStartGame}
+                disabled={players.length < 2}
+                className="bg-white text-black hover:bg-white/90 text-xs sm:text-sm px-3 sm:px-4"
+              >
+                <Play className="w-3 h-3 sm:w-4 sm:h-4" />
+                <span className="hidden sm:inline">เริ่มเกม</span>
+                <span className="sm:hidden">เริ่ม</span>
+              </Button>
+            )}
         </div>
       </header>
 
