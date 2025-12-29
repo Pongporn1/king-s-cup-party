@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { PlayerList } from "@/components/PlayerList";
+import { LivePlayerList } from "@/components/LivePlayerList";
 import { WaitingForPlayersAnimation } from "@/components/WaitingForPlayersAnimation";
 import { CardBackPattern } from "@/components/CardBackPattern";
 import {
@@ -434,17 +435,38 @@ export function PokDengGameRoomMultiplayer({
         </div>
       </header>
 
-      {/* Player List */}
+      {/* Player List - ใช้ LivePlayerList สำหรับโหมด LIVE */}
       <div className="mb-2 sm:mb-4">
-        <PlayerList
-          players={players.map((p) => ({
-            id: p.id,
-            name: p.name,
-            is_host: p.is_host,
-            avatar: p.avatar,
-          }))}
-          currentPlayerId={currentPlayerId ?? undefined}
-        />
+        {showLiveDisplay ? (
+          <LivePlayerList
+            players={players.map((p) => ({
+              id: p.id,
+              name: p.name,
+              is_host: p.is_host,
+              avatar: p.avatar,
+              cards: p.cards,
+              points: p.points,
+              is_dealer: p.is_dealer,
+              has_drawn: p.has_drawn,
+              result: p.result ?? undefined,
+              multiplier: p.multiplier,
+            }))}
+            currentPlayerId={currentPlayerId ?? undefined}
+            showCards={showCards || room.game_started}
+            currentTurnPlayerId={currentTurnPlayer?.id}
+            gamePhase={room.game_phase ?? undefined}
+          />
+        ) : (
+          <PlayerList
+            players={players.map((p) => ({
+              id: p.id,
+              name: p.name,
+              is_host: p.is_host,
+              avatar: p.avatar,
+            }))}
+            currentPlayerId={currentPlayerId ?? undefined}
+          />
+        )}
       </div>
 
       {/* Game Area */}
