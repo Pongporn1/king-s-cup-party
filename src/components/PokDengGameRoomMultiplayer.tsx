@@ -544,7 +544,7 @@ export function PokDengGameRoomMultiplayer({
                     <span className="text-xs text-blue-200/60">
                       {players
                         .map(
-                          (p) => `${p.player_name}: ${p.has_drawn ? "✓" : "⏳"}`
+                          (p) => `${p.name}: ${p.has_drawn ? "✓" : "⏳"}`
                         )
                         .join(" | ")}
                     </span>
