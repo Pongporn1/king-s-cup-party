@@ -534,7 +534,7 @@ export function PokDengGameRoomMultiplayer({
               <div className="w-full max-w-xl mb-4 sm:mb-6">
                 <DisplayPlayerHand
                   player={dealer}
-                  showCards={showCards}
+                  showCards={true}
                   isCurrentTurn={isDealerTurn}
                   isLarge={true}
                 />
@@ -547,7 +547,7 @@ export function PokDengGameRoomMultiplayer({
                 <DisplayPlayerHand
                   key={player.id}
                   player={player}
-                  showCards={showCards}
+                  showCards={true}
                   isCurrentTurn={
                     room.current_player_index === index &&
                     room.game_phase === "drawing"
@@ -567,9 +567,7 @@ export function PokDengGameRoomMultiplayer({
                     <br />
                     <span className="text-xs text-blue-200/60">
                       {players
-                        .map(
-                          (p) => `${p.name}: ${p.has_drawn ? "✓" : "⏳"}`
-                        )
+                        .map((p) => `${p.name}: ${p.has_drawn ? "✓" : "⏳"}`)
                         .join(" | ")}
                     </span>
                   </p>
