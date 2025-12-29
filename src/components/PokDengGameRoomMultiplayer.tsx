@@ -49,12 +49,7 @@ function DisplayCard({
   }
 
   return (
-    <motion.div
-      initial={{ rotateY: 180, scale: 0.8 }}
-      animate={{ rotateY: 0, scale: 1 }}
-      transition={{ duration: 0.4 }}
-      className="w-20 h-28 sm:w-28 sm:h-40 md:w-32 md:h-48 lg:w-40 lg:h-56 rounded-xl bg-white border-2 border-gray-200 shadow-xl flex flex-col items-center justify-center"
-    >
+    <div className="w-20 h-28 sm:w-28 sm:h-40 md:w-32 md:h-48 lg:w-40 lg:h-56 rounded-xl bg-white border-2 border-gray-200 shadow-xl flex flex-col items-center justify-center">
       <span
         className={`text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold ${getSuitColor(
           card.suit
@@ -65,7 +60,7 @@ function DisplayCard({
       <span className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl">
         {getSuitEmoji(card.suit)}
       </span>
-    </motion.div>
+    </div>
   );
 }
 
@@ -199,16 +194,17 @@ function DisplayPlayerHand({
           isLarge ? "gap-4 sm:gap-6" : "gap-2"
         } justify-center`}
       >
-        {player.cards.map((card, i) => (
-          <DisplayCard key={i} card={card} faceDown={!showCards} />
-        ))}
-        {player.cards.length === 0 && (
+        {player.cards && player.cards.length > 0 ? (
+          player.cards.map((card, i) => (
+            <DisplayCard key={i} card={card} faceDown={!showCards} />
+          ))
+        ) : (
           <div
             className={`${
               isLarge ? "w-28 h-40 sm:w-32 sm:h-48" : "w-16 h-24"
             } rounded-lg border-2 border-dashed border-white/30 flex items-center justify-center`}
           >
-            <span className="text-white/30 text-xs">-</span>
+            <span className="text-white/30 text-sm">ไม่มีไพ่</span>
           </div>
         )}
       </div>
