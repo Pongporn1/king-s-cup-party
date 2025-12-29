@@ -266,38 +266,49 @@ export function PokDengGameRoomMultiplayer({
 
   const copyRoomCode = async () => {
     const code = room.code;
-    let copied = false;
 
     try {
+      // ลองใช้ Clipboard API ก่อน (modern browsers)
       if (navigator.clipboard && navigator.clipboard.writeText) {
         await navigator.clipboard.writeText(code);
-        copied = true;
+        toast({
+          title: "✅ คัดลอกรหัสห้องแล้ว!",
+          description: `รหัส: ${code}`,
+          duration: 3000,
+        });
+        return;
       }
-    } catch {
-      // Clipboard API failed
+    } catch (err) {
+      console.log("Clipboard API failed, trying fallback:", err);
     }
 
-    if (!copied) {
-      try {
-        const textArea = document.createElement("textarea");
-        textArea.value = code;
-        textArea.style.position = "fixed";
-        textArea.style.left = "-9999px";
-        document.body.appendChild(textArea);
-        textArea.select();
-        document.execCommand("copy");
-        document.body.removeChild(textArea);
-        copied = true;
-      } catch {
-        // execCommand failed
-      }
-    }
+    // Fallback สำหรับเบราว์เซอร์เก่า
+    try {
+      const textArea = document.createElement("textarea");
+      textArea.value = code;
+      textArea.style.position = "fixed";
+      textArea.style.left = "-9999px";
+      textArea.style.top = "0";
+      document.body.appendChild(textArea);
+      textArea.focus();
+      textArea.select();
 
-    toast({
-      title: copied ? "✅ คัดลอกแล้ว!" : "📋 รหัสห้อง",
-      description: code,
-      duration: 3000,
-    });
+      const successful = document.execCommand("copy");
+      document.body.removeChild(textArea);
+
+      toast({
+        title: successful ? "✅ คัดลอกรหัสห้องแล้ว!" : "⚠️ คัดลอกไม่สำเร็จ",
+        description: `รหัส: ${code}`,
+        duration: 3000,
+      });
+    } catch (err) {
+      console.error("Copy failed:", err);
+      toast({
+        title: "📋 รหัสห้อง",
+        description: `${code} (กรุณาคัดลอกด้วยมือ)`,
+        duration: 5000,
+      });
+    }
   };
 
   const currentPlayer = players.find((p) => p.id === currentPlayerId);
@@ -320,12 +331,22 @@ export function PokDengGameRoomMultiplayer({
     room.game_phase === "showdown" && dealer && !dealer.has_drawn;
   const isCurrentPlayerDealer = currentPlayer?.is_dealer;
 
+  // ทุกคน (รวมเจ้ามือ) เลือกจั่ว/ไม่จั่วเสร็จแล้วหรือยัง
+  const allPlayersReady = players.every((p) => p.has_drawn);
+
+  // นับจำนวนผู้เล่นที่พร้อมแล้ว
+  const readyPlayersCount = players.filter((p) => p.has_drawn).length;
+  const totalPlayersCount = players.length;
+
   // ทุกคนเล่นเสร็จแล้วหรือยัง
   const showCards =
     room.game_phase === "showdown" || room.game_phase === "ended";
 
   // ใช้ LIVE mode หรือไม่ (isHost + isLiveMode = แสดงหน้าจอ LIVE)
   const showLiveDisplay = isHost && isLiveMode;
+
+  // LIVE mode: Host ไม่มี player แต่ยังควบคุมจอได้
+  const isLiveHost = isLiveMode && !currentPlayerId;
 
   return (
     <div className="min-h-screen min-h-[100dvh] flex flex-col p-2 sm:p-4 md:p-6 relative overflow-hidden">
@@ -365,6 +386,13 @@ export function PokDengGameRoomMultiplayer({
                 {room.code}
               </span>
               <Copy className="w-3 h-3" />
+              {/* WebSocket Status */}
+              <div className="flex items-center gap-1 ml-1 bg-green-500/20 border border-green-500/50 rounded-full px-1.5 py-0.5">
+                <div className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse" />
+                <span className="text-[10px] text-green-300 font-medium">
+                  LIVE
+                </span>
+              </div>
             </button>
           </div>
         </div>
@@ -507,6 +535,23 @@ export function PokDengGameRoomMultiplayer({
 
             {/* Host controls on LIVE display - แค่เปิดไพ่และเล่นรอบต่อไป */}
             <div className="flex flex-col items-center gap-3 py-4 sm:py-6 mt-4">
+              {/* แสดงสถานะ realtime */}
+              {room.game_phase === "showdown" && (
+                <div className="bg-blue-500/20 border border-blue-500/50 rounded-xl px-6 py-4 mb-2">
+                  <p className="text-blue-300 text-center text-sm">
+                    ⏱️ สถานะ: {readyPlayersCount}/{totalPlayersCount} คนพร้อม
+                    <br />
+                    <span className="text-xs text-blue-200/60">
+                      {players
+                        .map(
+                          (p) => `${p.player_name}: ${p.has_drawn ? "✓" : "⏳"}`
+                        )
+                        .join(" | ")}
+                    </span>
+                  </p>
+                </div>
+              )}
+
               {/* ตาเจ้ามือ - แสดงแค่ข้อความให้ใช้มือถือ */}
               {isDealerTurn && (
                 <div className="bg-amber-500/20 border border-amber-500/50 rounded-xl px-6 py-4">
@@ -520,16 +565,38 @@ export function PokDengGameRoomMultiplayer({
                 </div>
               )}
 
-              {/* ปุ่มเปิดไพ่ - แสดงเมื่อเจ้ามือเลือกเสร็จแล้ว */}
-              {room.game_phase === "showdown" && dealer?.has_drawn && (
-                <Button
-                  onClick={onShowdown}
-                  size="lg"
-                  className="bg-purple-500 hover:bg-purple-600 text-white font-bold text-lg px-8 py-6 animate-pulse"
-                >
-                  <Eye className="w-6 h-6 mr-2" />
-                  เปิดไพ่ตัดสิน
-                </Button>
+              {/* ปุ่มเปิดไพ่ - แสดงเสมอในโหมด showdown สำหรับ LIVE Host */}
+              {room.game_phase === "showdown" && (
+                <div className="flex flex-col gap-2 items-center">
+                  <Button
+                    onClick={onShowdown}
+                    disabled={!allPlayersReady}
+                    size="lg"
+                    className={`font-bold text-lg px-8 py-6 ${
+                      allPlayersReady
+                        ? "bg-purple-500 hover:bg-purple-600 text-white animate-pulse"
+                        : "bg-gray-600 text-gray-400 cursor-not-allowed"
+                    }`}
+                  >
+                    <Eye className="w-6 h-6 mr-2" />
+                    {allPlayersReady
+                      ? "เปิดไพ่ตัดสิน"
+                      : `รอผู้เล่น (${readyPlayersCount}/${totalPlayersCount})`}
+                  </Button>
+
+                  {/* ปุ่มบังคับเปิด (กรณี sync ไม่ทัน) */}
+                  {!allPlayersReady &&
+                    readyPlayersCount >= totalPlayersCount - 1 && (
+                      <Button
+                        onClick={onShowdown}
+                        variant="outline"
+                        size="sm"
+                        className="text-xs text-orange-400 border-orange-500/50 hover:bg-orange-500/20"
+                      >
+                        บังคับเปิดไพ่ทันที
+                      </Button>
+                    )}
+                </div>
               )}
 
               {room.game_phase === "ended" && (
@@ -718,8 +785,8 @@ export function PokDengGameRoomMultiplayer({
             {/* Host controls (when not in LIVE mode, host controls from phone) */}
             {(isHost || (isLiveMode && !currentPlayerId)) && !isLiveMode && (
               <div className="flex justify-center gap-3 py-4">
-                {/* ปุ่มเปิดไพ่ - แสดงเมื่อเจ้ามือเลือกเสร็จแล้ว */}
-                {room.game_phase === "showdown" && dealer?.has_drawn && (
+                {/* ปุ่มเปิดไพ่ - แสดงเมื่อทุกคนพร้อมแล้ว */}
+                {room.game_phase === "showdown" && allPlayersReady && (
                   <Button
                     onClick={onShowdown}
                     size="lg"

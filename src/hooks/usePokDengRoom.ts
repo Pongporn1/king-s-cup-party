@@ -148,10 +148,26 @@ export function usePokDengRoom() {
                 cards: (newPlayer.cards || []) as PokDengCard[],
               } as PokDengPlayer,
             ]);
+            // แจ้งเมื่อผู้เล่นเข้ามาใหม่
+            toast({
+              title: "👋 ผู้เล่นใหม่เข้ามา",
+              description: `${newPlayer.name} เข้าห้องแล้ว`,
+              duration: 3000,
+            });
           } else if (payload.eventType === "DELETE") {
-            setPlayers((prev) =>
-              prev.filter((p) => p.id !== (payload.old as any).id)
-            );
+            const oldPlayer = payload.old as any;
+            setPlayers((prev) => {
+              const leavingPlayer = prev.find((p) => p.id === oldPlayer.id);
+              if (leavingPlayer) {
+                // แจ้งเมื่อผู้เล่นออก
+                toast({
+                  title: "🚪 ผู้เล่นออกห้อง",
+                  description: `${leavingPlayer.name} ออกไปแล้ว`,
+                  duration: 3000,
+                });
+              }
+              return prev.filter((p) => p.id !== oldPlayer.id);
+            });
           } else if (payload.eventType === "UPDATE") {
             const updatedPlayer = payload.new as any;
             setPlayers((prev) =>
