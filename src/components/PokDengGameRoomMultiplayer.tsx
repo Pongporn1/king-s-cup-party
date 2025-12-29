@@ -261,51 +261,60 @@ export function PokDengGameRoomMultiplayer({
   const { toast } = useToast();
   const [showRules, setShowRules] = useState(false);
 
-  const copyRoomCode = async () => {
+  const copyRoomCode = () => {
     const code = room.code;
 
-    try {
-      // ลองใช้ Clipboard API ก่อน (modern browsers)
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        await navigator.clipboard.writeText(code);
-        toast({
-          title: "✅ คัดลอกรหัสห้องแล้ว!",
-          description: `รหัส: ${code}`,
-          duration: 3000,
+    // ใช้ Clipboard API ถ้ามี
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard
+        .writeText(code)
+        .then(() => {
+          toast({
+            title: "✅ คัดลอกรหัสห้องแล้ว!",
+            description: `รหัส: ${code}`,
+            duration: 3000,
+          });
+        })
+        .catch(() => {
+          fallbackCopyTextToClipboard(code);
         });
-        return;
-      }
-    } catch (err) {
-      console.log("Clipboard API failed, trying fallback:", err);
+    } else {
+      fallbackCopyTextToClipboard(code);
     }
+  };
 
-    // Fallback สำหรับเบราว์เซอร์เก่า
+  const fallbackCopyTextToClipboard = (text: string) => {
+    const textArea = document.createElement("textarea");
+    textArea.value = text;
+    textArea.style.position = "fixed";
+    textArea.style.top = "0";
+    textArea.style.left = "0";
+    textArea.style.width = "2em";
+    textArea.style.height = "2em";
+    textArea.style.padding = "0";
+    textArea.style.border = "none";
+    textArea.style.outline = "none";
+    textArea.style.boxShadow = "none";
+    textArea.style.background = "transparent";
+    document.body.appendChild(textArea);
+    textArea.focus();
+    textArea.select();
+
     try {
-      const textArea = document.createElement("textarea");
-      textArea.value = code;
-      textArea.style.position = "fixed";
-      textArea.style.left = "-9999px";
-      textArea.style.top = "0";
-      document.body.appendChild(textArea);
-      textArea.focus();
-      textArea.select();
-
-      const successful = document.execCommand("copy");
-      document.body.removeChild(textArea);
-
+      document.execCommand("copy");
       toast({
-        title: successful ? "✅ คัดลอกรหัสห้องแล้ว!" : "⚠️ คัดลอกไม่สำเร็จ",
-        description: `รหัส: ${code}`,
+        title: "✅ คัดลอกรหัสห้องแล้ว!",
+        description: `รหัส: ${text}`,
         duration: 3000,
       });
     } catch (err) {
-      console.error("Copy failed:", err);
       toast({
         title: "📋 รหัสห้อง",
-        description: `${code} (กรุณาคัดลอกด้วยมือ)`,
+        description: `${text} (กรุณาคัดลอกด้วยมือ)`,
         duration: 5000,
       });
     }
+    document.body.removeChild(textArea);
   };
 
   const currentPlayer = players.find((p) => p.id === currentPlayerId);
@@ -547,32 +556,43 @@ export function PokDengGameRoomMultiplayer({
               </span>
             </div>
 
-            {/* เจ้ามือ - ขนาดใหญ่ */}
-            {dealer && (
-              <div className="w-full max-w-xl mb-4 sm:mb-6">
-                <DisplayPlayerHand
-                  player={dealer}
-                  showCards={true}
-                  isCurrentTurn={isDealerTurn}
-                  isLarge={true}
-                />
-              </div>
-            )}
+            {/* แสดงไพ่ทุกคน */}
+            <div className="w-full max-w-5xl px-4">
+              {/* เจ้ามือ */}
+              {dealer ? (
+                <div className="w-full max-w-xl mx-auto mb-6">
+                  <DisplayPlayerHand
+                    player={dealer}
+                    showCards={true}
+                    isCurrentTurn={isDealerTurn}
+                    isLarge={true}
+                  />
+                </div>
+              ) : (
+                <div className="text-center text-white/50 mb-4">
+                  ไม่มีเจ้ามือ
+                </div>
+              )}
 
-            {/* ผู้เล่นทั้งหมด - Grid responsive */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 w-full max-w-4xl px-2">
-              {nonDealerPlayers.map((player, index) => (
-                <DisplayPlayerHand
-                  key={player.id}
-                  player={player}
-                  showCards={true}
-                  isCurrentTurn={
-                    room.current_player_index === index &&
-                    room.game_phase === "drawing"
-                  }
-                  isLarge={true}
-                />
-              ))}
+              {/* ผู้เล่นทั้งหมด */}
+              {nonDealerPlayers.length > 0 ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 w-full">
+                  {nonDealerPlayers.map((player, index) => (
+                    <DisplayPlayerHand
+                      key={player.id}
+                      player={player}
+                      showCards={true}
+                      isCurrentTurn={
+                        room.current_player_index === index &&
+                        room.game_phase === "drawing"
+                      }
+                      isLarge={true}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center text-white/50">ไม่มีผู้เล่น</div>
+              )}
             </div>
 
             {/* Host controls on LIVE display - แค่เปิดไพ่และเล่นรอบต่อไป */}
