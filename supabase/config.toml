@@ -1,1 +1,4 @@
 project_id = "tgvqlxyeoahcpplytvfu"
+
+[functions.pokdeng-ai]
+verify_jwt = false
