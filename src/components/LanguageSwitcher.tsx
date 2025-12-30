@@ -23,7 +23,7 @@ export function LanguageSwitcher() {
       variant="outline"
       size="sm"
       onClick={toggleLanguage}
-      className="fixed top-4 right-4 z-50 bg-black/40 backdrop-blur-md border-white/20 text-white hover:bg-black/60"
+      className="bg-black/40 backdrop-blur-md border-white/20 text-white hover:bg-black/60"
     >
       <Languages className="w-4 h-4 mr-2" />
       {currentLang === "th" ? "TH" : "EN"}

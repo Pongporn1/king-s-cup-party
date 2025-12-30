@@ -46,7 +46,7 @@ export default function ThemeSwitcher() {
         <Button
           variant="outline"
           size="icon"
-          className="fixed top-20 right-4 z-50 bg-white/10 backdrop-blur-sm border-white/20 hover:bg-white/20 transition-all duration-200 hover:scale-110"
+          className="bg-white/10 backdrop-blur-sm border-white/20 hover:bg-white/20 transition-all duration-200 hover:scale-110"
           title={t("themeChange")}
         >
           <Palette className="h-5 w-5" />

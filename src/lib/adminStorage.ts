@@ -102,3 +102,123 @@ export function getFloatingNames(): string[] {
 export function saveFloatingNames(names: string[]) {
   saveLocalNames(names);
 }
+
+// Game Cover Storage Functions
+const GAME_COVERS_KEY = "admin_game_covers";
+
+export interface GameCover {
+  gameId: string;
+  imageUrl: string;
+  updatedAt: string;
+}
+
+// Fallback localStorage functions
+function getLocalGameCovers(): Record<string, string> {
+  try {
+    const stored = localStorage.getItem(GAME_COVERS_KEY);
+    return stored ? JSON.parse(stored) : {};
+  } catch {
+    return {};
+  }
+}
+
+export async function getGameCovers(): Promise<Record<string, string>> {
+  try {
+    const { data, error } = await supabase
+      .from("game_covers")
+      .select("id, cover_url")
+      .not("cover_url", "is", null);
+
+    if (error) {
+      console.error("Error fetching game covers:", error);
+      return getLocalGameCovers();
+    }
+
+    const covers: Record<string, string> = {};
+    data?.forEach((item: { id: string; cover_url: string }) => {
+      covers[item.id] = item.cover_url;
+    });
+    return covers;
+  } catch {
+    return getLocalGameCovers();
+  }
+}
+
+// Synchronous version for backward compatibility
+export function getGameCoversSync(): Record<string, string> {
+  return getLocalGameCovers();
+}
+
+export async function saveGameCover(
+  gameId: string,
+  imageUrl: string
+): Promise<boolean> {
+  try {
+    const { error } = await supabase
+      .from("game_covers")
+      .update({
+        cover_url: imageUrl,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", gameId);
+
+    if (error) {
+      console.error("Error saving game cover:", error);
+      // Fallback to localStorage
+      const covers = getLocalGameCovers();
+      covers[gameId] = imageUrl;
+      localStorage.setItem(GAME_COVERS_KEY, JSON.stringify(covers));
+      return false;
+    }
+
+    return true;
+  } catch {
+    const covers = getLocalGameCovers();
+    covers[gameId] = imageUrl;
+    localStorage.setItem(GAME_COVERS_KEY, JSON.stringify(covers));
+    return false;
+  }
+}
+
+export async function removeGameCover(gameId: string): Promise<boolean> {
+  try {
+    const { error } = await supabase
+      .from("game_covers")
+      .update({
+        cover_url: null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", gameId);
+
+    if (error) {
+      console.error("Error removing game cover:", error);
+      return false;
+    }
+
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export async function clearAllGameCovers(): Promise<boolean> {
+  try {
+    const { error } = await supabase
+      .from("game_covers")
+      .update({
+        cover_url: null,
+        updated_at: new Date().toISOString(),
+      })
+      .not("cover_url", "is", null);
+
+    if (error) {
+      console.error("Error clearing game covers:", error);
+      return false;
+    }
+
+    localStorage.removeItem(GAME_COVERS_KEY);
+    return true;
+  } catch {
+    return false;
+  }
+}
