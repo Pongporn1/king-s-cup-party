@@ -45,9 +45,29 @@ CREATE INDEX idx_rooms_code ON public.rooms(code);
 CREATE INDEX idx_players_room_id ON public.players(room_id);
 
 
+-- Add missing columns to paranoia_questions
 ALTER TABLE paranoia_questions 
-ADD COLUMN is_default boolean DEFAULT false,
-ADD COLUMN created_at timestamptz DEFAULT now();
+ADD COLUMN IF NOT EXISTS is_default boolean DEFAULT false,
+ADD COLUMN IF NOT EXISTS created_at timestamptz DEFAULT now();
+
+-- Update existing records
+UPDATE paranoia_questions 
+SET is_default = true, created_at = now()
+WHERE is_default IS NULL;
+
+-- Drop and recreate policies for paranoia_questions
+DROP POLICY IF EXISTS "Anyone can insert paranoia questions" ON paranoia_questions;
+DROP POLICY IF EXISTS "Anyone can update non-default paranoia questions" ON paranoia_questions;
+DROP POLICY IF EXISTS "Anyone can delete non-default paranoia questions" ON paranoia_questions;
+
+CREATE POLICY "Anyone can insert paranoia questions" ON paranoia_questions
+FOR INSERT WITH CHECK (true);
+
+CREATE POLICY "Anyone can update non-default paranoia questions" ON paranoia_questions
+FOR UPDATE USING (is_default = false);
+
+CREATE POLICY "Anyone can delete non-default paranoia questions" ON paranoia_questions
+FOR DELETE USING (is_default = false);
 
 DROP POLICY IF EXISTS "Anyone can insert paranoia questions" ON paranoia_questions;
 DROP POLICY IF EXISTS "Anyone can update non-default paranoia questions" ON paranoia_questions;
