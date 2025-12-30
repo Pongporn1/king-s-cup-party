@@ -173,7 +173,7 @@ export function usePokDengRoom() {
               if (leavingPlayer) {
                 // แจ้งเมื่อผู้เล่นออก
                 toast({
-                  title: "🚪 ผู้เล่นออกห้อง",
+                  title: "ผู้เล่นออกห้อง",
                   description: `${leavingPlayer.name} ออกไปแล้ว`,
                   duration: 3000,
                 });
@@ -212,7 +212,7 @@ export function usePokDengRoom() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [room?.id]);
+  }, [room?.id, toast]);
 
   const createRoom = useCallback(
     async (hostName: string) => {

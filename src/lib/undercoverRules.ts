@@ -356,7 +356,7 @@ export function checkGameResult(players: UndercoverPlayer[]): {
     return {
       isGameOver: true,
       winner: "UNDERCOVER",
-      reason: "🕵️ สายลับชนะ! สายลับเหลือเท่ากับหรือมากกว่าพลเมืองดี",
+      reason: "สายลับชนะ! สายลับเหลือเท่ากับหรือมากกว่าพลเมืองดี",
     };
   }
 
@@ -398,4 +398,56 @@ export function getEliminatedPlayer(
 export function getCategories(): string[] {
   const categories = new Set(VOCABULARY_PAIRS.map((v) => v.category));
   return ["ทั้งหมด", ...Array.from(categories)];
+}
+
+// Vocabulary management functions
+let customVocabularies: VocabularyPair[] = [];
+let nextCustomId = 1000; // Start custom IDs from 1000 to avoid conflicts
+
+export function getAllVocabularies(): VocabularyPair[] {
+  return [...VOCABULARY_PAIRS, ...customVocabularies];
+}
+
+export function addVocabulary(
+  vocab: Omit<VocabularyPair, "id">
+): VocabularyPair {
+  const newVocab = {
+    ...vocab,
+    id: nextCustomId++,
+  };
+  customVocabularies.push(newVocab);
+  return newVocab;
+}
+
+export function updateVocabulary(vocab: VocabularyPair): void {
+  // Can only update custom vocabularies
+  if (vocab.id >= 1000) {
+    const index = customVocabularies.findIndex((v) => v.id === vocab.id);
+    if (index !== -1) {
+      customVocabularies[index] = vocab;
+    }
+  }
+}
+
+export function deleteVocabulary(id: number): void {
+  // Can only delete custom vocabularies
+  if (id >= 1000) {
+    customVocabularies = customVocabularies.filter((v) => v.id !== id);
+  }
+}
+
+export function getRandomVocabularyFromList(
+  vocabularies: VocabularyPair[],
+  category: string = "ทั้งหมด"
+): VocabularyPair {
+  const filtered =
+    category === "ทั้งหมด"
+      ? vocabularies
+      : vocabularies.filter((v) => v.category === category);
+
+  if (filtered.length === 0) {
+    throw new Error("ไม่มีคำศัพท์ในหมวดนี้");
+  }
+
+  return filtered[Math.floor(Math.random() * filtered.length)];
 }

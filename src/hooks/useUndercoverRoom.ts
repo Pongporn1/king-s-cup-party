@@ -154,7 +154,7 @@ export function useUndercoverRoom() {
               const leavingPlayer = prev.find((p) => p.id === oldPlayer.id);
               if (leavingPlayer) {
                 toast({
-                  title: "🚪 ผู้เล่นออกห้อง",
+                  title: "ผู้เล่นออกห้อง",
                   description: `${leavingPlayer.name} ออกไปแล้ว`,
                   duration: 3000,
                 });
@@ -254,7 +254,7 @@ export function useUndercoverRoom() {
         setCurrentPlayerId(playerData.id);
 
         toast({
-          title: "สร้างห้องสำเร็จ! 🕵️",
+          title: "สร้างห้องสำเร็จ!",
           description: `รหัสห้อง: ${code}`,
         });
 
@@ -346,7 +346,7 @@ export function useUndercoverRoom() {
         setCurrentPlayerId(playerData.id);
 
         toast({
-          title: "เข้าร่วมห้องสำเร็จ! 🕵️",
+          title: "เข้าร่วมห้องสำเร็จ!",
           description: `ยินดีต้อนรับ ${playerName}`,
         });
 
@@ -517,7 +517,7 @@ export function useUndercoverRoom() {
         title: `😵 ${eliminated.name} ถูกโหวตออก!`,
         description:
           eliminated.role === "UNDERCOVER"
-            ? "เป็นสายลับ! 🕵️"
+            ? "เป็นสายลับ!"
             : eliminated.role === "MR_WHITE"
             ? "เป็นคนบ้า! 🤪"
             : "เป็นพลเมืองดี 😢",
@@ -615,7 +615,7 @@ export function useUndercoverRoom() {
 
       toast({
         title:
-          result.winner === "CIVILIAN" ? "👥 พลเมืองดีชนะ!" : "🕵️ สายลับชนะ!",
+          result.winner === "CIVILIAN" ? "👥 พลเมืองดีชนะ!" : "สายลับชนะ!",
         description: result.reason,
       });
     } else {

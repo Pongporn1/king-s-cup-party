@@ -5,10 +5,12 @@ import { WaitingForPlayersAnimation } from "@/components/WaitingForPlayersAnimat
 import { PlayerList } from "@/components/PlayerList";
 import { CardDeck } from "@/components/CardDeck";
 import { RuleEditor } from "@/components/RuleEditor";
+import { AIRuleGenerator } from "@/components/AIRuleGenerator";
 import { useCustomRules } from "@/hooks/useCustomRules";
 import { PlayingCard as CardType, CARD_RULES, CardRule } from "@/lib/cardRules";
 import { Copy, LogOut, Play, RefreshCw, Spade } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { Confetti } from "@/components/Confetti";
 interface Room {
   id: string;
   code: string;
@@ -147,6 +149,12 @@ export function GameRoom({
   const gameOver = room.cards_remaining === 0 && room.current_card !== null;
   return (
     <div className="min-h-screen min-h-[100dvh] flex flex-col p-2 sm:p-4 md:p-6 relative overflow-hidden">
+      {/* Confetti for game over */}
+      <Confetti
+        active={gameOver && room.cards_remaining === 0}
+        duration={6000}
+      />
+
       {/* Background Image */}
       <div
         className="absolute inset-0 bg-cover bg-center bg-no-repeat blur-sm scale-105"
@@ -186,6 +194,7 @@ export function GameRoom({
 
         <div className="flex items-center gap-2">
           {isHost && <RuleEditor roomCode={room.code} isHost={isHost} />}
+          <AIRuleGenerator playerCount={players.length} />
           {isHost && room.game_started && !gameOver && (
             <Button
               variant="ghost"

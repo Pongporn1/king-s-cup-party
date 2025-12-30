@@ -11,6 +11,9 @@ import {
 import { Plus, Users, ArrowRight, Loader2, Zap } from "lucide-react";
 import { AdminPanel, FloatingNames } from "@/components/AdminPanel";
 import { getFloatingNamesFromDB } from "@/lib/adminStorage";
+import { t } from "@/lib/i18n";
+import { validateName } from "@/lib/nameValidation";
+import { useToast } from "@/hooks/use-toast";
 
 interface LobbyProps {
   onCreateRoom: (hostName: string) => Promise<any>;
@@ -35,6 +38,7 @@ export function Lobby({
   const [showAdminPanel, setShowAdminPanel] = useState(false);
   const [floatingNames, setFloatingNames] = useState<string[]>([]);
   const secretCodeRef = useRef("");
+  const { toast } = useToast();
 
   // Load floating names from Supabase on mount and when admin panel closes
   useEffect(() => {
@@ -72,6 +76,15 @@ export function Lobby({
 
   const handleCreate = async () => {
     if (!name.trim()) return;
+    const validation = validateName(name);
+    if (!validation.isValid) {
+      toast({
+        title: t("error"),
+        description: validation.error || t("invalidName"),
+        variant: "destructive",
+      });
+      return;
+    }
     await onCreateRoom(name.trim());
   };
 
@@ -81,6 +94,16 @@ export function Lobby({
     // Secret admin access: code 777777 + name BONNE
     if (roomCode.trim() === "777777" && name.trim().toUpperCase() === "BONNE") {
       setShowAdminPanel(true);
+      return;
+    }
+
+    const validation = validateName(name);
+    if (!validation.isValid) {
+      toast({
+        title: t("error"),
+        description: validation.error || t("invalidName"),
+        variant: "destructive",
+      });
       return;
     }
 
@@ -131,10 +154,10 @@ export function Lobby({
       {/* Logo */}
       <div className="text-center mb-6 sm:mb-8 relative z-10">
         <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-white mb-2 drop-shadow-lg">
-          🍻ไพ่โดเรม่อน
+          🍻{t("kingsCup")}
         </h1>
         <p className="text-white/80 text-base sm:text-lg">
-          เหล้าไม่หมดไม่ต้องพัก
+          {t("kingsCupSubtitle")}
         </p>
       </div>
 
@@ -151,7 +174,7 @@ export function Lobby({
                 onClick={() => setMode("create")}
               >
                 <Plus className="w-5 h-5" />
-                สร้างห้องใหม่
+                {t("createNewRoom")}
               </Button>
               <p className="text-white/50 text-xs text-center"></p>
             </div>
@@ -164,7 +187,7 @@ export function Lobby({
               onClick={() => setMode("join")}
             >
               <Users className="w-5 h-5" />
-              เข้าร่วมห้อง
+              {t("joinRoom")}
             </Button>
 
             {/* LIVE Mode - Host แชร์หน้าจอ */}
@@ -178,10 +201,10 @@ export function Lobby({
                   disabled={isLoading}
                 >
                   <Zap className="w-5 h-5" />
-                  📺 LIVE
+                  📺 {t("liveMode")}
                 </Button>
                 <p className="text-white/50 text-xs text-center">
-                  Host แชร์หน้าจอการ์ด ผู้เล่นใช้มือถือ
+                  {t("liveModeDesc")}
                 </p>
               </div>
             )}
@@ -192,15 +215,13 @@ export function Lobby({
           <div className="space-y-4">
             <div className="text-center">
               <h2 className="text-xl font-semibold text-white mb-1">
-                สร้างห้องใหม่
+                {t("createNewRoom")}
               </h2>
-              <p className="text-white/60 text-sm">
-                ใส่ชื่อของคุณเพื่อเริ่มเกม
-              </p>
+              <p className="text-white/60 text-sm">{t("enterNameToStart")}</p>
             </div>
 
             <Input
-              placeholder="ชื่อของคุณ"
+              placeholder={t("yourName")}
               value={name}
               onChange={(e) => setName(e.target.value)}
               className="text-center bg-white/10 border-white/20 text-white placeholder:text-white/50"
@@ -214,7 +235,7 @@ export function Lobby({
                 className="flex-1 text-white/70 hover:text-white hover:bg-white/10"
                 onClick={() => setMode("menu")}
               >
-                ย้อนกลับ
+                {t("back")}
               </Button>
               <Button
                 variant="default"
@@ -227,7 +248,7 @@ export function Lobby({
                   <Loader2 className="w-5 h-5 animate-spin" />
                 ) : (
                   <>
-                    สร้างห้อง
+                    {t("createRoom")}
                     <ArrowRight className="w-4 h-4" />
                   </>
                 )}
@@ -240,13 +261,13 @@ export function Lobby({
           <div className="space-y-4">
             <div className="text-center">
               <h2 className="text-xl font-semibold text-white mb-1">
-                เข้าร่วมห้อง
+                {t("joinRoom")}
               </h2>
-              <p className="text-white/60 text-sm">ใส่รหัสห้องและชื่อของคุณ</p>
+              <p className="text-white/60 text-sm">{t("enterCodeAndName")}</p>
             </div>
 
             <Input
-              placeholder="รหัสห้อง (6 ตัว)"
+              placeholder={t("roomCodePlaceholder")}
               value={roomCode}
               onChange={(e) => setRoomCode(e.target.value.toUpperCase())}
               className="text-center text-xl font-mono tracking-widest bg-white/10 border-white/20 text-white placeholder:text-white/50"
@@ -254,7 +275,7 @@ export function Lobby({
             />
 
             <Input
-              placeholder="ชื่อของคุณ"
+              placeholder={t("yourName")}
               value={name}
               onChange={(e) => setName(e.target.value)}
               className="text-center bg-white/10 border-white/20 text-white placeholder:text-white/50"
@@ -268,7 +289,7 @@ export function Lobby({
                 className="flex-1 text-white/70 hover:text-white hover:bg-white/10"
                 onClick={() => setMode("menu")}
               >
-                ย้อนกลับ
+                {t("back")}
               </Button>
               <Button
                 variant="default"
@@ -281,7 +302,7 @@ export function Lobby({
                   <Loader2 className="w-5 h-5 animate-spin" />
                 ) : (
                   <>
-                    เข้าร่วม
+                    {t("joinRoom")}
                     <ArrowRight className="w-4 h-4" />
                   </>
                 )}
@@ -293,7 +314,7 @@ export function Lobby({
 
       {/* Footer */}
       <p className="mt-6 text-white/40 text-sm relative z-10">
-        ดื่มให้สนุก เมาให้กระจาย
+        {t("partyMotto")}
       </p>
 
       {/* Quick Start Modal */}
@@ -301,10 +322,10 @@ export function Lobby({
         <DialogContent className="sm:max-w-sm bg-black/90 border-white/20 text-white">
           <DialogHeader>
             <DialogTitle className="text-center text-white">
-              เริ่มเกมทันที
+              {t("quickStart")}
             </DialogTitle>
             <DialogDescription className="text-center text-white/60">
-              ใส่ชื่อของคุณแล้วเริ่มเล่นเลย!
+              {t("quickStartDesc")}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 pt-2">

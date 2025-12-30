@@ -119,7 +119,7 @@ export function PokDengLobby({
       {/* Logo */}
       <div className="text-center mb-6 sm:mb-8 relative z-10">
         <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-white mb-2 drop-shadow-lg">
-          🎰ไพ่ป๊อกเด้ง
+          ไพ่ป๊อกเด้ง
         </h1>
         <p className="text-white/80 text-base sm:text-lg">เล่นหลายคน Online</p>
       </div>
