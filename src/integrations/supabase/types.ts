@@ -34,6 +34,7 @@ export type Database = {
       };
       players: {
         Row: {
+<<<<<<< HEAD
           avatar: number | null;
           bet: number | null;
           cards: Json | null;
@@ -112,6 +113,93 @@ export type Database = {
           }
         ];
       };
+=======
+          avatar: number | null
+          bet: number | null
+          cards: Json | null
+          has_drawn: boolean | null
+          has_voted: boolean | null
+          id: string
+          is_active: boolean
+          is_alive: boolean | null
+          is_dealer: boolean | null
+          is_host: boolean
+          joined_at: string
+          multiplier: number | null
+          name: string
+          player_order: number | null
+          points: number | null
+          result: string | null
+          role: string | null
+          room_id: string
+          vote_count: number | null
+          voted_for: string | null
+          word: string | null
+        }
+        Insert: {
+          avatar?: number | null
+          bet?: number | null
+          cards?: Json | null
+          has_drawn?: boolean | null
+          has_voted?: boolean | null
+          id?: string
+          is_active?: boolean
+          is_alive?: boolean | null
+          is_dealer?: boolean | null
+          is_host?: boolean
+          joined_at?: string
+          multiplier?: number | null
+          name: string
+          player_order?: number | null
+          points?: number | null
+          result?: string | null
+          role?: string | null
+          room_id: string
+          vote_count?: number | null
+          voted_for?: string | null
+          word?: string | null
+        }
+        Update: {
+          avatar?: number | null
+          bet?: number | null
+          cards?: Json | null
+          has_drawn?: boolean | null
+          has_voted?: boolean | null
+          id?: string
+          is_active?: boolean
+          is_alive?: boolean | null
+          is_dealer?: boolean | null
+          is_host?: boolean
+          joined_at?: string
+          multiplier?: number | null
+          name?: string
+          player_order?: number | null
+          points?: number | null
+          result?: string | null
+          role?: string | null
+          room_id?: string
+          vote_count?: number | null
+          voted_for?: string | null
+          word?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "players_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "rooms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "players_voted_for_fkey"
+            columns: ["voted_for"]
+            isOneToOne: false
+            referencedRelation: "players"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+>>>>>>> 8482854afb7d7f6b0376031e9f5986100a898866
       rooms: {
         Row: {
           cards_remaining: number;
