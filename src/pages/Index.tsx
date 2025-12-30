@@ -20,6 +20,7 @@ import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import ThemeSwitcher from "@/components/ThemeSwitcher";
 import ThemedBackground from "@/components/ThemedBackground";
 import { FloatingNames, AdminPanel } from "@/components/AdminPanel";
+import { GameRulesAssistant } from "@/components/GameRulesAssistant";
 import { getFloatingNamesFromDB, getGameCovers } from "@/lib/adminStorage";
 import { t } from "@/lib/i18n";
 import {
@@ -29,6 +30,7 @@ import {
   Settings,
   Grid3X3,
   ImageIcon,
+  Sparkles,
 } from "lucide-react";
 
 type GameMode =
@@ -47,6 +49,9 @@ const Index = () => {
   // Admin Panel State
   const [showAdminPanel, setShowAdminPanel] = useState(false);
   const [gameCovers, setGameCovers] = useState<Record<string, string>>({});
+
+  // AI Assistant State
+  const [showAIAssistant, setShowAIAssistant] = useState(false);
 
   // King's Cup game hook
   const {
@@ -414,6 +419,15 @@ const Index = () => {
               <Play fill="black" size={24} />
               Start Game
             </Button>
+
+            <Button
+              size="lg"
+              onClick={() => setShowAIAssistant(true)}
+              className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 px-8 py-6 rounded-full font-bold text-xl shadow-2xl hover:scale-105 transition-transform flex items-center gap-3"
+            >
+              <Sparkles size={24} />
+              ถามกติกา AI
+            </Button>
           </motion.div>
         </div>
 
@@ -452,6 +466,20 @@ const Index = () => {
         </div>
 
         {/* Admin Panel Modal */}
+        {/* AI Assistant */}
+        <AnimatePresence>
+          {showAIAssistant && (
+            <GameRulesAssistant
+              onClose={() => setShowAIAssistant(false)}
+              currentGame={{
+                id: selectedGame.id,
+                name: selectedGame.name,
+                emoji: selectedGame.emoji,
+              }}
+            />
+          )}
+        </AnimatePresence>
+
         {showAdminPanel && (
           <AdminPanel
             onClose={() => setShowAdminPanel(false)}
