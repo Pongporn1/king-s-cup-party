@@ -123,9 +123,7 @@ const Index = () => {
   const currentPlayer = players.find((p) => p.id === currentPlayerId);
   const isHost = currentPlayer?.is_host ?? false;
 
-  const pokDengCurrentPlayer = pokDengPlayers.find(
-    (p) => p.id === pokDengCurrentPlayerId
-  );
+  const pokDengCurrentPlayer = pokDengPlayers.find((p) => p.id === pokDengCurrentPlayerId);
   const isPokDengHost = pokDengCurrentPlayer?.is_host ?? false;
 
   // Load floating names
@@ -155,12 +153,8 @@ const Index = () => {
 
         {/* Logo */}
         <div className="text-center mb-6 sm:mb-8 relative z-10">
-          <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-white mb-2 drop-shadow-lg">
-            Party Games
-          </h1>
-          <p className="text-white/80 text-base sm:text-lg">
-            {t("selectGamePrompt")}
-          </p>
+          <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-white mb-2 drop-shadow-lg">Party Games</h1>
+          <p className="text-white/80 text-base sm:text-lg">{t("selectGamePrompt")}</p>
         </div>
 
         {/* Main Card */}
@@ -177,9 +171,7 @@ const Index = () => {
                 <span className="text-3xl"></span>
                 <div className="text-left flex-1">
                   <div className="font-bold text-lg">{t("kingsCup")}</div>
-                  <div className="text-xs text-black/60">
-                    {t("kingsCupDesc")}
-                  </div>
+                  <div className="text-xs text-black/60">{t("kingsCupDesc")}</div>
                 </div>
               </div>
             </Button>
@@ -195,9 +187,7 @@ const Index = () => {
                 <span className="text-3xl"></span>
                 <div className="text-left flex-1">
                   <div className="font-bold text-lg">{t("pokDeng")}</div>
-                  <div className="text-xs text-white/70">
-                    {t("pokDengDesc")}
-                  </div>
+                  <div className="text-xs text-white/70">{t("pokDengDesc")}</div>
                 </div>
               </div>
             </Button>
@@ -212,12 +202,8 @@ const Index = () => {
               <div className="flex items-center gap-3 w-full">
                 <span className="text-3xl"></span>
                 <div className="text-left flex-1">
-                  <div className="font-bold text-lg">
-                    {t("undercoverTitle")}
-                  </div>
-                  <div className="text-xs text-white/70">
-                    {t("undercoverDesc")}
-                  </div>
+                  <div className="font-bold text-lg">{t("undercoverTitle")}</div>
+                  <div className="text-xs text-white/70">{t("undercoverDesc")}</div>
                 </div>
               </div>
             </Button>
@@ -261,9 +247,7 @@ const Index = () => {
         </div>
 
         {/* Footer */}
-        <p className="mt-6 sm:mt-8 text-white/40 text-xs sm:text-sm relative z-10">
-          {t("partyMotto")} 🍺
-        </p>
+        <p className="mt-6 sm:mt-8 text-white/40 text-xs sm:text-sm relative z-10">{t("partyMotto")} 🍺</p>
       </div>
     );
   }
@@ -326,9 +310,7 @@ const Index = () => {
     }
 
     // เข้าห้องแล้ว - แสดง Game Room
-    const isHost =
-      undercoverPlayers.find((p) => p.id === undercoverCurrentPlayerId)
-        ?.is_host || false;
+    const isHost = undercoverPlayers.find((p) => p.id === undercoverCurrentPlayerId)?.is_host || false;
 
     return (
       <UndercoverGameRoom

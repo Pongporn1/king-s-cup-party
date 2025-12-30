@@ -43,3 +43,21 @@ ALTER PUBLICATION supabase_realtime ADD TABLE public.players;
 -- Create index for room code lookup
 CREATE INDEX idx_rooms_code ON public.rooms(code);
 CREATE INDEX idx_players_room_id ON public.players(room_id);
+
+
+ALTER TABLE paranoia_questions 
+ADD COLUMN is_default boolean DEFAULT false,
+ADD COLUMN created_at timestamptz DEFAULT now();
+
+DROP POLICY IF EXISTS "Anyone can insert paranoia questions" ON paranoia_questions;
+DROP POLICY IF EXISTS "Anyone can update non-default paranoia questions" ON paranoia_questions;
+DROP POLICY IF EXISTS "Anyone can delete non-default paranoia questions" ON paranoia_questions;
+
+CREATE POLICY "Anyone can insert paranoia questions" ON paranoia_questions
+FOR INSERT WITH CHECK (true);
+
+CREATE POLICY "Anyone can update non-default paranoia questions" ON paranoia_questions
+FOR UPDATE USING (is_default = false);
+
+CREATE POLICY "Anyone can delete non-default paranoia questions" ON paranoia_questions
+FOR DELETE USING (is_default = false);
