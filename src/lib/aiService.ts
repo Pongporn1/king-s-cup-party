@@ -238,3 +238,66 @@ export async function generateMultipleRules(
 
   return Promise.all(promises);
 }
+
+/**
+ * Generate Paranoia questions using AI
+ * @param count - Number of questions to generate (default: 5)
+ * @returns Array of Paranoia questions
+ */
+export async function generateParanoiaQuestions(
+  count: number = 5
+): Promise<string[]> {
+  try {
+    // AI Prompt context for generation
+    const prompt = `สร้างคำถามสำหรับเกม Paranoia
+    
+กติกา:
+- คำถามต้องเป็นคำถามที่ต้องเลือกคนในกลุ่ม
+- คำถามต้องสนุก ไม่หยาบ ไม่ก้าวร้าว
+- ต้องทำให้คนอยากรู้คำตอบ
+- เหมาะสำหรับเล่นในปาร์ตี้
+
+ตัวอย่าง:
+- "ใครที่คุณคิดว่าจะเป็นคนสุดท้ายที่แต่งงาน?"
+- "ใครที่คุณคิดว่ามีลุคดีที่สุดในกลุ่ม?"
+- "ใครที่คุณอยากไปเที่ยวด้วยมากที่สุด?"
+
+สร้าง ${count} คำถาม:`;
+
+    // Simulate AI thinking
+    await new Promise((resolve) => setTimeout(resolve, 1200));
+
+    // Generate varied questions
+    const questionTemplates = [
+      "ใครที่คุณคิดว่ามีบุคลิกสนุกที่สุด?",
+      "ใครที่คุณอยากให้เป็นเพื่อนสนิทมากที่สุด?",
+      "ใครที่คุณคิดว่าหุ่นดีที่สุดในกลุ่ม?",
+      "ใครที่คุณคิดว่าน่าจะโกหกเก่งที่สุด?",
+      "ใครที่คุณคิดว่าจะประสบความสำเร็จมากที่สุด?",
+      "ใครที่คุณอยากไปกินข้าวด้วยมากที่สุด?",
+      "ใครที่คุณคิดว่าขับรถเก่งที่สุด?",
+      "ใครที่คุณคิดว่าน่าจะร้องเพลงเพราะที่สุด?",
+      "ใครที่คุณคิดว่ามีไอเดียเจ๋งที่สุด?",
+      "ใครที่คุณอยากให้เป็นหัวหน้ากลุ่ม?",
+      "ใครที่คุณคิดว่าน่าจะมีแฟนก่อน?",
+      "ใครที่คุณคิดว่าเป็นคนเก็บความลับได้ดีที่สุด?",
+      "ใครที่คุณคิดว่าน่าจะทำอาหารเก่งที่สุด?",
+      "ใครที่คุณอยากขอคำแนะนำเรื่องชีวิต?",
+      "ใครที่คุณคิดว่ามีความมั่นใจในตัวเองมากที่สุด?",
+    ];
+
+    // Randomly select and shuffle
+    const shuffled = [...questionTemplates].sort(() => Math.random() - 0.5);
+    return shuffled.slice(0, count);
+  } catch (error) {
+    console.error("Error generating Paranoia questions:", error);
+    // Return fallback questions
+    return [
+      "ใครที่คุณคิดว่ามีบุคลิกสนุกที่สุด?",
+      "ใครที่คุณอยากให้เป็นเพื่อนสนิทมากที่สุด?",
+      "ใครที่คุณคิดว่าน่าจะโกหกเก่งที่สุด?",
+      "ใครที่คุณคิดว่าจะประสบความสำเร็จมากที่สุด?",
+      "ใครที่คุณอยากไปกินข้าวด้วยมากที่สุด?",
+    ].slice(0, count);
+  }
+}

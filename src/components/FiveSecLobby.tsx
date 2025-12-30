@@ -1,12 +1,17 @@
-import { useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { ArrowLeft, Copy, Check, Users } from 'lucide-react';
-import { motion } from 'framer-motion';
-import ThemedBackground from '@/components/ThemedBackground';
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { ArrowLeft, Copy, Check, Users, Clock } from "lucide-react";
+import { motion } from "framer-motion";
+import ThemedBackground from "@/components/ThemedBackground";
 
 interface FiveSecLobbyProps {
-  onCreateRoom: (hostName: string) => Promise<string | null>;
+  onCreateRoom: (
+    hostName: string,
+    timeLimit?: number
+  ) => Promise<string | null>;
   onJoinRoom: (code: string, playerName: string) => Promise<boolean>;
   onBack: () => void;
   isLoading: boolean;
@@ -18,15 +23,16 @@ export function FiveSecLobby({
   onBack,
   isLoading,
 }: FiveSecLobbyProps) {
-  const [mode, setMode] = useState<'select' | 'create' | 'join'>('select');
-  const [playerName, setPlayerName] = useState('');
-  const [roomCode, setRoomCode] = useState('');
+  const [mode, setMode] = useState<"select" | "create" | "join">("select");
+  const [playerName, setPlayerName] = useState("");
+  const [roomCode, setRoomCode] = useState("");
   const [createdCode, setCreatedCode] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [timeLimit, setTimeLimit] = useState<number>(5);
 
   const handleCreate = async () => {
     if (!playerName.trim()) return;
-    const code = await onCreateRoom(playerName.trim());
+    const code = await onCreateRoom(playerName.trim(), timeLimit);
     if (code) {
       setCreatedCode(code);
     }
@@ -74,17 +80,17 @@ export function FiveSecLobby({
 
         {/* Card */}
         <div className="bg-black/40 backdrop-blur-md rounded-2xl p-6 border border-white/10">
-          {mode === 'select' && (
+          {mode === "select" && (
             <div className="space-y-4">
               <Button
-                onClick={() => setMode('create')}
+                onClick={() => setMode("create")}
                 className="w-full bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 py-6 text-lg"
               >
                 <Users className="w-5 h-5 mr-2" />
                 สร้างห้อง
               </Button>
               <Button
-                onClick={() => setMode('join')}
+                onClick={() => setMode("join")}
                 variant="outline"
                 className="w-full border-white/30 text-white hover:bg-white/10 py-6 text-lg"
               >
@@ -93,10 +99,12 @@ export function FiveSecLobby({
             </div>
           )}
 
-          {mode === 'create' && !createdCode && (
+          {mode === "create" && !createdCode && (
             <div className="space-y-4">
               <div>
-                <label className="text-white/80 text-sm mb-2 block">ชื่อของคุณ</label>
+                <label className="text-white/80 text-sm mb-2 block">
+                  ชื่อของคุณ
+                </label>
                 <Input
                   value={playerName}
                   onChange={(e) => setPlayerName(e.target.value)}
@@ -104,16 +112,47 @@ export function FiveSecLobby({
                   className="bg-white/10 border-white/20 text-white"
                 />
               </div>
+
+              {/* Time Selection */}
+              <div>
+                <label className="text-white/80 text-sm mb-3 block flex items-center gap-2">
+                  <Clock className="w-4 h-4" />
+                  เวลาในการตอบ
+                </label>
+                <RadioGroup
+                  value={timeLimit.toString()}
+                  onValueChange={(v) => setTimeLimit(Number(v))}
+                >
+                  <div className="grid grid-cols-2 gap-2">
+                    {[5, 10, 15, 20].map((time) => (
+                      <div key={time} className="flex items-center space-x-2">
+                        <RadioGroupItem
+                          value={time.toString()}
+                          id={`time-${time}`}
+                          className="border-white/40"
+                        />
+                        <Label
+                          htmlFor={`time-${time}`}
+                          className="text-white cursor-pointer"
+                        >
+                          {time} วินาที
+                        </Label>
+                      </div>
+                    ))}
+                  </div>
+                </RadioGroup>
+              </div>
+
               <Button
                 onClick={handleCreate}
                 disabled={isLoading || !playerName.trim()}
                 className="w-full bg-gradient-to-r from-blue-600 to-cyan-600"
               >
-                {isLoading ? 'กำลังสร้าง...' : 'สร้างห้อง'}
+                {isLoading ? "กำลังสร้าง..." : "สร้างห้อง"}
               </Button>
               <Button
                 variant="ghost"
-                onClick={() => setMode('select')}
+                onClick={() => setMode("select")}
                 className="w-full text-white/60"
               >
                 กลับ
@@ -121,7 +160,7 @@ export function FiveSecLobby({
             </div>
           )}
 
-          {mode === 'create' && createdCode && (
+          {mode === "create" && createdCode && (
             <div className="text-center space-y-4">
               <p className="text-white/80">รหัสห้องของคุณ:</p>
               <div
@@ -153,10 +192,12 @@ export function FiveSecLobby({
             </div>
           )}
 
-          {mode === 'join' && (
+          {mode === "join" && (
             <div className="space-y-4">
               <div>
-                <label className="text-white/80 text-sm mb-2 block">ชื่อของคุณ</label>
+                <label className="text-white/80 text-sm mb-2 block">
+                  ชื่อของคุณ
+                </label>
                 <Input
                   value={playerName}
                   onChange={(e) => setPlayerName(e.target.value)}
@@ -165,7 +206,9 @@ export function FiveSecLobby({
                 />
               </div>
               <div>
-                <label className="text-white/80 text-sm mb-2 block">รหัสห้อง</label>
+                <label className="text-white/80 text-sm mb-2 block">
+                  รหัสห้อง
+                </label>
                 <Input
                   value={roomCode}
                   onChange={(e) => setRoomCode(e.target.value.toUpperCase())}
@@ -179,11 +222,11 @@ export function FiveSecLobby({
                 disabled={isLoading || !playerName.trim() || !roomCode.trim()}
                 className="w-full bg-gradient-to-r from-blue-600 to-cyan-600"
               >
-                {isLoading ? 'กำลังเข้าร่วม...' : 'เข้าร่วมห้อง'}
+                {isLoading ? "กำลังเข้าร่วม..." : "เข้าร่วมห้อง"}
               </Button>
               <Button
                 variant="ghost"
-                onClick={() => setMode('select')}
+                onClick={() => setMode("select")}
                 className="w-full text-white/60"
               >
                 กลับ

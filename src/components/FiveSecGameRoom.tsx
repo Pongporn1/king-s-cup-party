@@ -1,9 +1,9 @@
-import { FiveSecState } from '@/lib/partyGameTypes';
-import { FiveSecGame } from '@/components/FiveSecGame';
-import { Button } from '@/components/ui/button';
-import { ArrowLeft, Users, Play } from 'lucide-react';
-import { motion } from 'framer-motion';
-import ThemedBackground from '@/components/ThemedBackground';
+import { FiveSecState } from "@/lib/partyGameTypes";
+import { FiveSecGame } from "@/components/FiveSecGame";
+import { Button } from "@/components/ui/button";
+import { ArrowLeft, Users, Play } from "lucide-react";
+import { motion } from "framer-motion";
+import ThemedBackground from "@/components/ThemedBackground";
 
 interface Player {
   id: string;
@@ -81,6 +81,11 @@ export function FiveSecGameRoom({
               <div className="text-5xl mb-4">⏱️</div>
               <h2 className="text-2xl font-bold text-white">5 Second Rule</h2>
               <p className="text-white/70">รอผู้เล่นเข้าร่วม...</p>
+              {room.game_state?.timeLimit && (
+                <p className="text-yellow-400 text-sm mt-2">
+                  ⏱️ เวลาตอบคำถาม: {room.game_state.timeLimit} วินาที
+                </p>
+              )}
             </div>
 
             {/* Player list */}
@@ -96,7 +101,7 @@ export function FiveSecGameRoom({
                     className="flex items-center gap-2 text-white"
                   >
                     <span className="text-lg">
-                      {player.is_host ? '👑' : '👤'}
+                      {player.is_host ? "👑" : "👤"}
                     </span>
                     <span>{player.name}</span>
                     {player.id === currentPlayerId && (
@@ -135,7 +140,7 @@ export function FiveSecGameRoom({
           <div className="w-full max-w-sm">
             <FiveSecGame
               gameState={gameState}
-              myId={currentPlayerId || ''}
+              myId={currentPlayerId || ""}
               players={players}
               onFinishAnswering={onFinishAnswering}
               onVote={onVote}

@@ -1,9 +1,10 @@
-import { useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { ArrowLeft, Copy, Check, Users } from 'lucide-react';
-import { motion } from 'framer-motion';
-import ThemedBackground from '@/components/ThemedBackground';
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { ArrowLeft, Copy, Check, Users } from "lucide-react";
+import { motion } from "framer-motion";
+import ThemedBackground from "@/components/ThemedBackground";
+import { ParanoiaQuestionManager } from "@/components/ParanoiaQuestionManager";
 
 interface ParanoiaLobbyProps {
   onCreateRoom: (hostName: string) => Promise<string | null>;
@@ -18,9 +19,9 @@ export function ParanoiaLobby({
   onBack,
   isLoading,
 }: ParanoiaLobbyProps) {
-  const [mode, setMode] = useState<'select' | 'create' | 'join'>('select');
-  const [playerName, setPlayerName] = useState('');
-  const [roomCode, setRoomCode] = useState('');
+  const [mode, setMode] = useState<"select" | "create" | "join">("select");
+  const [playerName, setPlayerName] = useState("");
+  const [roomCode, setRoomCode] = useState("");
   const [createdCode, setCreatedCode] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
@@ -72,19 +73,24 @@ export function ParanoiaLobby({
           <p className="text-white/70">เกมขี้ระแวง / คำถามกระซิบ</p>
         </div>
 
+        {/* Question Manager Button */}
+        <div className="flex justify-center mb-4">
+          <ParanoiaQuestionManager />
+        </div>
+
         {/* Card */}
         <div className="bg-black/40 backdrop-blur-md rounded-2xl p-6 border border-white/10">
-          {mode === 'select' && (
+          {mode === "select" && (
             <div className="space-y-4">
               <Button
-                onClick={() => setMode('create')}
+                onClick={() => setMode("create")}
                 className="w-full bg-gradient-to-r from-red-600 to-pink-600 hover:from-red-500 hover:to-pink-500 py-6 text-lg"
               >
                 <Users className="w-5 h-5 mr-2" />
                 สร้างห้อง
               </Button>
               <Button
-                onClick={() => setMode('join')}
+                onClick={() => setMode("join")}
                 variant="outline"
                 className="w-full border-white/30 text-white hover:bg-white/10 py-6 text-lg"
               >
@@ -93,10 +99,12 @@ export function ParanoiaLobby({
             </div>
           )}
 
-          {mode === 'create' && !createdCode && (
+          {mode === "create" && !createdCode && (
             <div className="space-y-4">
               <div>
-                <label className="text-white/80 text-sm mb-2 block">ชื่อของคุณ</label>
+                <label className="text-white/80 text-sm mb-2 block">
+                  ชื่อของคุณ
+                </label>
                 <Input
                   value={playerName}
                   onChange={(e) => setPlayerName(e.target.value)}
@@ -109,11 +117,11 @@ export function ParanoiaLobby({
                 disabled={isLoading || !playerName.trim()}
                 className="w-full bg-gradient-to-r from-red-600 to-pink-600"
               >
-                {isLoading ? 'กำลังสร้าง...' : 'สร้างห้อง'}
+                {isLoading ? "กำลังสร้าง..." : "สร้างห้อง"}
               </Button>
               <Button
                 variant="ghost"
-                onClick={() => setMode('select')}
+                onClick={() => setMode("select")}
                 className="w-full text-white/60"
               >
                 กลับ
@@ -121,7 +129,7 @@ export function ParanoiaLobby({
             </div>
           )}
 
-          {mode === 'create' && createdCode && (
+          {mode === "create" && createdCode && (
             <div className="text-center space-y-4">
               <p className="text-white/80">รหัสห้องของคุณ:</p>
               <div
@@ -153,10 +161,12 @@ export function ParanoiaLobby({
             </div>
           )}
 
-          {mode === 'join' && (
+          {mode === "join" && (
             <div className="space-y-4">
               <div>
-                <label className="text-white/80 text-sm mb-2 block">ชื่อของคุณ</label>
+                <label className="text-white/80 text-sm mb-2 block">
+                  ชื่อของคุณ
+                </label>
                 <Input
                   value={playerName}
                   onChange={(e) => setPlayerName(e.target.value)}
@@ -165,7 +175,9 @@ export function ParanoiaLobby({
                 />
               </div>
               <div>
-                <label className="text-white/80 text-sm mb-2 block">รหัสห้อง</label>
+                <label className="text-white/80 text-sm mb-2 block">
+                  รหัสห้อง
+                </label>
                 <Input
                   value={roomCode}
                   onChange={(e) => setRoomCode(e.target.value.toUpperCase())}
@@ -179,11 +191,11 @@ export function ParanoiaLobby({
                 disabled={isLoading || !playerName.trim() || !roomCode.trim()}
                 className="w-full bg-gradient-to-r from-red-600 to-pink-600"
               >
-                {isLoading ? 'กำลังเข้าร่วม...' : 'เข้าร่วมห้อง'}
+                {isLoading ? "กำลังเข้าร่วม..." : "เข้าร่วมห้อง"}
               </Button>
               <Button
                 variant="ghost"
-                onClick={() => setMode('select')}
+                onClick={() => setMode("select")}
                 className="w-full text-white/60"
               >
                 กลับ

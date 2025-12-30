@@ -22,7 +22,13 @@ import { FloatingNames } from "@/components/AdminPanel";
 import { getFloatingNamesFromDB } from "@/lib/adminStorage";
 import { t } from "@/lib/i18n";
 
-type GameMode = "select" | "doraemon" | "pokdeng" | "undercover" | "paranoia" | "fivesec";
+type GameMode =
+  | "select"
+  | "doraemon"
+  | "pokdeng"
+  | "undercover"
+  | "paranoia"
+  | "fivesec";
 
 const Index = () => {
   const [gameMode, setGameMode] = useState<GameMode>("select");
@@ -82,6 +88,37 @@ const Index = () => {
     restartGame: undercoverRestartGame,
     leaveRoom: undercoverLeaveRoom,
   } = useUndercoverRoom();
+
+  // Paranoia game hook
+  const {
+    room: paranoiaRoom,
+    players: paranoiaPlayers,
+    currentPlayerId: paranoiaCurrentPlayerId,
+    isLoading: paranoiaIsLoading,
+    createRoom: paranoiaCreateRoom,
+    joinRoom: paranoiaJoinRoom,
+    startGame: paranoiaStartGame,
+    startRound: paranoiaStartRound,
+    selectVictim: paranoiaSelectVictim,
+    revealQuestion: paranoiaRevealQuestion,
+    skipQuestion: paranoiaSkipQuestion,
+    leaveRoom: paranoiaLeaveRoom,
+  } = useParanoiaGame();
+
+  // 5 Second Rule game hook
+  const {
+    room: fiveSecRoom,
+    players: fiveSecPlayers,
+    currentPlayerId: fiveSecCurrentPlayerId,
+    isLoading: fiveSecIsLoading,
+    createRoom: fiveSecCreateRoom,
+    joinRoom: fiveSecJoinRoom,
+    startGame: fiveSecStartGame,
+    startRound: fiveSecStartRound,
+    finishAnswering: fiveSecFinishAnswering,
+    vote: fiveSecVote,
+    leaveRoom: fiveSecLeaveRoom,
+  } = useFiveSecGame();
 
   const currentPlayer = players.find((p) => p.id === currentPlayerId);
   const isHost = currentPlayer?.is_host ?? false;
@@ -180,6 +217,42 @@ const Index = () => {
                   </div>
                   <div className="text-xs text-white/70">
                     {t("undercoverDesc")}
+                  </div>
+                </div>
+              </div>
+            </Button>
+
+            {/* Paranoia */}
+            <Button
+              variant="default"
+              size="lg"
+              onClick={() => setGameMode("paranoia")}
+              className="w-full bg-gradient-to-r from-red-500 to-orange-600 text-white hover:from-red-600 hover:to-orange-700 hover:scale-105 h-auto py-4 transition-all duration-300"
+            >
+              <div className="flex items-center gap-3 w-full">
+                <span className="text-3xl"></span>
+                <div className="text-left flex-1">
+                  <div className="font-bold text-lg">Paranoia</div>
+                  <div className="text-xs text-white/70">
+                    ถามคำถามลับๆ - สายมึน
+                  </div>
+                </div>
+              </div>
+            </Button>
+
+            {/* 5 Second Rule */}
+            <Button
+              variant="default"
+              size="lg"
+              onClick={() => setGameMode("fivesec")}
+              className="w-full bg-gradient-to-r from-yellow-500 to-amber-600 text-white hover:from-yellow-600 hover:to-amber-700 hover:scale-105 h-auto py-4 transition-all duration-300"
+            >
+              <div className="flex items-center gap-3 w-full">
+                <span className="text-3xl"></span>
+                <div className="text-left flex-1">
+                  <div className="font-bold text-lg">5 Second Rule</div>
+                  <div className="text-xs text-white/70">
+                    ตอบคำถาม 5 วินาที - สายเร็ว
                   </div>
                 </div>
               </div>
@@ -291,10 +364,12 @@ const Index = () => {
         />
       );
     }
-    const isHost = paranoiaPlayers.find((p) => p.id === paranoiaCurrentPlayerId)?.is_host || false;
+    const isHost =
+      paranoiaPlayers.find((p) => p.id === paranoiaCurrentPlayerId)?.is_host ||
+      false;
     return (
       <ParanoiaGameRoom
-        room={paranoiaRoom as any}
+        room={paranoiaRoom}
         players={paranoiaPlayers}
         currentPlayerId={paranoiaCurrentPlayerId}
         isHost={isHost}
@@ -323,10 +398,12 @@ const Index = () => {
         />
       );
     }
-    const isHost = fiveSecPlayers.find((p) => p.id === fiveSecCurrentPlayerId)?.is_host || false;
+    const isHost =
+      fiveSecPlayers.find((p) => p.id === fiveSecCurrentPlayerId)?.is_host ||
+      false;
     return (
       <FiveSecGameRoom
-        room={fiveSecRoom as any}
+        room={fiveSecRoom}
         players={fiveSecPlayers}
         currentPlayerId={fiveSecCurrentPlayerId}
         isHost={isHost}
