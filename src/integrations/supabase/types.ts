@@ -14,6 +14,24 @@ export type Database = {
   }
   public: {
     Tables: {
+      five_sec_questions: {
+        Row: {
+          category: string | null
+          id: number
+          topic: string
+        }
+        Insert: {
+          category?: string | null
+          id?: never
+          topic: string
+        }
+        Update: {
+          category?: string | null
+          id?: never
+          topic?: string
+        }
+        Relationships: []
+      }
       floating_names: {
         Row: {
           created_at: string | null
@@ -29,6 +47,24 @@ export type Database = {
           created_at?: string | null
           id?: string
           name?: string
+        }
+        Relationships: []
+      }
+      paranoia_questions: {
+        Row: {
+          id: number
+          level: string | null
+          question: string
+        }
+        Insert: {
+          id?: never
+          level?: string | null
+          question: string
+        }
+        Update: {
+          id?: never
+          level?: string | null
+          question?: string
         }
         Relationships: []
       }

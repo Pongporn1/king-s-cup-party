@@ -1,23 +1,28 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useGameRoom } from "@/hooks/useGameRoom";
 import { usePokDengRoom } from "@/hooks/usePokDengRoom";
 import { useUndercoverRoom } from "@/hooks/useUndercoverRoom";
+import { useParanoiaGame } from "@/hooks/useParanoiaGame";
+import { useFiveSecGame } from "@/hooks/useFiveSecGame";
 import { Lobby } from "@/components/Lobby";
 import { GameRoom } from "@/components/GameRoom";
 import { PokDengLobby } from "@/components/PokDengLobby";
 import { PokDengGameRoomMultiplayer } from "@/components/PokDengGameRoomMultiplayer";
 import { UndercoverLobby } from "@/components/UndercoverLobby";
 import { UndercoverGameRoom } from "@/components/UndercoverGameRoom";
+import { ParanoiaLobby } from "@/components/ParanoiaLobby";
+import { ParanoiaGameRoom } from "@/components/ParanoiaGameRoom";
+import { FiveSecLobby } from "@/components/FiveSecLobby";
+import { FiveSecGameRoom } from "@/components/FiveSecGameRoom";
 import { Button } from "@/components/ui/button";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import ThemeSwitcher from "@/components/ThemeSwitcher";
 import ThemedBackground from "@/components/ThemedBackground";
 import { FloatingNames } from "@/components/AdminPanel";
 import { getFloatingNamesFromDB } from "@/lib/adminStorage";
-import { useEffect } from "react";
 import { t } from "@/lib/i18n";
 
-type GameMode = "select" | "doraemon" | "pokdeng" | "undercover";
+type GameMode = "select" | "doraemon" | "pokdeng" | "undercover" | "paranoia" | "fivesec";
 
 const Index = () => {
   const [gameMode, setGameMode] = useState<GameMode>("select");
@@ -268,6 +273,69 @@ const Index = () => {
         onRestartGame={undercoverRestartGame}
         onLeave={() => {
           undercoverLeaveRoom();
+          setGameMode("select");
+        }}
+      />
+    );
+  }
+
+  // Paranoia
+  if (gameMode === "paranoia") {
+    if (!paranoiaRoom) {
+      return (
+        <ParanoiaLobby
+          onCreateRoom={paranoiaCreateRoom}
+          onJoinRoom={paranoiaJoinRoom}
+          onBack={() => setGameMode("select")}
+          isLoading={paranoiaIsLoading}
+        />
+      );
+    }
+    const isHost = paranoiaPlayers.find((p) => p.id === paranoiaCurrentPlayerId)?.is_host || false;
+    return (
+      <ParanoiaGameRoom
+        room={paranoiaRoom as any}
+        players={paranoiaPlayers}
+        currentPlayerId={paranoiaCurrentPlayerId}
+        isHost={isHost}
+        onStartGame={paranoiaStartGame}
+        onStartRound={paranoiaStartRound}
+        onSelectVictim={paranoiaSelectVictim}
+        onRevealQuestion={paranoiaRevealQuestion}
+        onSkipQuestion={paranoiaSkipQuestion}
+        onLeave={() => {
+          paranoiaLeaveRoom();
+          setGameMode("select");
+        }}
+      />
+    );
+  }
+
+  // 5 Second Rule
+  if (gameMode === "fivesec") {
+    if (!fiveSecRoom) {
+      return (
+        <FiveSecLobby
+          onCreateRoom={fiveSecCreateRoom}
+          onJoinRoom={fiveSecJoinRoom}
+          onBack={() => setGameMode("select")}
+          isLoading={fiveSecIsLoading}
+        />
+      );
+    }
+    const isHost = fiveSecPlayers.find((p) => p.id === fiveSecCurrentPlayerId)?.is_host || false;
+    return (
+      <FiveSecGameRoom
+        room={fiveSecRoom as any}
+        players={fiveSecPlayers}
+        currentPlayerId={fiveSecCurrentPlayerId}
+        isHost={isHost}
+        onStartGame={fiveSecStartGame}
+        onStartRound={fiveSecStartRound}
+        onFinishAnswering={fiveSecFinishAnswering}
+        onVote={fiveSecVote}
+        onLeave={() => {
+          fiveSecLeaveRoom();
           setGameMode("select");
         }}
       />
