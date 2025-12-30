@@ -12,9 +12,26 @@ import {
   getSpecialHand,
 } from "@/lib/pokDengRules";
 import { PokDengRoom, PokDengPlayer } from "@/hooks/usePokDengRoom";
-import { Copy, LogOut, Play, RotateCcw, Hand, Square, Eye } from "lucide-react";
+import {
+  Copy,
+  LogOut,
+  Play,
+  RotateCcw,
+  Hand,
+  Square,
+  Eye,
+  Crown,
+} from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { PokDengRuleEditor } from "@/components/PokDengRuleEditor";
 
 interface PokDengGameRoomMultiplayerProps {
   room: PokDengRoom;
@@ -260,6 +277,7 @@ export function PokDengGameRoomMultiplayer({
 }: PokDengGameRoomMultiplayerProps) {
   const { toast } = useToast();
   const [showRules, setShowRules] = useState(false);
+  const [showDealerDialog, setShowDealerDialog] = useState(false);
 
   const copyRoomCode = () => {
     const code = room.code;
@@ -428,6 +446,87 @@ export function PokDengGameRoomMultiplayer({
         </div>
 
         <div className="flex items-center gap-2">
+          {/* ปุ่มเปลี่ยนเจ้ามือ - Host เท่านั้น */}
+          {(isHost || (isLiveMode && !currentPlayerId)) && onSetDealer && (
+            <Dialog open={showDealerDialog} onOpenChange={setShowDealerDialog}>
+              <DialogTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="text-amber-400 hover:text-amber-300 hover:bg-amber-400/10 w-8 h-8 sm:w-10 sm:h-10"
+                  title="เปลี่ยนเจ้ามือ"
+                >
+                  <Crown className="w-4 h-4 sm:w-5 sm:h-5" />
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="bg-black/95 border-amber-500/50 text-white max-w-md">
+                <DialogHeader>
+                  <DialogTitle className="text-amber-400 text-xl">
+                    🎰 เลือกเจ้ามือใหม่
+                  </DialogTitle>
+                </DialogHeader>
+                <div className="grid grid-cols-2 gap-3 mt-4">
+                  {players.map((player) => (
+                    <Button
+                      key={player.id}
+                      onClick={() => {
+                        onSetDealer(player.id);
+                        setShowDealerDialog(false);
+                        toast({
+                          title: "✅ เปลี่ยนเจ้ามือแล้ว",
+                          description: `${player.name} เป็นเจ้ามือคนใหม่`,
+                        });
+                      }}
+                      variant={player.is_dealer ? "default" : "outline"}
+                      className={`h-auto py-3 ${
+                        player.is_dealer
+                          ? "bg-amber-500 hover:bg-amber-600 text-black border-amber-400"
+                          : "border-white/30 text-white hover:bg-white/10"
+                      }`}
+                    >
+                      <div className="flex flex-col items-center gap-2 w-full">
+                        {player.avatar && (
+                          <img
+                            src={`${import.meta.env.BASE_URL}${
+                              player.avatar
+                            }.jpg`}
+                            alt={player.name}
+                            className="w-12 h-12 rounded-full object-cover border-2 border-white/40"
+                          />
+                        )}
+                        <span className="text-sm font-medium truncate max-w-full">
+                          {player.name}
+                        </span>
+                        {player.is_dealer && (
+                          <span className="text-xl">👑</span>
+                        )}
+                      </div>
+                    </Button>
+                  ))}
+                </div>
+              </DialogContent>
+            </Dialog>
+          )}
+
+          {/* ปุ่มแก้ไขกติกา */}
+          {(isHost || (isLiveMode && !currentPlayerId)) && (
+            <PokDengRuleEditor roomCode={room.code} isHost={true} />
+          )}
+
+          {/* ปุ่มรีเซ็ตเกม - สำหรับโหมด LIVE */}
+          {(isHost || (isLiveMode && !currentPlayerId)) &&
+            room.game_started && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={onNextRound}
+                className="text-green-400 hover:text-green-300 hover:bg-green-400/10 w-8 h-8 sm:w-10 sm:h-10"
+                title="รีเซ็ตเกม / เล่นรอบใหม่"
+              >
+                <RotateCcw className="w-4 h-4 sm:w-5 sm:h-5" />
+              </Button>
+            )}
+
           {(isHost || (isLiveMode && !currentPlayerId)) &&
             !room.game_started && (
               <Button
@@ -543,7 +642,7 @@ export function PokDengGameRoomMultiplayer({
           </div>
         ) : showLiveDisplay ? (
           /* ========== LIVE DISPLAY - จอใหญ่แสดงให้ทุกคนดู ========== */
-          <div className="flex flex-col items-center justify-start w-full h-full">
+          <div className="flex flex-col items-center justify-start w-full h-full overflow-y-auto">
             {/* Phase indicator - ใหญ่ขึ้น */}
             <div className="text-center mb-4 sm:mb-6">
               <span className="bg-amber-500/20 text-amber-400 px-6 sm:px-8 py-2 sm:py-3 rounded-full text-lg sm:text-xl md:text-2xl font-medium">
@@ -556,47 +655,150 @@ export function PokDengGameRoomMultiplayer({
               </span>
             </div>
 
-            {/* แสดงไพ่ทุกคน */}
-            <div className="w-full max-w-5xl px-4">
-              {/* เจ้ามือ */}
-              {dealer ? (
-                <div className="w-full max-w-xl mx-auto mb-6">
-                  <DisplayPlayerHand
-                    player={dealer}
-                    showCards={true}
-                    isCurrentTurn={isDealerTurn}
-                    isLarge={true}
-                  />
+            {/* Debug: แสดงจำนวน players */}
+            <div className="text-white text-sm mb-4 bg-black/50 p-3 rounded">
+              <div>ผู้เล่นทั้งหมด: {players.length} คน</div>
+              <div>เจ้ามือ: {dealer?.name || "ไม่มี"}</div>
+              <div>
+                พร้อม: {readyPlayersCount}/{totalPlayersCount}
+              </div>
+              {players.map((p) => (
+                <div key={p.id} className="text-xs">
+                  {p.name}: cards={p.cards?.length || 0} ไพ่
                 </div>
-              ) : (
-                <div className="text-center text-white/50 mb-4">
-                  ไม่มีเจ้ามือ
-                </div>
-              )}
+              ))}
+            </div>
 
-              {/* ผู้เล่นทั้งหมด */}
-              {nonDealerPlayers.length > 0 ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 w-full">
-                  {nonDealerPlayers.map((player, index) => (
-                    <DisplayPlayerHand
-                      key={player.id}
-                      player={player}
-                      showCards={true}
-                      isCurrentTurn={
-                        room.current_player_index === index &&
-                        room.game_phase === "drawing"
-                      }
-                      isLarge={true}
-                    />
-                  ))}
+            {/* แสดงไพ่และผลลัพธ์ทุกคน - แบบโดเรม่อน */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 w-full max-w-6xl px-4">
+              {players.length === 0 ? (
+                <div className="col-span-full text-white text-center text-xl bg-red-500/20 p-8 rounded">
+                  ⚠️ ไม่มีผู้เล่น - players.length = 0
                 </div>
               ) : (
-                <div className="text-center text-white/50">ไม่มีผู้เล่น</div>
+                players.map((player) => (
+                  <div
+                    key={player.id}
+                    className={`p-6 rounded-2xl border-2 ${
+                      player.is_dealer
+                        ? "bg-amber-500/20 border-amber-500"
+                        : "bg-white/5 border-white/20"
+                    }`}
+                  >
+                    {/* ชื่อผู้เล่น + Avatar */}
+                    <div className="flex items-center gap-3 mb-4">
+                      {player.avatar && (
+                        <img
+                          src={`${import.meta.env.BASE_URL}${
+                            player.avatar
+                          }.jpg`}
+                          alt={player.name}
+                          className="w-12 h-12 rounded-full object-cover border-2 border-white/40"
+                        />
+                      )}
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className="text-white font-bold text-lg">
+                            {player.is_dealer ? "👑 " : ""}
+                            {player.name}
+                          </span>
+                          {player.is_dealer && (
+                            <span className="text-xs bg-amber-500 text-black px-2 py-0.5 rounded-full">
+                              เจ้ามือ
+                            </span>
+                          )}
+                        </div>
+                        {/* คะแนน */}
+                        <div className="text-2xl font-bold text-amber-400">
+                          {player.points || 0} แต้ม
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* ไพ่ - แสดงตลอดเวลา */}
+                    <div className="flex gap-2 justify-center mb-4 min-h-[100px]">
+                      {player.cards && player.cards.length > 0 ? (
+                        player.cards.map((card, i) => (
+                          <div
+                            key={i}
+                            className="w-16 h-24 rounded-lg bg-white border-2 border-gray-200 shadow-lg flex flex-col items-center justify-center"
+                          >
+                            <span
+                              className={`text-xl font-bold ${
+                                card.suit === "hearts" ||
+                                card.suit === "diamonds"
+                                  ? "text-red-500"
+                                  : "text-black"
+                              }`}
+                            >
+                              {card.value}
+                            </span>
+                            <span className="text-2xl">
+                              {card.suit === "hearts" && "♥"}
+                              {card.suit === "diamonds" && "♦"}
+                              {card.suit === "clubs" && "♣"}
+                              {card.suit === "spades" && "♠"}
+                            </span>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="text-white bg-red-500/30 p-4 rounded text-sm">
+                          ⚠️ player.cards = {JSON.stringify(player.cards)}
+                          <br />
+                          length = {player.cards?.length || 0}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* ผลลัพธ์ */}
+                    <div className="text-center">
+                      {player.result && room.game_phase === "ended" ? (
+                        <div
+                          className={`inline-block px-4 py-2 rounded-full text-lg font-bold ${
+                            player.result === "player_win"
+                              ? "bg-green-500 text-white"
+                              : "bg-red-500 text-white"
+                          }`}
+                        >
+                          {player.result === "player_win"
+                            ? "🎉 ชนะ!"
+                            : "😢 แพ้"}
+                          {player.multiplier &&
+                            player.multiplier > 1 &&
+                            ` x${player.multiplier}`}
+                        </div>
+                      ) : !player.has_drawn ? (
+                        <span className="text-sm text-yellow-300 animate-pulse">
+                          ⏳ รอเลือก...
+                        </span>
+                      ) : (
+                        <span className="text-sm text-green-300">
+                          ✓ พร้อมแล้ว
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                ))
               )}
             </div>
 
             {/* Host controls on LIVE display - แค่เปิดไพ่และเล่นรอบต่อไป */}
             <div className="flex flex-col items-center gap-3 py-4 sm:py-6 mt-4">
+              {/* ปุ่มเปลี่ยนเจ้ามือใน LIVE */}
+              {(isHost || (isLiveMode && !currentPlayerId)) &&
+                onSetDealer &&
+                room.game_phase !== "ended" && (
+                  <Button
+                    onClick={() => setShowDealerDialog(true)}
+                    variant="outline"
+                    size="sm"
+                    className="border-amber-500/50 text-amber-400 hover:bg-amber-500/20 hover:text-amber-300"
+                  >
+                    <Crown className="w-4 h-4 mr-2" />
+                    เปลี่ยนเจ้ามือ
+                  </Button>
+                )}
+
               {/* แสดงสถานะ realtime */}
               {room.game_phase === "showdown" && (
                 <div className="bg-blue-500/20 border border-blue-500/50 rounded-xl px-6 py-4 mb-2">
@@ -660,14 +862,227 @@ export function PokDengGameRoomMultiplayer({
               )}
 
               {room.game_phase === "ended" && (
-                <Button
-                  onClick={onNextRound}
-                  size="lg"
-                  className="bg-green-500 hover:bg-green-600 text-white font-bold text-lg px-8"
-                >
-                  <RotateCcw className="w-5 h-5 mr-2" />
-                  เล่นรอบต่อไป
-                </Button>
+                <>
+                  {/* ตารางสรุปผลการแข่งขัน */}
+                  <div className="w-full max-w-4xl bg-black/60 backdrop-blur-md rounded-2xl border-2 border-amber-500/50 p-6 mb-6">
+                    <h2 className="text-center text-2xl sm:text-3xl font-bold text-amber-400 mb-6">
+                      🏆 สรุปผลการแข่งขัน
+                    </h2>
+
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-white">
+                        <thead>
+                          <tr className="border-b-2 border-white/20">
+                            <th className="text-left py-3 px-4 font-bold text-amber-300">
+                              อันดับ
+                            </th>
+                            <th className="text-left py-3 px-4 font-bold text-amber-300">
+                              ผู้เล่น
+                            </th>
+                            <th className="text-center py-3 px-4 font-bold text-amber-300">
+                              คะแนน
+                            </th>
+                            <th className="text-center py-3 px-4 font-bold text-amber-300">
+                              ไพ่
+                            </th>
+                            <th className="text-center py-3 px-4 font-bold text-amber-300">
+                              ผลลัพธ์
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {players
+                            .sort((a, b) => {
+                              // เรียงตามผลลัพธ์: ชนะ > แพ้
+                              if (
+                                a.result === "player_win" &&
+                                b.result !== "player_win"
+                              )
+                                return -1;
+                              if (
+                                a.result !== "player_win" &&
+                                b.result === "player_win"
+                              )
+                                return 1;
+                              // ถ้าผลเท่ากัน เรียงตามคะแนน
+                              return (b.points || 0) - (a.points || 0);
+                            })
+                            .map((player, index) => (
+                              <tr
+                                key={player.id}
+                                className={`border-b border-white/10 transition-all hover:bg-white/5 ${
+                                  player.result === "player_win"
+                                    ? "bg-green-500/10"
+                                    : "bg-red-500/5"
+                                }`}
+                              >
+                                {/* อันดับ */}
+                                <td className="py-4 px-4 text-center">
+                                  <span
+                                    className={`text-2xl font-bold ${
+                                      index === 0 &&
+                                      player.result === "player_win"
+                                        ? "text-amber-400"
+                                        : "text-white/60"
+                                    }`}
+                                  >
+                                    {index === 0 &&
+                                    player.result === "player_win"
+                                      ? "👑"
+                                      : index + 1}
+                                  </span>
+                                </td>
+
+                                {/* ชื่อผู้เล่น + Avatar */}
+                                <td className="py-4 px-4">
+                                  <div className="flex items-center gap-3">
+                                    {player.avatar && (
+                                      <img
+                                        src={`${import.meta.env.BASE_URL}${
+                                          player.avatar
+                                        }.jpg`}
+                                        alt={player.name}
+                                        className="w-10 h-10 rounded-full object-cover border-2 border-white/30"
+                                      />
+                                    )}
+                                    <div>
+                                      <div className="font-bold text-base sm:text-lg flex items-center gap-2">
+                                        {player.name}
+                                        {player.is_dealer && (
+                                          <span className="text-xs bg-amber-500 text-black px-2 py-0.5 rounded-full">
+                                            เจ้ามือ
+                                          </span>
+                                        )}
+                                      </div>
+                                    </div>
+                                  </div>
+                                </td>
+
+                                {/* คะแนน */}
+                                <td className="py-4 px-4 text-center">
+                                  <span className="text-2xl sm:text-3xl font-bold text-amber-400">
+                                    {player.points || 0}
+                                  </span>
+                                  <span className="text-white/50 text-sm ml-1">
+                                    แต้ม
+                                  </span>
+                                </td>
+
+                                {/* ไพ่ */}
+                                <td className="py-4 px-4">
+                                  <div className="flex gap-1 justify-center">
+                                    {player.cards && player.cards.length > 0 ? (
+                                      player.cards.map((card, i) => (
+                                        <div
+                                          key={i}
+                                          className="w-8 h-12 sm:w-10 sm:h-14 rounded bg-white border border-gray-200 flex flex-col items-center justify-center text-xs"
+                                        >
+                                          <span
+                                            className={`font-bold ${
+                                              card.suit === "hearts" ||
+                                              card.suit === "diamonds"
+                                                ? "text-red-500"
+                                                : "text-black"
+                                            }`}
+                                          >
+                                            {card.value}
+                                          </span>
+                                          <span className="text-sm">
+                                            {card.suit === "hearts" && "♥"}
+                                            {card.suit === "diamonds" && "♦"}
+                                            {card.suit === "clubs" && "♣"}
+                                            {card.suit === "spades" && "♠"}
+                                          </span>
+                                        </div>
+                                      ))
+                                    ) : (
+                                      <span className="text-white/30 text-xs">
+                                        -
+                                      </span>
+                                    )}
+                                  </div>
+                                </td>
+
+                                {/* ผลลัพธ์ */}
+                                <td className="py-4 px-4 text-center">
+                                  {player.result === "player_win" ? (
+                                    <div className="flex flex-col items-center gap-1">
+                                      <span className="text-2xl">🎉</span>
+                                      <span className="text-green-400 font-bold text-sm sm:text-base">
+                                        ชนะ!
+                                      </span>
+                                      {player.multiplier &&
+                                        player.multiplier > 1 && (
+                                          <span className="text-xs text-green-300 bg-green-500/20 px-2 py-0.5 rounded">
+                                            x{player.multiplier}
+                                          </span>
+                                        )}
+                                    </div>
+                                  ) : (
+                                    <div className="flex flex-col items-center gap-1">
+                                      <span className="text-2xl">😢</span>
+                                      <span className="text-red-400 font-bold text-sm sm:text-base">
+                                        แพ้
+                                      </span>
+                                    </div>
+                                  )}
+                                </td>
+                              </tr>
+                            ))}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    {/* สถิติเพิ่มเติม */}
+                    <div className="mt-6 pt-4 border-t border-white/20 grid grid-cols-2 sm:grid-cols-4 gap-4">
+                      <div className="text-center">
+                        <div className="text-3xl mb-1">🎯</div>
+                        <div className="text-white/50 text-xs">ผู้ชนะ</div>
+                        <div className="text-green-400 font-bold text-lg">
+                          {
+                            players.filter((p) => p.result === "player_win")
+                              .length
+                          }
+                        </div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-3xl mb-1">💔</div>
+                        <div className="text-white/50 text-xs">ผู้แพ้</div>
+                        <div className="text-red-400 font-bold text-lg">
+                          {
+                            players.filter((p) => p.result !== "player_win")
+                              .length
+                          }
+                        </div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-3xl mb-1">⭐</div>
+                        <div className="text-white/50 text-xs">คะแนนสูงสุด</div>
+                        <div className="text-amber-400 font-bold text-lg">
+                          {Math.max(...players.map((p) => p.points || 0))}
+                        </div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-3xl mb-1">👥</div>
+                        <div className="text-white/50 text-xs">
+                          ผู้เล่นทั้งหมด
+                        </div>
+                        <div className="text-white font-bold text-lg">
+                          {players.length}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <Button
+                    onClick={onNextRound}
+                    size="lg"
+                    className="bg-green-500 hover:bg-green-600 text-white font-bold text-lg px-8"
+                  >
+                    <RotateCcw className="w-5 h-5 mr-2" />
+                    เล่นรอบต่อไป
+                  </Button>
+                </>
               )}
             </div>
 
@@ -842,6 +1257,208 @@ export function PokDengGameRoomMultiplayer({
                 </div>
               )}
 
+            {/* ตารางสรุปผลเมื่อจบรอบ - แสดงในมือถือทุกคน */}
+            {room.game_phase === "ended" && (
+              <div className="w-full max-w-4xl bg-black/60 backdrop-blur-md rounded-2xl border-2 border-amber-500/50 p-4 sm:p-6 mb-4 overflow-y-auto max-h-[60vh]">
+                <h2 className="text-center text-xl sm:text-2xl font-bold text-amber-400 mb-4">
+                  🏆 สรุปผลการแข่งขัน
+                </h2>
+
+                <div className="overflow-x-auto">
+                  <table className="w-full text-white text-sm">
+                    <thead>
+                      <tr className="border-b-2 border-white/20">
+                        <th className="text-left py-2 px-2 font-bold text-amber-300 text-xs">
+                          #
+                        </th>
+                        <th className="text-left py-2 px-2 font-bold text-amber-300 text-xs">
+                          ผู้เล่น
+                        </th>
+                        <th className="text-center py-2 px-2 font-bold text-amber-300 text-xs">
+                          แต้ม
+                        </th>
+                        <th className="text-center py-2 px-2 font-bold text-amber-300 text-xs">
+                          ไพ่
+                        </th>
+                        <th className="text-center py-2 px-2 font-bold text-amber-300 text-xs">
+                          ผล
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {players
+                        .sort((a, b) => {
+                          if (
+                            a.result === "player_win" &&
+                            b.result !== "player_win"
+                          )
+                            return -1;
+                          if (
+                            a.result !== "player_win" &&
+                            b.result === "player_win"
+                          )
+                            return 1;
+                          return (b.points || 0) - (a.points || 0);
+                        })
+                        .map((player, index) => (
+                          <tr
+                            key={player.id}
+                            className={`border-b border-white/10 ${
+                              player.result === "player_win"
+                                ? "bg-green-500/10"
+                                : "bg-red-500/5"
+                            } ${
+                              player.id === currentPlayerId
+                                ? "ring-2 ring-amber-500"
+                                : ""
+                            }`}
+                          >
+                            <td className="py-3 px-2 text-center">
+                              <span
+                                className={`text-lg font-bold ${
+                                  index === 0 && player.result === "player_win"
+                                    ? "text-amber-400"
+                                    : "text-white/60"
+                                }`}
+                              >
+                                {index === 0 && player.result === "player_win"
+                                  ? "👑"
+                                  : index + 1}
+                              </span>
+                            </td>
+
+                            <td className="py-3 px-2">
+                              <div className="flex items-center gap-2">
+                                {player.avatar && (
+                                  <img
+                                    src={`${import.meta.env.BASE_URL}${
+                                      player.avatar
+                                    }.jpg`}
+                                    alt={player.name}
+                                    className="w-8 h-8 rounded-full object-cover border-2 border-white/30"
+                                  />
+                                )}
+                                <div className="flex flex-col">
+                                  <span className="font-bold text-sm">
+                                    {player.name}
+                                    {player.id === currentPlayerId && (
+                                      <span className="text-amber-400 ml-1">
+                                        (คุณ)
+                                      </span>
+                                    )}
+                                  </span>
+                                  {player.is_dealer && (
+                                    <span className="text-[10px] bg-amber-500 text-black px-1 rounded w-fit">
+                                      เจ้ามือ
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            </td>
+
+                            <td className="py-3 px-2 text-center">
+                              <span className="text-xl font-bold text-amber-400">
+                                {player.points || 0}
+                              </span>
+                            </td>
+
+                            <td className="py-3 px-2">
+                              <div className="flex gap-1 justify-center">
+                                {player.cards && player.cards.length > 0 ? (
+                                  player.cards.map((card, i) => (
+                                    <div
+                                      key={i}
+                                      className="w-6 h-9 rounded bg-white border border-gray-200 flex flex-col items-center justify-center"
+                                    >
+                                      <span
+                                        className={`text-[10px] font-bold ${
+                                          card.suit === "hearts" ||
+                                          card.suit === "diamonds"
+                                            ? "text-red-500"
+                                            : "text-black"
+                                        }`}
+                                      >
+                                        {card.value}
+                                      </span>
+                                      <span className="text-xs">
+                                        {card.suit === "hearts" && "♥"}
+                                        {card.suit === "diamonds" && "♦"}
+                                        {card.suit === "clubs" && "♣"}
+                                        {card.suit === "spades" && "♠"}
+                                      </span>
+                                    </div>
+                                  ))
+                                ) : (
+                                  <span className="text-white/30 text-xs">
+                                    -
+                                  </span>
+                                )}
+                              </div>
+                            </td>
+
+                            <td className="py-3 px-2 text-center">
+                              {player.result === "player_win" ? (
+                                <div className="flex flex-col items-center">
+                                  <span className="text-xl">🎉</span>
+                                  <span className="text-green-400 font-bold text-xs">
+                                    ชนะ
+                                  </span>
+                                  {player.multiplier &&
+                                    player.multiplier > 1 && (
+                                      <span className="text-[10px] text-green-300 bg-green-500/20 px-1 rounded">
+                                        x{player.multiplier}
+                                      </span>
+                                    )}
+                                </div>
+                              ) : (
+                                <div className="flex flex-col items-center">
+                                  <span className="text-xl">😢</span>
+                                  <span className="text-red-400 font-bold text-xs">
+                                    แพ้
+                                  </span>
+                                </div>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* สถิติเพิ่มเติม */}
+                <div className="mt-4 pt-4 border-t border-white/20 grid grid-cols-4 gap-2">
+                  <div className="text-center">
+                    <div className="text-2xl mb-1">🎯</div>
+                    <div className="text-white/50 text-[10px]">ชนะ</div>
+                    <div className="text-green-400 font-bold text-sm">
+                      {players.filter((p) => p.result === "player_win").length}
+                    </div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-2xl mb-1">💔</div>
+                    <div className="text-white/50 text-[10px]">แพ้</div>
+                    <div className="text-red-400 font-bold text-sm">
+                      {players.filter((p) => p.result !== "player_win").length}
+                    </div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-2xl mb-1">⭐</div>
+                    <div className="text-white/50 text-[10px]">แต้มสูงสุด</div>
+                    <div className="text-amber-400 font-bold text-sm">
+                      {Math.max(...players.map((p) => p.points || 0))}
+                    </div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-2xl mb-1">👥</div>
+                    <div className="text-white/50 text-[10px]">ผู้เล่น</div>
+                    <div className="text-white font-bold text-sm">
+                      {players.length}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Host controls (when not in LIVE mode, host controls from phone) */}
             {(isHost || (isLiveMode && !currentPlayerId)) && !isLiveMode && (
               <div className="flex justify-center gap-3 py-4">
@@ -860,9 +1477,10 @@ export function PokDengGameRoomMultiplayer({
                 {room.game_phase === "ended" && (
                   <Button
                     onClick={onNextRound}
-                    className="bg-green-500 hover:bg-green-600 text-white font-bold"
+                    size="lg"
+                    className="bg-green-500 hover:bg-green-600 text-white font-bold px-8 py-6"
                   >
-                    <RotateCcw className="w-4 h-4 mr-2" />
+                    <RotateCcw className="w-5 h-5 mr-2" />
                     เล่นรอบต่อไป
                   </Button>
                 )}

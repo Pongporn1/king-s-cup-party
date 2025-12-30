@@ -141,11 +141,23 @@ export function usePokDengRoom() {
         (payload) => {
           if (payload.eventType === "INSERT") {
             const newPlayer = payload.new as any;
+            // Parse cards - อาจเป็น JSON string หรือ array
+            let parsedCards: PokDengCard[] = [];
+            try {
+              if (typeof newPlayer.cards === "string") {
+                parsedCards = JSON.parse(newPlayer.cards);
+              } else if (Array.isArray(newPlayer.cards)) {
+                parsedCards = newPlayer.cards;
+              }
+            } catch (e) {
+              console.error("Error parsing cards:", e);
+            }
+
             setPlayers((prev) => [
               ...prev,
               {
                 ...newPlayer,
-                cards: (newPlayer.cards || []) as PokDengCard[],
+                cards: parsedCards,
               } as PokDengPlayer,
             ]);
             // แจ้งเมื่อผู้เล่นเข้ามาใหม่
@@ -170,12 +182,24 @@ export function usePokDengRoom() {
             });
           } else if (payload.eventType === "UPDATE") {
             const updatedPlayer = payload.new as any;
+            // Parse cards - อาจเป็น JSON string หรือ array
+            let parsedCards: PokDengCard[] = [];
+            try {
+              if (typeof updatedPlayer.cards === "string") {
+                parsedCards = JSON.parse(updatedPlayer.cards);
+              } else if (Array.isArray(updatedPlayer.cards)) {
+                parsedCards = updatedPlayer.cards;
+              }
+            } catch (e) {
+              console.error("Error parsing cards:", e);
+            }
+
             setPlayers((prev) =>
               prev.map((p) =>
                 p.id === updatedPlayer.id
                   ? ({
                       ...updatedPlayer,
-                      cards: (updatedPlayer.cards || []) as PokDengCard[],
+                      cards: parsedCards,
                     } as PokDengPlayer)
                   : p
               )
@@ -334,12 +358,28 @@ export function usePokDengRoom() {
           game_phase: (roomData.game_phase as any) || "waiting",
           current_player_index: roomData.current_player_index || 0,
         });
-        setPlayers(
-          [...(existingPlayers || []), playerData].map((p: any) => ({
-            ...p,
-            cards: (p.cards || []) as PokDengCard[],
-          })) as PokDengPlayer[]
-        );
+
+        // Parse cards อย่างถูกต้อง
+        const parsePlayers = (playersList: any[]): PokDengPlayer[] => {
+          return playersList.map((p: any) => {
+            let parsedCards: PokDengCard[] = [];
+            try {
+              if (typeof p.cards === "string") {
+                parsedCards = JSON.parse(p.cards);
+              } else if (Array.isArray(p.cards)) {
+                parsedCards = p.cards;
+              }
+            } catch (e) {
+              console.error("Error parsing cards for player:", p.name, e);
+            }
+            return {
+              ...p,
+              cards: parsedCards,
+            } as PokDengPlayer;
+          });
+        };
+
+        setPlayers(parsePlayers([...(existingPlayers || []), playerData]));
         setCurrentPlayerId(playerData.id);
 
         toast({

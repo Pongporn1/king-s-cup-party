@@ -1,16 +1,18 @@
 import { useState } from "react";
 import { useGameRoom } from "@/hooks/useGameRoom";
 import { usePokDengRoom } from "@/hooks/usePokDengRoom";
+import { useUndercoverRoom } from "@/hooks/useUndercoverRoom";
 import { Lobby } from "@/components/Lobby";
 import { GameRoom } from "@/components/GameRoom";
 import { PokDengLobby } from "@/components/PokDengLobby";
 import { PokDengGameRoomMultiplayer } from "@/components/PokDengGameRoomMultiplayer";
+import { UndercoverLobby } from "@/components/UndercoverLobby";
 import { Button } from "@/components/ui/button";
 import { FloatingNames } from "@/components/AdminPanel";
 import { getFloatingNamesFromDB } from "@/lib/adminStorage";
 import { useEffect } from "react";
 
-type GameMode = "select" | "doraemon" | "pokdeng";
+type GameMode = "select" | "doraemon" | "pokdeng" | "undercover";
 
 const Index = () => {
   const [gameMode, setGameMode] = useState<GameMode>("select");
@@ -51,6 +53,17 @@ const Index = () => {
     quickStart: pokDengQuickStart,
     setDealer: pokDengSetDealer,
   } = usePokDengRoom();
+
+  // Undercover game hook
+  const {
+    room: undercoverRoom,
+    players: undercoverPlayers,
+    currentPlayerId: undercoverCurrentPlayerId,
+    isLoading: undercoverIsLoading,
+    createRoom: undercoverCreateRoom,
+    joinRoom: undercoverJoinRoom,
+    leaveRoom: undercoverLeaveRoom,
+  } = useUndercoverRoom();
 
   const currentPlayer = players.find((p) => p.id === currentPlayerId);
   const isHost = currentPlayer?.is_host ?? false;
@@ -134,6 +147,24 @@ const Index = () => {
                 </div>
               </div>
             </Button>
+
+            {/* Undercover */}
+            <Button
+              variant="default"
+              size="lg"
+              onClick={() => setGameMode("undercover")}
+              className="w-full bg-gradient-to-r from-purple-500 to-pink-600 text-white hover:from-purple-600 hover:to-pink-700 h-auto py-4"
+            >
+              <div className="flex items-center gap-3 w-full">
+                <span className="text-3xl"></span>
+                <div className="text-left flex-1">
+                  <div className="font-bold text-lg">Undercover</div>
+                  <div className="text-xs text-white/70">
+                    จับมือปราบ - สายสืบ
+                  </div>
+                </div>
+              </div>
+            </Button>
           </div>
         </div>
 
@@ -185,6 +216,45 @@ const Index = () => {
         }}
         onSetDealer={pokDengSetDealer}
       />
+    );
+  }
+
+  // Undercover
+  if (gameMode === "undercover") {
+    // ยังไม่ได้เข้าห้อง - แสดง Lobby
+    if (!undercoverRoom) {
+      return (
+        <UndercoverLobby
+          onCreateRoom={undercoverCreateRoom}
+          onJoinRoom={undercoverJoinRoom}
+          onBack={() => setGameMode("select")}
+          isLoading={undercoverIsLoading}
+        />
+      );
+    }
+
+    // เข้าห้องแล้ว - แสดง Game (ยังไม่มี component)
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-purple-900 to-black text-white">
+        <div className="text-center p-8">
+          <h1 className="text-4xl font-bold mb-4">🕵️ Undercover</h1>
+          <p className="mb-4 text-xl">Room: {undercoverRoom.code}</p>
+          <p className="mb-4">Players: {undercoverPlayers.length}</p>
+          <Button
+            onClick={() => {
+              undercoverLeaveRoom();
+              setGameMode("select");
+            }}
+            variant="outline"
+            className="mt-4"
+          >
+            ออกจากห้อง
+          </Button>
+          <p className="mt-8 text-sm text-white/60">
+            🚧 Game component coming soon...
+          </p>
+        </div>
+      </div>
     );
   }
 

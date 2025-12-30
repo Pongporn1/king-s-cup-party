@@ -209,7 +209,27 @@ export function compareHands(
   const playerSpecial = getSpecialHand(playerCards);
   const dealerSpecial = getSpecialHand(dealerCards);
 
-  // ถ้าทั้งคู่มีป๊อก
+  // ⭐ CRITICAL: ป๊อกชนะเสมอ! (ป๊อก 8 หรือ 9 ต้องชนะไพ่ธรรมดาทุกกรณี)
+
+  // ผู้เล่นมีป๊อก แต่เจ้ามือไม่มี -> ผู้เล่นชนะ 100%
+  if (playerPok.isPok && !dealerPok.isPok) {
+    return {
+      result: "player_win",
+      playerMultiplier: playerSpecial.multiplier,
+      dealerMultiplier: 1,
+    };
+  }
+
+  // เจ้ามือมีป๊อก แต่ผู้เล่นไม่มี -> เจ้ามือชนะ 100%
+  if (!playerPok.isPok && dealerPok.isPok) {
+    return {
+      result: "dealer_win",
+      playerMultiplier: 1,
+      dealerMultiplier: dealerSpecial.multiplier,
+    };
+  }
+
+  // ถ้าทั้งคู่มีป๊อก -> เทียบค่าป๊อก (9 > 8)
   if (playerPok.isPok && dealerPok.isPok) {
     if (playerPok.pokValue! > dealerPok.pokValue!) {
       return {
@@ -227,24 +247,6 @@ export function compareHands(
     }
     // ป๊อกเท่ากัน = เจ้ามือชนะ
     return { result: "dealer_win", playerMultiplier: 1, dealerMultiplier: 1 };
-  }
-
-  // ผู้เล่นมีป๊อก แต่เจ้ามือไม่มี
-  if (playerPok.isPok && !dealerPok.isPok) {
-    return {
-      result: "player_win",
-      playerMultiplier: playerSpecial.multiplier,
-      dealerMultiplier: 1,
-    };
-  }
-
-  // เจ้ามือมีป๊อก แต่ผู้เล่นไม่มี
-  if (!playerPok.isPok && dealerPok.isPok) {
-    return {
-      result: "dealer_win",
-      playerMultiplier: 1,
-      dealerMultiplier: dealerSpecial.multiplier,
-    };
   }
 
   // ไม่มีใครป๊อก - เทียบแต้ม
