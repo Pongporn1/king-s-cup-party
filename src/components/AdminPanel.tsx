@@ -18,6 +18,41 @@ import {
   clearAllFloatingNames,
 } from "@/lib/adminStorage";
 import { GameCoverEditor } from "./GameCoverEditor";
+import { t } from "@/lib/i18n";
+
+// Default games list - จะใช้เมื่อไม่ได้รับ games prop
+const DEFAULT_GAMES = [
+  {
+    id: "doraemon",
+    emoji: "🎴",
+    name: "King's Cup",
+    gradient: "from-red-500 to-orange-500",
+  },
+  {
+    id: "pokdeng",
+    emoji: "🃏",
+    name: "Pok Deng",
+    gradient: "from-emerald-500 to-green-600",
+  },
+  {
+    id: "undercover",
+    emoji: "🕵️",
+    name: "Undercover",
+    gradient: "from-purple-600 to-indigo-600",
+  },
+  {
+    id: "paranoia",
+    emoji: "🤫",
+    name: "Paranoia",
+    gradient: "from-pink-500 to-rose-600",
+  },
+  {
+    id: "5-sec",
+    emoji: "⏱️",
+    name: "5 Second Rule",
+    gradient: "from-yellow-400 to-orange-500",
+  },
+];
 
 interface AdminPanelProps {
   onClose: () => void;
@@ -32,9 +67,11 @@ interface AdminPanelProps {
 
 export function AdminPanel({
   onClose,
-  games = [],
+  games,
   onCoversUpdate,
 }: AdminPanelProps) {
+  // Use provided games or fallback to default
+  const gamesList = games && games.length > 0 ? games : DEFAULT_GAMES;
   const [names, setNames] = useState<string[]>([]);
   const [newName, setNewName] = useState("");
   const [isLoading, setIsLoading] = useState(true);
@@ -78,10 +115,10 @@ export function AdminPanel({
     await clearAllFloatingNames();
   };
 
-  if (showCoverEditor && games.length > 0) {
+  if (showCoverEditor && gamesList.length > 0) {
     return (
       <GameCoverEditor
-        games={games}
+        games={gamesList}
         onClose={() => setShowCoverEditor(false)}
         onCoversUpdate={() => {
           setShowCoverEditor(false);
@@ -245,14 +282,14 @@ export function AdminPanel({
 
             <Button
               onClick={() => setShowCoverEditor(true)}
-              disabled={games.length === 0}
+              disabled={gamesList.length === 0}
               className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-6 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <ImageIcon className="w-5 h-5 mr-2" />
               เปิดตัวแก้ไขปกเกม
             </Button>
 
-            {games.length === 0 && (
+            {gamesList.length === 0 && (
               <div className="bg-yellow-500/20 border border-yellow-500/30 rounded-lg p-4 text-center">
                 <p className="text-yellow-300 text-sm">
                   ⚠️ ไม่พบข้อมูลเกม กรุณาเปิด Admin Panel จากหน้าเลือกเกม

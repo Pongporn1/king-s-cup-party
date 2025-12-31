@@ -39,7 +39,7 @@ type GameMode =
   | "pokdeng"
   | "undercover"
   | "paranoia"
-  | "fivesec";
+  | "5-sec";
 
 const Index = () => {
   const [gameMode, setGameMode] = useState<GameMode>("select");
@@ -146,25 +146,10 @@ const Index = () => {
   );
   const isPokDengHost = pokDengCurrentPlayer?.is_host ?? false;
 
-  // Load floating names and game covers
-  useEffect(() => {
-    const loadNames = async () => {
-      const names = await getFloatingNamesFromDB();
-      setFloatingNames(names);
-    };
-
-    const loadCovers = async () => {
-      const covers = await getGameCovers();
-      setGameCovers(covers);
-    };
-
-    loadNames();
-    loadCovers();
-  }, [gameMode, showAdminPanel]);
-
   // หน้าเลือกเกม - Nintendo Switch Style with Framer Motion
   const [selectedGameIndex, setSelectedGameIndex] = useState(0);
 
+  // Games array - Define at component level so it's accessible everywhere
   const games = useMemo(
     () => [
       {
@@ -200,7 +185,7 @@ const Index = () => {
         bgColor: "#ec4899",
       },
       {
-        id: "fivesec",
+        id: "5-sec",
         emoji: "⏱️",
         name: "5 Second Rule",
         desc: "ตอบคำถาม 5 วินาที - สายเร็ว",
@@ -208,6 +193,7 @@ const Index = () => {
         bgColor: "#f59e0b",
       },
     ],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     []
   );
 
@@ -219,6 +205,22 @@ const Index = () => {
   const prevGame = useCallback(() => {
     setSelectedGameIndex((prev) => (prev - 1 + games.length) % games.length);
   }, [games.length]);
+
+  // Load floating names and game covers
+  useEffect(() => {
+    const loadNames = async () => {
+      const names = await getFloatingNamesFromDB();
+      setFloatingNames(names);
+    };
+
+    const loadCovers = async () => {
+      const covers = await getGameCovers();
+      setGameCovers(covers);
+    };
+
+    loadNames();
+    loadCovers();
+  }, [gameMode, showAdminPanel]);
 
   // Keyboard Navigation (Arrow keys like Nintendo Switch)
   useEffect(() => {
@@ -613,7 +615,7 @@ const Index = () => {
   }
 
   // 5 Second Rule
-  if (gameMode === "fivesec") {
+  if (gameMode === "5-sec") {
     if (!fiveSecRoom) {
       return (
         <FiveSecLobby
