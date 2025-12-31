@@ -18,6 +18,7 @@ export interface FiveSecState {
   topic: string;
   end_time: string; // ISO timestamp
   votes: { [playerId: string]: boolean }; // true = pass, false = drink
+  timeLimit?: number; // Time limit in seconds (default 5)
 }
 
 // Question types from database

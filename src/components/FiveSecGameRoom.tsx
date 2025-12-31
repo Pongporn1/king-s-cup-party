@@ -81,9 +81,9 @@ export function FiveSecGameRoom({
               <div className="text-5xl mb-4">⏱️</div>
               <h2 className="text-2xl font-bold text-white">5 Second Rule</h2>
               <p className="text-white/70">รอผู้เล่นเข้าร่วม...</p>
-              {room.game_state?.timeLimit && (
+              {(gameState as any)?.timeLimit && (
                 <p className="text-yellow-400 text-sm mt-2">
-                  ⏱️ เวลาตอบคำถาม: {room.game_state.timeLimit} วินาที
+                  ⏱️ เวลาตอบคำถาม: {(gameState as any).timeLimit} วินาที
                 </p>
               )}
             </div>
