@@ -50,19 +50,55 @@ export type Database = {
         }
         Relationships: []
       }
+      game_covers: {
+        Row: {
+          cover_url: string | null
+          created_at: string
+          emoji: string | null
+          gradient: string | null
+          id: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          cover_url?: string | null
+          created_at?: string
+          emoji?: string | null
+          gradient?: string | null
+          id: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          cover_url?: string | null
+          created_at?: string
+          emoji?: string | null
+          gradient?: string | null
+          id?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       paranoia_questions: {
         Row: {
+          created_at: string | null
           id: number
+          is_default: boolean | null
           level: string | null
           question: string
         }
         Insert: {
+          created_at?: string | null
           id?: never
+          is_default?: boolean | null
           level?: string | null
           question: string
         }
         Update: {
+          created_at?: string | null
           id?: never
+          is_default?: boolean | null
           level?: string | null
           question?: string
         }

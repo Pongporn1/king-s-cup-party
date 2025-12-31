@@ -125,7 +125,7 @@ function getLocalGameCovers(): Record<string, string> {
 export async function getGameCovers(): Promise<Record<string, string>> {
   try {
     const { data, error } = await supabase
-      .from("game_covers")
+      .from("game_covers" as any)
       .select("id, cover_url")
       .not("cover_url", "is", null);
 
@@ -135,7 +135,7 @@ export async function getGameCovers(): Promise<Record<string, string>> {
     }
 
     const covers: Record<string, string> = {};
-    data?.forEach((item: { id: string; cover_url: string }) => {
+    (data as any[])?.forEach((item: { id: string; cover_url: string }) => {
       covers[item.id] = item.cover_url;
     });
     return covers;
@@ -155,7 +155,7 @@ export async function saveGameCover(
 ): Promise<boolean> {
   try {
     const { error } = await supabase
-      .from("game_covers")
+      .from("game_covers" as any)
       .update({
         cover_url: imageUrl,
         updated_at: new Date().toISOString(),
@@ -183,7 +183,7 @@ export async function saveGameCover(
 export async function removeGameCover(gameId: string): Promise<boolean> {
   try {
     const { error } = await supabase
-      .from("game_covers")
+      .from("game_covers" as any)
       .update({
         cover_url: null,
         updated_at: new Date().toISOString(),
@@ -204,7 +204,7 @@ export async function removeGameCover(gameId: string): Promise<boolean> {
 export async function clearAllGameCovers(): Promise<boolean> {
   try {
     const { error } = await supabase
-      .from("game_covers")
+      .from("game_covers" as any)
       .update({
         cover_url: null,
         updated_at: new Date().toISOString(),
