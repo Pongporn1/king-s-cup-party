@@ -150,6 +150,18 @@ const Index = () => {
   // หน้าเลือกเกม - Nintendo Switch Style with Framer Motion
   const [selectedGameIndex, setSelectedGameIndex] = useState(0);
 
+  // Get current room info for friend invites
+  const getCurrentRoomInfo = () => {
+    if (room) return { code: room.code, type: 'kingscup', name: t("kingsCup") };
+    if (pokDengRoom) return { code: pokDengRoom.code, type: 'pokdeng', name: t("pokDeng") };
+    if (undercoverRoom) return { code: undercoverRoom.code, type: 'undercover', name: t("undercoverTitle") };
+    if (paranoiaRoom) return { code: paranoiaRoom.code, type: 'paranoia', name: 'Paranoia' };
+    if (fiveSecRoom) return { code: fiveSecRoom.code, type: '5-sec', name: '5 Second Rule' };
+    return null;
+  };
+  
+  const currentRoomInfo = getCurrentRoomInfo();
+
   // Games array - Define at component level so it's accessible everywhere
   const games = useMemo(
     () => [
@@ -268,7 +280,11 @@ const Index = () => {
             <span className="text-xl font-bold">Party Games</span>
           </div>
           <div className="flex items-center gap-3">
-            <LoginButton />
+            <LoginButton 
+              currentRoomCode={currentRoomInfo?.code}
+              currentGameType={currentRoomInfo?.type}
+              currentGameName={currentRoomInfo?.name}
+            />
             <LanguageSwitcher />
             <ThemeSwitcher />
             <span className="text-zinc-400 text-sm">

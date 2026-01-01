@@ -14,31 +14,47 @@ import {
   Copy, 
   UserMinus,
   Bell,
-  Loader2
+  Loader2,
+  Gamepad2,
+  Send
 } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface FriendSystemProps {
   onClose: () => void;
+  currentRoomCode?: string;
+  currentGameType?: string;
+  currentGameName?: string;
+  onJoinRoom?: (roomCode: string) => void;
 }
 
-export const FriendSystem: React.FC<FriendSystemProps> = ({ onClose }) => {
-  const { user, userId, logout } = useAuth();
+export const FriendSystem: React.FC<FriendSystemProps> = ({ 
+  onClose, 
+  currentRoomCode, 
+  currentGameType, 
+  currentGameName,
+  onJoinRoom 
+}) => {
+  const { userId, logout } = useAuth();
   const { 
     friends, 
     friendRequests, 
+    gameInvites,
     loading, 
     searchUserById, 
     sendFriendRequest, 
     acceptFriendRequest, 
     declineFriendRequest,
-    removeFriend 
+    removeFriend,
+    sendGameInvite,
+    dismissGameInvite
   } = useFriendSystem();
 
   const [searchId, setSearchId] = useState('');
   const [searchResult, setSearchResult] = useState<{ id: string; displayName: string } | null>(null);
   const [isSearching, setIsSearching] = useState(false);
-  const [activeTab, setActiveTab] = useState<'friends' | 'requests' | 'search'>('friends');
+  const [activeTab, setActiveTab] = useState<'friends' | 'requests' | 'invites' | 'search'>('friends');
+  const [sendingInviteTo, setSendingInviteTo] = useState<string | null>(null);
 
   const handleSearch = async () => {
     if (!searchId.trim()) return;
@@ -85,6 +101,40 @@ export const FriendSystem: React.FC<FriendSystemProps> = ({ onClose }) => {
     }
   };
 
+  const handleSendGameInvite = async (friendId: string, friendName: string) => {
+    if (!currentRoomCode || !currentGameType || !currentGameName) {
+      toast.error('คุณยังไม่ได้อยู่ในห้องเกม');
+      return;
+    }
+    
+    setSendingInviteTo(friendId);
+    const success = await sendGameInvite(friendId, currentRoomCode, currentGameType, currentGameName);
+    setSendingInviteTo(null);
+    
+    if (success) {
+      toast.success(`ส่งคำเชิญไปยัง ${friendName} แล้ว!`);
+    } else {
+      toast.error('ไม่สามารถส่งคำเชิญได้');
+    }
+  };
+
+  const handleAcceptInvite = async (invite: typeof gameInvites[0]) => {
+    await dismissGameInvite(invite.id);
+    if (onJoinRoom) {
+      onJoinRoom(invite.roomCode);
+      onClose();
+    } else {
+      // Copy room code if no join handler
+      navigator.clipboard.writeText(invite.roomCode);
+      toast.success(`คัดลอกรหัสห้อง ${invite.roomCode} แล้ว!`);
+    }
+  };
+
+  const handleDeclineInvite = async (inviteId: string) => {
+    await dismissGameInvite(inviteId);
+    toast.info('ปฏิเสธคำเชิญแล้ว');
+  };
+
   const copyUserId = () => {
     if (userId) {
       navigator.clipboard.writeText(userId);
@@ -97,6 +147,8 @@ export const FriendSystem: React.FC<FriendSystemProps> = ({ onClose }) => {
     onClose();
     toast.info('ออกจากระบบแล้ว');
   };
+
+  const totalNotifications = friendRequests.length + gameInvites.length;
 
   return (
     <motion.div
@@ -164,8 +216,8 @@ export const FriendSystem: React.FC<FriendSystemProps> = ({ onClose }) => {
                 : 'text-zinc-400 hover:text-white'
             }`}
           >
-            <Users size={16} className="inline mr-2" />
-            เพื่อน ({friends.length})
+            <Users size={16} className="inline mr-1" />
+            เพื่อน
           </button>
           <button
             onClick={() => setActiveTab('requests')}
@@ -175,11 +227,27 @@ export const FriendSystem: React.FC<FriendSystemProps> = ({ onClose }) => {
                 : 'text-zinc-400 hover:text-white'
             }`}
           >
-            <Bell size={16} className="inline mr-2" />
+            <Bell size={16} className="inline mr-1" />
             คำขอ
             {friendRequests.length > 0 && (
-              <span className="absolute top-2 right-4 w-5 h-5 bg-red-500 rounded-full text-xs flex items-center justify-center">
+              <span className="ml-1 px-1.5 py-0.5 bg-red-500 rounded-full text-xs">
                 {friendRequests.length}
+              </span>
+            )}
+          </button>
+          <button
+            onClick={() => setActiveTab('invites')}
+            className={`flex-1 py-3 text-sm font-medium transition-colors relative ${
+              activeTab === 'invites' 
+                ? 'text-cyan-400 border-b-2 border-cyan-400' 
+                : 'text-zinc-400 hover:text-white'
+            }`}
+          >
+            <Gamepad2 size={16} className="inline mr-1" />
+            เชิญ
+            {gameInvites.length > 0 && (
+              <span className="ml-1 px-1.5 py-0.5 bg-green-500 rounded-full text-xs">
+                {gameInvites.length}
               </span>
             )}
           </button>
@@ -191,8 +259,7 @@ export const FriendSystem: React.FC<FriendSystemProps> = ({ onClose }) => {
                 : 'text-zinc-400 hover:text-white'
             }`}
           >
-            <Search size={16} className="inline mr-2" />
-            ค้นหา
+            <Search size={16} className="inline" />
           </button>
         </div>
 
@@ -207,6 +274,15 @@ export const FriendSystem: React.FC<FriendSystemProps> = ({ onClose }) => {
               {/* Friends Tab */}
               {activeTab === 'friends' && (
                 <div className="space-y-2">
+                  {currentRoomCode && (
+                    <div className="mb-4 p-3 bg-gradient-to-r from-green-600/20 to-emerald-600/20 rounded-lg border border-green-500/30">
+                      <p className="text-sm text-green-400 flex items-center gap-2">
+                        <Gamepad2 size={16} />
+                        คุณอยู่ในห้อง: <span className="font-bold">{currentRoomCode}</span>
+                      </p>
+                      <p className="text-xs text-zinc-400 mt-1">กดปุ่มเชิญเพื่อชวนเพื่อนเข้าห้อง</p>
+                    </div>
+                  )}
                   {friends.length === 0 ? (
                     <p className="text-center text-zinc-500 py-8">ยังไม่มีเพื่อน</p>
                   ) : (
@@ -226,14 +302,30 @@ export const FriendSystem: React.FC<FriendSystemProps> = ({ onClose }) => {
                             <p className="text-xs text-zinc-500">ID: {friend.id.slice(0, 8)}...</p>
                           </div>
                         </div>
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          onClick={() => handleRemoveFriend(friend.id, friend.displayName)}
-                          className="text-red-400 hover:text-red-300 hover:bg-red-500/20"
-                        >
-                          <UserMinus size={18} />
-                        </Button>
+                        <div className="flex gap-2">
+                          {currentRoomCode && (
+                            <Button
+                              size="icon"
+                              onClick={() => handleSendGameInvite(friend.id, friend.displayName)}
+                              disabled={sendingInviteTo === friend.id}
+                              className="bg-green-600 hover:bg-green-700"
+                            >
+                              {sendingInviteTo === friend.id ? (
+                                <Loader2 className="animate-spin" size={18} />
+                              ) : (
+                                <Send size={18} />
+                              )}
+                            </Button>
+                          )}
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            onClick={() => handleRemoveFriend(friend.id, friend.displayName)}
+                            className="text-red-400 hover:text-red-300 hover:bg-red-500/20"
+                          >
+                            <UserMinus size={18} />
+                          </Button>
+                        </div>
                       </motion.div>
                     ))
                   )}
@@ -285,6 +377,59 @@ export const FriendSystem: React.FC<FriendSystemProps> = ({ onClose }) => {
                 </div>
               )}
 
+              {/* Game Invites Tab */}
+              {activeTab === 'invites' && (
+                <div className="space-y-2">
+                  {gameInvites.length === 0 ? (
+                    <p className="text-center text-zinc-500 py-8">ไม่มีคำเชิญเข้าเกม</p>
+                  ) : (
+                    gameInvites.map((invite) => (
+                      <motion.div
+                        key={invite.id}
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        className="p-3 bg-zinc-800 rounded-lg border border-green-500/30"
+                      >
+                        <div className="flex items-center gap-3 mb-2">
+                          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-green-500 to-emerald-500 flex items-center justify-center font-bold">
+                            {invite.fromName.charAt(0).toUpperCase()}
+                          </div>
+                          <div className="flex-1">
+                            <p className="font-medium">{invite.fromName}</p>
+                            <p className="text-xs text-zinc-500">เชิญคุณเล่น {invite.gameName}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 mt-2">
+                          <div className="flex-1 bg-zinc-900 px-3 py-2 rounded text-sm">
+                            <span className="text-zinc-400">รหัสห้อง: </span>
+                            <span className="text-green-400 font-mono font-bold">{invite.roomCode}</span>
+                          </div>
+                          <Button
+                            size="sm"
+                            onClick={() => handleAcceptInvite(invite)}
+                            className="bg-green-600 hover:bg-green-700"
+                          >
+                            <Check size={16} className="mr-1" />
+                            เข้าร่วม
+                          </Button>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            onClick={() => handleDeclineInvite(invite.id)}
+                            className="text-red-400 hover:text-red-300 hover:bg-red-500/20"
+                          >
+                            <X size={18} />
+                          </Button>
+                        </div>
+                        <p className="text-xs text-zinc-600 mt-2">
+                          หมดอายุใน {Math.max(0, Math.ceil((10 * 60 * 1000 - (Date.now() - invite.sentAt)) / 60000))} นาที
+                        </p>
+                      </motion.div>
+                    ))
+                  )}
+                </div>
+              )}
+
               {/* Search Tab */}
               {activeTab === 'search' && (
                 <div className="space-y-4">
@@ -327,7 +472,7 @@ export const FriendSystem: React.FC<FriendSystemProps> = ({ onClose }) => {
                       แชร์ ID ของคุณให้เพื่อน:
                     </p>
                     <div className="flex items-center justify-center gap-2 mt-2">
-                      <code className="bg-zinc-900 px-3 py-2 rounded text-cyan-400 text-sm">
+                      <code className="bg-zinc-900 px-3 py-2 rounded text-cyan-400 text-sm break-all">
                         {userId}
                       </code>
                       <Button size="icon" variant="ghost" onClick={copyUserId}>

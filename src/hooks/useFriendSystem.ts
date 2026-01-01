@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { ref, set, get, onValue, remove, push } from 'firebase/database';
+import { ref, set, get, onValue, remove } from 'firebase/database';
 import { database } from '@/lib/firebase';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -16,23 +16,36 @@ export interface FriendRequest {
   sentAt: number;
 }
 
+export interface GameInvite {
+  id: string;
+  fromId: string;
+  fromName: string;
+  roomCode: string;
+  gameType: string;
+  gameName: string;
+  sentAt: number;
+}
+
 export const useFriendSystem = () => {
   const { userId } = useAuth();
   const [friends, setFriends] = useState<Friend[]>([]);
   const [friendRequests, setFriendRequests] = useState<FriendRequest[]>([]);
+  const [gameInvites, setGameInvites] = useState<GameInvite[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Listen to friends list
+  // Listen to friends list, requests, and game invites
   useEffect(() => {
     if (!userId) {
       setFriends([]);
       setFriendRequests([]);
+      setGameInvites([]);
       setLoading(false);
       return;
     }
 
     const friendsRef = ref(database, `users/${userId}/friends`);
     const requestsRef = ref(database, `users/${userId}/friendRequests`);
+    const invitesRef = ref(database, `users/${userId}/gameInvites`);
 
     const unsubFriends = onValue(friendsRef, (snapshot) => {
       const data = snapshot.val();
@@ -64,9 +77,30 @@ export const useFriendSystem = () => {
       }
     });
 
+    const unsubInvites = onValue(invitesRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        const invitesList: GameInvite[] = Object.entries(data).map(([key, value]: [string, any]) => ({
+          id: key,
+          fromId: value.fromId,
+          fromName: value.fromName,
+          roomCode: value.roomCode,
+          gameType: value.gameType,
+          gameName: value.gameName,
+          sentAt: value.sentAt
+        }));
+        // Filter out expired invites (older than 10 minutes)
+        const validInvites = invitesList.filter(inv => Date.now() - inv.sentAt < 10 * 60 * 1000);
+        setGameInvites(validInvites);
+      } else {
+        setGameInvites([]);
+      }
+    });
+
     return () => {
       unsubFriends();
       unsubRequests();
+      unsubInvites();
     };
   }, [userId]);
 
@@ -91,7 +125,6 @@ export const useFriendSystem = () => {
   const sendFriendRequest = async (targetUserId: string) => {
     if (!userId) return false;
     
-    // Get current user's display name
     const currentUserRef = ref(database, `users/${userId}`);
     const currentUserSnapshot = await get(currentUserRef);
     
@@ -99,12 +132,10 @@ export const useFriendSystem = () => {
     
     const currentUserData = currentUserSnapshot.val();
     
-    // Check if already friends
     const friendRef = ref(database, `users/${userId}/friends/${targetUserId}`);
     const friendSnapshot = await get(friendRef);
     if (friendSnapshot.exists()) return false;
     
-    // Add request to target user's friendRequests
     const requestRef = ref(database, `users/${targetUserId}/friendRequests/${userId}`);
     await set(requestRef, {
       fromId: userId,
@@ -119,7 +150,6 @@ export const useFriendSystem = () => {
   const acceptFriendRequest = async (requestId: string, fromId: string, fromName: string) => {
     if (!userId) return false;
     
-    // Get current user's display name
     const currentUserRef = ref(database, `users/${userId}`);
     const currentUserSnapshot = await get(currentUserRef);
     
@@ -127,7 +157,6 @@ export const useFriendSystem = () => {
     
     const currentUserData = currentUserSnapshot.val();
     
-    // Add to both users' friends lists
     const myFriendRef = ref(database, `users/${userId}/friends/${fromId}`);
     const theirFriendRef = ref(database, `users/${fromId}/friends/${userId}`);
     
@@ -141,7 +170,6 @@ export const useFriendSystem = () => {
       addedAt: Date.now()
     });
     
-    // Remove the friend request
     const requestRef = ref(database, `users/${userId}/friendRequests/${requestId}`);
     await remove(requestRef);
     
@@ -171,14 +199,51 @@ export const useFriendSystem = () => {
     return true;
   };
 
+  // Send game invite to a friend
+  const sendGameInvite = async (friendId: string, roomCode: string, gameType: string, gameName: string) => {
+    if (!userId) return false;
+    
+    const currentUserRef = ref(database, `users/${userId}`);
+    const currentUserSnapshot = await get(currentUserRef);
+    
+    if (!currentUserSnapshot.exists()) return false;
+    
+    const currentUserData = currentUserSnapshot.val();
+    
+    const inviteRef = ref(database, `users/${friendId}/gameInvites/${Date.now()}`);
+    await set(inviteRef, {
+      fromId: userId,
+      fromName: currentUserData.displayName,
+      roomCode,
+      gameType,
+      gameName,
+      sentAt: Date.now()
+    });
+    
+    return true;
+  };
+
+  // Dismiss game invite
+  const dismissGameInvite = async (inviteId: string) => {
+    if (!userId) return false;
+    
+    const inviteRef = ref(database, `users/${userId}/gameInvites/${inviteId}`);
+    await remove(inviteRef);
+    
+    return true;
+  };
+
   return {
     friends,
     friendRequests,
+    gameInvites,
     loading,
     searchUserById,
     sendFriendRequest,
     acceptFriendRequest,
     declineFriendRequest,
-    removeFriend
+    removeFriend,
+    sendGameInvite,
+    dismissGameInvite
   };
 };
