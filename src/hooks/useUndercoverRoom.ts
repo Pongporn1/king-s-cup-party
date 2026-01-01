@@ -325,10 +325,28 @@ export function useUndercoverRoom() {
           : null;
 
         // If not found by ID, try by name (for users without saved ID)
+        // This also prevents duplicate names in the same room
         if (!existingPlayer) {
-          existingPlayer = (existingPlayers || []).find(
+          const playersWithSameName = (existingPlayers || []).filter(
             (p: any) => p.name === playerName
           );
+          if (playersWithSameName.length > 0) {
+            // Use the first one found (oldest)
+            existingPlayer = playersWithSameName[0];
+            console.log(
+              "Found player with same name, reusing:",
+              existingPlayer.id
+            );
+
+            // Clean up duplicates - delete all except the first one
+            if (playersWithSameName.length > 1) {
+              const duplicateIds = playersWithSameName
+                .slice(1)
+                .map((p: any) => p.id);
+              console.log("Cleaning up duplicate players:", duplicateIds);
+              await supabase.from("players").delete().in("id", duplicateIds);
+            }
+          }
         }
 
         let playerData;

@@ -276,10 +276,26 @@ export function useParanoiaGame() {
           : null;
 
         // If not found by ID, try by name (for users without saved ID)
+        // This also prevents duplicate names in the same room
         if (!existingPlayer) {
-          existingPlayer = (existingPlayers || []).find(
+          const playersWithSameName = (existingPlayers || []).filter(
             (p: any) => p.name === playerName
           );
+          if (playersWithSameName.length > 0) {
+            existingPlayer = playersWithSameName[0];
+            console.log(
+              "Found player with same name, reusing:",
+              existingPlayer.id
+            );
+
+            // Clean up duplicates
+            if (playersWithSameName.length > 1) {
+              const duplicateIds = playersWithSameName
+                .slice(1)
+                .map((p: any) => p.id);
+              await supabase.from("players").delete().in("id", duplicateIds);
+            }
+          }
         }
 
         let playerData;
