@@ -23,6 +23,7 @@ import { FloatingNames, AdminPanel } from "@/components/AdminPanel";
 import { GameRulesAssistant } from "@/components/GameRulesAssistant";
 import { getFloatingNamesFromDB, getGameCovers } from "@/lib/adminStorage";
 import { t } from "@/lib/i18n";
+import { LoginButton } from "@/components/LoginButton";
 import {
   Play,
   ChevronLeft,
@@ -267,6 +268,7 @@ const Index = () => {
             <span className="text-xl font-bold">Party Games</span>
           </div>
           <div className="flex items-center gap-3">
+            <LoginButton />
             <LanguageSwitcher />
             <ThemeSwitcher />
             <span className="text-zinc-400 text-sm">
