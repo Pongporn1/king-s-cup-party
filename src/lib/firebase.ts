@@ -9,7 +9,9 @@ const firebaseConfig = {
   storageBucket: "gmae111.firebasestorage.app",
   messagingSenderId: "223415325596",
   appId: "1:223415325596:web:272fd4d7aff74d33b3ee59",
-  measurementId: "G-4TEGC1REF4"
+  measurementId: "G-4TEGC1REF4",
+  databaseURL:
+    "https://gmae111-default-rtdb.asia-southeast1.firebasedatabase.app",
 };
 
 // Initialize Firebase
