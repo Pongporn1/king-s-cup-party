@@ -1,24 +1,24 @@
-import React, { useState } from 'react';
-import { AnimatePresence } from 'framer-motion';
-import { useAuth } from '@/contexts/AuthContext';
-import { useFriendSystem } from '@/hooks/useFriendSystem';
-import { Button } from '@/components/ui/button';
-import { FriendSystem } from '@/components/FriendSystem';
-import { LogIn, Users, Loader2, Bell } from 'lucide-react';
-import { toast } from 'sonner';
+import React, { useState } from "react";
+import { AnimatePresence } from "framer-motion";
+import { useAuth } from "@/contexts/AuthContext";
+import { useFriendSystem } from "@/hooks/useFriendSystem";
+import { Button } from "@/components/ui/button";
+import { FriendSystem } from "@/components/FriendSystem";
+import { LogIn, Users, Loader2, Bell } from "lucide-react";
+import { toast } from "sonner";
 
 interface LoginButtonProps {
   currentRoomCode?: string;
   currentGameType?: string;
   currentGameName?: string;
-  onJoinRoom?: (roomCode: string) => void;
+  onJoinRoom?: (roomCode: string, gameType: string) => void;
 }
 
 export const LoginButton: React.FC<LoginButtonProps> = ({
   currentRoomCode,
   currentGameType,
   currentGameName,
-  onJoinRoom
+  onJoinRoom,
 }) => {
   const { user, loading, login } = useAuth();
   const { gameInvites, friendRequests } = useFriendSystem();
@@ -29,15 +29,16 @@ export const LoginButton: React.FC<LoginButtonProps> = ({
     setIsLoggingIn(true);
     try {
       await login();
-      toast.success('เข้าสู่ระบบแล้ว!');
+      toast.success("เข้าสู่ระบบแล้ว!");
     } catch (error) {
-      toast.error('เข้าสู่ระบบไม่สำเร็จ');
+      toast.error("เข้าสู่ระบบไม่สำเร็จ");
     } finally {
       setIsLoggingIn(false);
     }
   };
 
-  const totalNotifications = (gameInvites?.length || 0) + (friendRequests?.length || 0);
+  const totalNotifications =
+    (gameInvites?.length || 0) + (friendRequests?.length || 0);
 
   if (loading) {
     return (
@@ -79,7 +80,7 @@ export const LoginButton: React.FC<LoginButtonProps> = ({
 
       <AnimatePresence>
         {showFriendSystem && (
-          <FriendSystem 
+          <FriendSystem
             onClose={() => setShowFriendSystem(false)}
             currentRoomCode={currentRoomCode}
             currentGameType={currentGameType}

@@ -1,9 +1,10 @@
-import { ParanoiaState } from '@/lib/partyGameTypes';
-import { ParanoiaGame } from '@/components/ParanoiaGame';
-import { Button } from '@/components/ui/button';
-import { ArrowLeft, Users, Play } from 'lucide-react';
-import { motion } from 'framer-motion';
-import ThemedBackground from '@/components/ThemedBackground';
+import { ParanoiaState } from "@/lib/partyGameTypes";
+import { ParanoiaGame } from "@/components/ParanoiaGame";
+import { Button } from "@/components/ui/button";
+import { LoginButton } from "@/components/LoginButton";
+import { ArrowLeft, Users, Play } from "lucide-react";
+import { motion } from "framer-motion";
+import ThemedBackground from "@/components/ThemedBackground";
 
 interface Player {
   id: string;
@@ -64,9 +65,16 @@ export function ParanoiaGameRoom({
           <p className="text-sm opacity-70">รหัสห้อง</p>
           <p className="font-mono font-bold">{room.code}</p>
         </div>
-        <div className="flex items-center gap-1 text-white">
-          <Users className="w-4 h-4" />
-          <span>{players.length}</span>
+        <div className="flex items-center gap-2">
+          <LoginButton
+            currentRoomCode={room.code}
+            currentGameType="paranoia"
+            currentGameName="Paranoia"
+          />
+          <div className="flex items-center gap-1 text-white">
+            <Users className="w-4 h-4" />
+            <span>{players.length}</span>
+          </div>
         </div>
       </div>
 
@@ -98,7 +106,7 @@ export function ParanoiaGameRoom({
                     className="flex items-center gap-2 text-white"
                   >
                     <span className="text-lg">
-                      {player.is_host ? '👑' : '👤'}
+                      {player.is_host ? "👑" : "👤"}
                     </span>
                     <span>{player.name}</span>
                     {player.id === currentPlayerId && (
@@ -137,7 +145,7 @@ export function ParanoiaGameRoom({
           <div className="w-full max-w-sm">
             <ParanoiaGame
               gameState={gameState}
-              myId={currentPlayerId || ''}
+              myId={currentPlayerId || ""}
               players={players}
               onSelectVictim={onSelectVictim}
               onRevealQuestion={onRevealQuestion}

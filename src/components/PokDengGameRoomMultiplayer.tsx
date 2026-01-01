@@ -4,6 +4,8 @@ import { PlayerList } from "@/components/PlayerList";
 import { LivePlayerList } from "@/components/LivePlayerList";
 import { WaitingForPlayersAnimation } from "@/components/WaitingForPlayersAnimation";
 import { CardBackPattern } from "@/components/CardBackPattern";
+import { LoginButton } from "@/components/LoginButton";
+import { t } from "@/lib/i18n";
 import {
   PokDengCard,
   getSuitEmoji,
@@ -446,6 +448,12 @@ export function PokDengGameRoomMultiplayer({
         </div>
 
         <div className="flex items-center gap-2">
+          {/* ปุ่มเชิญเพื่อน */}
+          <LoginButton
+            currentRoomCode={room.code}
+            currentGameType="pokdeng"
+            currentGameName={t("pokDeng")}
+          />
           {/* ปุ่มเปลี่ยนเจ้ามือ - Host เท่านั้น */}
           {(isHost || (isLiveMode && !currentPlayerId)) && onSetDealer && (
             <Dialog open={showDealerDialog} onOpenChange={setShowDealerDialog}>

@@ -1,6 +1,7 @@
 import { FiveSecState } from "@/lib/partyGameTypes";
 import { FiveSecGame } from "@/components/FiveSecGame";
 import { Button } from "@/components/ui/button";
+import { LoginButton } from "@/components/LoginButton";
 import { ArrowLeft, Users, Play } from "lucide-react";
 import { motion } from "framer-motion";
 import ThemedBackground from "@/components/ThemedBackground";
@@ -62,9 +63,16 @@ export function FiveSecGameRoom({
           <p className="text-sm opacity-70">รหัสห้อง</p>
           <p className="font-mono font-bold">{room.code}</p>
         </div>
-        <div className="flex items-center gap-1 text-white">
-          <Users className="w-4 h-4" />
-          <span>{players.length}</span>
+        <div className="flex items-center gap-2">
+          <LoginButton
+            currentRoomCode={room.code}
+            currentGameType="5-sec"
+            currentGameName="5 Second Rule"
+          />
+          <div className="flex items-center gap-1 text-white">
+            <Users className="w-4 h-4" />
+            <span>{players.length}</span>
+          </div>
         </div>
       </div>
 

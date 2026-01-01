@@ -6,11 +6,13 @@ import { PlayerList } from "@/components/PlayerList";
 import { CardDeck } from "@/components/CardDeck";
 import { RuleEditor } from "@/components/RuleEditor";
 import { AIRuleGenerator } from "@/components/AIRuleGenerator";
+import { LoginButton } from "@/components/LoginButton";
 import { useCustomRules } from "@/hooks/useCustomRules";
 import { PlayingCard as CardType, CARD_RULES, CardRule } from "@/lib/cardRules";
 import { Copy, LogOut, Play, RefreshCw, Spade } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Confetti } from "@/components/Confetti";
+import { t } from "@/lib/i18n";
 interface Room {
   id: string;
   code: string;
@@ -193,6 +195,11 @@ export function GameRoom({
         </div>
 
         <div className="flex items-center gap-2">
+          <LoginButton
+            currentRoomCode={room.code}
+            currentGameType="kingscup"
+            currentGameName={t("kingsCup")}
+          />
           {isHost && <RuleEditor roomCode={room.code} isHost={isHost} />}
           <AIRuleGenerator playerCount={players.length} />
           {isHost && room.game_started && !gameOver && (

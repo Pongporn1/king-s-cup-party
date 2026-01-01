@@ -401,6 +401,36 @@ const Index = () => {
     ]
   );
 
+  // Handle joining room from friend invite
+  const handleJoinFromInvite = useCallback(
+    async (roomCode: string, gameType: string) => {
+      // Get player name from session or prompt
+      const savedName =
+        localStorage.getItem("playerName") ||
+        `Player_${Math.random().toString(36).slice(2, 6)}`;
+
+      // Map game type to our game mode
+      const gameTypeMap: Record<string, GameMode> = {
+        kingscup: "doraemon",
+        doraemon: "doraemon",
+        pokdeng: "pokdeng",
+        undercover: "undercover",
+        paranoia: "paranoia",
+        "5-sec": "5-sec",
+      };
+
+      const targetGameMode = gameTypeMap[gameType] || "doraemon";
+      setGameMode(targetGameMode);
+
+      // Join the room
+      const success = await handleJoinRoom(roomCode, savedName, targetGameMode);
+      if (!success) {
+        setGameMode("select");
+      }
+    },
+    [handleJoinRoom]
+  );
+
   const handleLeaveRoom = useCallback(
     (gameType: GameMode) => {
       clearSession();
@@ -509,6 +539,7 @@ const Index = () => {
               currentRoomCode={currentRoomInfo?.code}
               currentGameType={currentRoomInfo?.type}
               currentGameName={currentRoomInfo?.name}
+              onJoinRoom={handleJoinFromInvite}
             />
             <LanguageSwitcher />
             <ThemeSwitcher />

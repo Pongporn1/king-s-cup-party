@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { LoginButton } from "@/components/LoginButton";
 import {
   Select,
   SelectContent,
@@ -295,15 +296,22 @@ export function UndercoverGameRoom({
       />
       <div className="absolute inset-0 bg-gradient-to-b from-purple-900/80 to-black/80" />
 
-      {/* Back Button */}
-      <Button
-        variant="ghost"
-        onClick={onLeave}
-        className="absolute top-4 left-4 text-white/70 hover:text-white z-20"
-      >
-        <ArrowLeft className="w-5 h-5 mr-2" />
-        {t("leaveRoom")}
-      </Button>
+      {/* Header */}
+      <div className="absolute top-4 left-4 right-4 flex justify-between items-center z-20">
+        <Button
+          variant="ghost"
+          onClick={onLeave}
+          className="text-white/70 hover:text-white"
+        >
+          <ArrowLeft className="w-5 h-5 mr-2" />
+          {t("leaveRoom")}
+        </Button>
+        <LoginButton
+          currentRoomCode={room.code}
+          currentGameType="undercover"
+          currentGameName={t("undercoverTitle")}
+        />
+      </div>
 
       {/* Content */}
       <div className="flex-1 flex items-center justify-center relative z-10">
