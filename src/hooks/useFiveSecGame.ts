@@ -30,6 +30,29 @@ export function useFiveSecGame() {
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
 
+  // Clean up when leaving page
+  useEffect(() => {
+    const handleBeforeUnload = async () => {
+      if (currentPlayerId && room) {
+        await supabase.from("players").delete().eq("id", currentPlayerId);
+
+        const { data: remainingPlayers } = await supabase
+          .from("players")
+          .select("id")
+          .eq("room_id", room.id);
+
+        if (!remainingPlayers || remainingPlayers.length === 0) {
+          await supabase.from("rooms").delete().eq("id", room.id);
+        }
+      }
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+    };
+  }, [currentPlayerId, room]);
+
   // Fetch questions
   const fetchQuestions = useCallback(async () => {
     const { data, error } = await supabase
@@ -78,8 +101,8 @@ export function useFiveSecGame() {
     if (!nextPlayerId) return;
 
     // Get time limit from room state (default to 5 seconds)
-    const timeLimit = (room.game_state?.timeLimit || 5) * 1000;
-    const endTime = new Date(Date.now() + timeLimit).toISOString();
+    const timeLimit = room.game_state?.timeLimit || 5;
+    const endTime = new Date(Date.now() + timeLimit * 1000).toISOString();
 
     const newState: FiveSecState = {
       phase: "PLAYING",
@@ -87,6 +110,7 @@ export function useFiveSecGame() {
       topic: question.topic,
       end_time: endTime,
       votes: {},
+      timeLimit: timeLimit,
     };
 
     const { error } = await supabase
@@ -105,7 +129,14 @@ export function useFiveSecGame() {
 
   // Player finished answering
   const finishAnswering = useCallback(async () => {
-    if (!room || !room.game_state) return;
+    console.log("finishAnswering called", {
+      room: room?.id,
+      game_state: room?.game_state,
+    });
+    if (!room || !room.game_state) {
+      console.error("Cannot finish answering: no room or game_state");
+      return;
+    }
 
     const currentState = room.game_state as FiveSecState;
     const newState: FiveSecState = {
@@ -113,15 +144,20 @@ export function useFiveSecGame() {
       phase: "JUDGING",
     };
 
-    const { error } = await supabase
+    console.log("Updating to JUDGING phase", newState);
+    const { error, data } = await supabase
       .from("rooms")
       .update({ game_state: newState as any })
-      .eq("id", room.id);
+      .eq("id", room.id)
+      .select();
 
     if (error) {
       console.error("Error finishing answering:", error);
+      toast({ title: "Error", description: "Failed to finish answering" });
+    } else {
+      console.log("Successfully updated to JUDGING", data);
     }
-  }, [room]);
+  }, [room, toast]);
 
   // Vote (pass or drink)
   const vote = useCallback(
@@ -196,7 +232,8 @@ export function useFiveSecGame() {
         setCurrentPlayerId(playerData.id);
         setPlayers([playerData]);
 
-        return roomData.code;
+        // Return room code with playerId for session recovery
+        return { code: roomData.code, playerId: playerData.id };
       } catch (error) {
         console.error("Error creating room:", error);
         toast({ title: "Error", description: "Failed to create room" });
@@ -210,7 +247,7 @@ export function useFiveSecGame() {
 
   // Join room
   const joinRoom = useCallback(
-    async (code: string, playerName: string) => {
+    async (code: string, playerName: string, savedPlayerId?: string) => {
       setIsLoading(true);
       try {
         const { data: roomData, error: roomError } = await supabase
@@ -227,25 +264,57 @@ export function useFiveSecGame() {
           .select("*")
           .eq("room_id", roomData.id);
 
-        const { data: playerData, error: playerError } = await supabase
-          .from("players")
-          .insert({
-            room_id: roomData.id,
-            name: playerName,
-            is_host: false,
-            player_order: existingPlayers?.length || 0,
-            points: 0,
-          })
-          .select()
-          .single();
+        // Check if player with same ID already exists (session recovery with ID)
+        // Then fall back to name check for backward compatibility
+        let existingPlayer = savedPlayerId
+          ? (existingPlayers || []).find((p: any) => p.id === savedPlayerId)
+          : null;
 
-        if (playerError) throw playerError;
+        // If not found by ID, try by name (for users without saved ID)
+        if (!existingPlayer) {
+          existingPlayer = (existingPlayers || []).find(
+            (p: any) => p.name === playerName
+          );
+        }
+
+        let playerData;
+
+        if (existingPlayer) {
+          // Rejoin as existing player
+          playerData = existingPlayer;
+          console.log("Session recovery: found existing player", playerData.id);
+        } else {
+          const { data: newPlayerData, error: playerError } = await supabase
+            .from("players")
+            .insert({
+              room_id: roomData.id,
+              name: playerName,
+              is_host: false,
+              player_order: existingPlayers?.length || 0,
+              points: 0,
+            })
+            .select()
+            .single();
+
+          if (playerError) throw playerError;
+          playerData = newPlayerData;
+        }
 
         setRoom(roomData);
         setCurrentPlayerId(playerData.id);
-        setPlayers([...(existingPlayers || []), playerData]);
 
-        return true;
+        // Deduplicate players
+        const uniquePlayersMap = new Map();
+        for (const p of existingPlayers || []) {
+          uniquePlayersMap.set(p.id, p);
+        }
+        if (!uniquePlayersMap.has(playerData.id)) {
+          uniquePlayersMap.set(playerData.id, playerData);
+        }
+        setPlayers(Array.from(uniquePlayersMap.values()));
+
+        // Return room data with playerId for session recovery
+        return { room: roomData, playerId: playerData.id };
       } catch (error) {
         console.error("Error joining room:", error);
         toast({ title: "Error", description: "Failed to join room" });

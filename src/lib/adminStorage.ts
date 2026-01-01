@@ -123,28 +123,22 @@ function getLocalGameCovers(): Record<string, string> {
 }
 
 export async function getGameCovers(): Promise<Record<string, string>> {
-  // Always get from localStorage first (has base64 data)
-  const localCovers = getLocalGameCovers();
-  console.log(`📦 LocalStorage covers:`, Object.keys(localCovers));
-
-  // Return localStorage data directly - base64 data is too large for Supabase
-  // Supabase is only used for backup/sync of URL-based covers
-  if (Object.keys(localCovers).length > 0) {
-    return localCovers;
-  }
-
   try {
+    // Try to get from Supabase first (primary storage)
     const { data, error } = await supabase
       .from("game_covers" as any)
       .select("id, cover_url")
       .not("cover_url", "is", null);
 
     if (error) {
-      console.error("Error fetching game covers:", error);
+      console.error("Error fetching game covers from Supabase:", error);
+      // Fallback to localStorage
+      const localCovers = getLocalGameCovers();
+      console.log(`📦 Using localStorage covers:`, Object.keys(localCovers));
       return localCovers;
     }
 
-    // Only use Supabase data if localStorage is empty
+    // Convert Supabase data to object
     const covers: Record<string, string> = {};
     (data as any[])?.forEach((item: { id: string; cover_url: string }) => {
       if (item.cover_url) {
@@ -152,9 +146,12 @@ export async function getGameCovers(): Promise<Record<string, string>> {
       }
     });
 
-    console.log(`📦 Supabase covers:`, Object.keys(covers));
+    console.log(`📦 Loaded ${Object.keys(covers).length} covers from Supabase`);
     return covers;
-  } catch {
+  } catch (err) {
+    console.error("Exception loading covers:", err);
+    // Fallback to localStorage
+    const localCovers = getLocalGameCovers();
     return localCovers;
   }
 }
@@ -171,8 +168,28 @@ export async function saveGameCover(
   // Always save to localStorage first for immediate display
   const covers = getLocalGameCovers();
   covers[gameId] = imageUrl;
-  localStorage.setItem(GAME_COVERS_KEY, JSON.stringify(covers));
-  console.log(`💾 Saved ${gameId} to localStorage`);
+
+  try {
+    localStorage.setItem(GAME_COVERS_KEY, JSON.stringify(covers));
+    console.log(`💾 Saved ${gameId} to localStorage`);
+  } catch (error) {
+    // If quota exceeded, try to save just this one game
+    if (error instanceof DOMException && error.name === "QuotaExceededError") {
+      console.warn(`⚠️ LocalStorage quota exceeded, saving only ${gameId}`);
+      try {
+        localStorage.setItem(
+          GAME_COVERS_KEY,
+          JSON.stringify({ [gameId]: imageUrl })
+        );
+      } catch {
+        console.error("❌ Failed to save even single game cover");
+        return false;
+      }
+    } else {
+      console.error("❌ Error saving to localStorage:", error);
+      return false;
+    }
+  }
 
   try {
     // Use upsert to handle both insert and update cases
@@ -186,16 +203,29 @@ export async function saveGameCover(
     );
 
     if (error) {
-      console.error("Error saving game cover to Supabase:", error);
-      // Already saved to localStorage, so return true anyway
+      console.error(`Error saving ${gameId} to Supabase:`, error);
+      console.error(`Data length: ${imageUrl.length} characters`);
+      // Supabase save failed, but localStorage succeeded
       return true;
     }
 
     console.log(`✅ Saved ${gameId} to Supabase`);
+    // Clear from localStorage since it's now in Supabase
+    try {
+      const localCovers = getLocalGameCovers();
+      delete localCovers[gameId];
+      if (Object.keys(localCovers).length > 0) {
+        localStorage.setItem(GAME_COVERS_KEY, JSON.stringify(localCovers));
+      } else {
+        localStorage.removeItem(GAME_COVERS_KEY);
+      }
+    } catch {
+      // Ignore localStorage cleanup errors
+    }
     return true;
   } catch (err) {
     console.error("Exception saving game cover:", err);
-    // Already saved to localStorage
+    // Already saved to localStorage or single game mode
     return true;
   }
 }

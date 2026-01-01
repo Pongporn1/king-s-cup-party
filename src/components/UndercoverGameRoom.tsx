@@ -16,7 +16,7 @@ import {
   GamePhase,
   VocabularyPair,
 } from "@/lib/undercoverRules";
-import { ArrowLeft, Eye, EyeOff } from "lucide-react";
+import { ArrowLeft, Eye } from "lucide-react";
 import { t } from "@/lib/i18n";
 import { Confetti } from "@/components/Confetti";
 
@@ -41,11 +41,6 @@ interface UndercoverGameRoomProps {
   isHost: boolean;
   categories: string[];
   onStartGame: (category: string, includeMrWhite: boolean) => void;
-  onStartDescribePhase: () => void;
-  onNextTurn: () => void;
-  onStartVoting: () => void;
-  onVotePlayer: (playerId: string) => void;
-  onCheckResultAndContinue: () => void;
   onRestartGame: () => void;
   onLeave: () => void;
 }
@@ -57,11 +52,6 @@ export function UndercoverGameRoom({
   isHost,
   categories,
   onStartGame,
-  onStartDescribePhase,
-  onNextTurn,
-  onStartVoting,
-  onVotePlayer,
-  onCheckResultAndContinue,
   onRestartGame,
   onLeave,
 }: UndercoverGameRoomProps) {
@@ -70,11 +60,6 @@ export function UndercoverGameRoom({
   const [showWord, setShowWord] = useState(false);
 
   const currentPlayer = players.find((p) => p.id === currentPlayerId);
-  const alivePlayers = players.filter((p) => p.is_alive);
-  const currentTurnPlayer =
-    room.game_phase === "DESCRIBE"
-      ? alivePlayers[room.current_turn_index % alivePlayers.length]
-      : null;
 
   const renderWaitingPhase = () => (
     <div className="space-y-6">
@@ -83,7 +68,7 @@ export function UndercoverGameRoom({
           {t("room")}: {room.code}
         </h2>
         <p className="text-white/60">
-          {t("waitingPlayers")} ({players.length}/8 {t("people")})
+          {t("waitingPlayers")} ({players.length}/10 {t("people")})
         </p>
       </div>
 
@@ -149,12 +134,21 @@ export function UndercoverGameRoom({
               <Switch
                 id="mr-white"
                 checked={includeMrWhite}
-                onCheckedChange={setIncludeMrWhite}
+                onCheckedChange={(checked) => {
+                  console.log("Mr. White toggled:", checked);
+                  setIncludeMrWhite(checked);
+                }}
               />
             </div>
 
             <Button
-              onClick={() => onStartGame(selectedCategory, includeMrWhite)}
+              onClick={() => {
+                console.log("Starting game with:", {
+                  selectedCategory,
+                  includeMrWhite,
+                });
+                onStartGame(selectedCategory, includeMrWhite);
+              }}
               disabled={players.length < 4}
               className="w-full bg-purple-500 hover:bg-purple-600"
             >
@@ -201,51 +195,24 @@ export function UndercoverGameRoom({
         </CardContent>
       </Card>
 
-      {isHost && (
-        <Button
-          onClick={onStartDescribePhase}
-          className="w-full bg-purple-500 hover:bg-purple-600"
-        >
-          {t("startDescribe")}
-        </Button>
-      )}
-    </div>
-  );
-
-  const renderDescribePhase = () => (
-    <div className="space-y-6">
-      <div className="text-center">
-        <h2 className="text-2xl font-bold mb-2">
-          {t("describeRound")} #{room.round}
-        </h2>
-        <p className="text-white/60">
-          {t("turn")}: {currentTurnPlayer?.name || "..."}
-        </p>
-      </div>
-
+      {/* Player list - show who has which role (for game play reference) */}
       <Card className="bg-black/40 backdrop-blur-md border-white/10">
         <CardContent className="p-4">
           <h3 className="font-semibold mb-3 text-white/80">
-            {t("alivePlayers")}:
+            {t("playersInRoom")}:
           </h3>
           <div className="grid grid-cols-2 gap-2">
-            {alivePlayers.map((player) => (
+            {players.map((player) => (
               <div
                 key={player.id}
-                className={`p-3 rounded ${
-                  player.id === currentTurnPlayer?.id
-                    ? "bg-purple-500/30 ring-2 ring-purple-500"
-                    : "bg-white/5"
-                }`}
+                className="p-3 rounded bg-white/5 flex items-center gap-2"
               >
-                <div className="flex items-center gap-2">
-                  <img
-                    src={`${import.meta.env.BASE_URL}${player.avatar || 1}.jpg`}
-                    alt={player.name}
-                    className="w-8 h-8 rounded-full object-cover border-2 border-white/40"
-                  />
-                  <span className="text-sm">{player.name}</span>
-                </div>
+                <img
+                  src={`${import.meta.env.BASE_URL}${player.avatar || 1}.jpg`}
+                  alt={player.name}
+                  className="w-8 h-8 rounded-full object-cover border-2 border-white/40"
+                />
+                <span className="text-sm">{player.name}</span>
               </div>
             ))}
           </div>
@@ -253,114 +220,11 @@ export function UndercoverGameRoom({
       </Card>
 
       {isHost && (
-        <div className="space-y-2">
-          <Button
-            onClick={onNextTurn}
-            className="w-full bg-blue-500 hover:bg-blue-600"
-          >
-            {t("nextPerson")}
-          </Button>
-          <Button
-            onClick={onStartVoting}
-            className="w-full bg-red-500 hover:bg-red-600"
-          >
-            {t("startVoting")}
-          </Button>
-        </div>
-      )}
-    </div>
-  );
-
-  const renderVotingPhase = () => {
-    const hasVoted = currentPlayer?.has_voted;
-
-    return (
-      <div className="space-y-6">
-        <div className="text-center">
-          <h2 className="text-2xl font-bold mb-2">{t("vote")}!</h2>
-          <p className="text-white/60">
-            {hasVoted ? t("waitingForOthers") : t("selectSuspect")}
-          </p>
-        </div>
-
-        <Card className="bg-black/40 backdrop-blur-md border-white/10">
-          <CardContent className="p-4">
-            <div className="grid grid-cols-2 gap-3">
-              {alivePlayers
-                .filter((p) => p.id !== currentPlayerId)
-                .map((player) => (
-                  <Button
-                    key={player.id}
-                    onClick={() => onVotePlayer(player.id)}
-                    disabled={hasVoted}
-                    variant="outline"
-                    className="h-auto p-3 bg-white/5 hover:bg-purple-500/20 border-white/20 flex flex-col items-center"
-                  >
-                    <img
-                      src={`${import.meta.env.BASE_URL}${
-                        player.avatar || 1
-                      }.jpg`}
-                      alt={player.name}
-                      className="w-16 h-16 rounded-full object-cover border-2 border-white/40 mb-2"
-                    />
-                    <div className="text-sm">{player.name}</div>
-                  </Button>
-                ))}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  };
-
-  const renderVoteResultPhase = () => (
-    <div className="space-y-6">
-      <div className="text-center">
-        <h2 className="text-2xl font-bold mb-2">{t("voteResult")}</h2>
-      </div>
-
-      <Card className="bg-black/40 backdrop-blur-md border-white/10">
-        <CardContent className="p-4">
-          <div className="space-y-3">
-            {players
-              .sort((a, b) => (b.vote_count || 0) - (a.vote_count || 0))
-              .map((player) => (
-                <div
-                  key={player.id}
-                  className={`p-3 rounded flex items-center justify-between ${
-                    !player.is_alive ? "bg-red-900/20" : "bg-white/5"
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <img
-                      src={`${import.meta.env.BASE_URL}${
-                        player.avatar || 1
-                      }.jpg`}
-                      alt={player.name}
-                      className="w-10 h-10 rounded-full object-cover border-2 border-white/40"
-                    />
-                    <div>
-                      <div className="font-semibold">
-                        {player.name}
-                        {!player.is_alive && " 💀"}
-                      </div>
-                    </div>
-                  </div>
-                  <Badge variant="secondary">
-                    {player.vote_count || 0} {t("votes")}
-                  </Badge>
-                </div>
-              ))}
-          </div>
-        </CardContent>
-      </Card>
-
-      {isHost && (
         <Button
-          onClick={onCheckResultAndContinue}
+          onClick={onRestartGame}
           className="w-full bg-purple-500 hover:bg-purple-600"
         >
-          {t("continue")}
+          🔄 {t("restartGame")}
         </Button>
       )}
     </div>
@@ -445,10 +309,11 @@ export function UndercoverGameRoom({
       <div className="flex-1 flex items-center justify-center relative z-10">
         <div className="w-full max-w-2xl">
           {room.game_phase === "WAITING" && renderWaitingPhase()}
-          {room.game_phase === "REVEAL_WORD" && renderRevealWordPhase()}
-          {room.game_phase === "DESCRIBE" && renderDescribePhase()}
-          {room.game_phase === "VOTING" && renderVotingPhase()}
-          {room.game_phase === "VOTE_RESULT" && renderVoteResultPhase()}
+          {(room.game_phase === "REVEAL_WORD" ||
+            room.game_phase === "DESCRIBE" ||
+            room.game_phase === "VOTING" ||
+            room.game_phase === "VOTE_RESULT") &&
+            renderRevealWordPhase()}
           {room.game_phase === "FINISHED" && renderFinishedPhase()}
         </div>
       </div>

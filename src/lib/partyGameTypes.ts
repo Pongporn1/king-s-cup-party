@@ -1,19 +1,21 @@
 // Types for Party Games (Paranoia & 5 Second Rule)
 
-export type PartyGameMode = 'LOBBY' | 'PARANOIA' | 'FIVE_SEC';
+export type PartyGameMode = "LOBBY" | "PARANOIA" | "FIVE_SEC";
 
 // Paranoia Game State
 export interface ParanoiaState {
-  phase: 'ASKING' | 'REVEALING';
+  phase: "ASKING" | "REVEALING";
   asker_id: string;
   victim_id: string | null;
   question: string;
+  question_id: number;
   is_revealed: boolean;
+  used_question_ids: number[];
 }
 
 // 5 Second Rule Game State
 export interface FiveSecState {
-  phase: 'PLAYING' | 'JUDGING';
+  phase: "PLAYING" | "JUDGING";
   player_id: string;
   topic: string;
   end_time: string; // ISO timestamp

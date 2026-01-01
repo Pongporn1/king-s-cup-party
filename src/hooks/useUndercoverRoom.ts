@@ -37,7 +37,7 @@ export interface UndercoverRoom {
   selected_category: string;
 }
 
-const TOTAL_AVATARS = 11;
+const TOTAL_AVATARS = 15;
 
 function getRandomAvatar(usedAvatars: number[]): number {
   const availableAvatars = Array.from(
@@ -128,38 +128,63 @@ export function useUndercoverRoom() {
         (payload) => {
           if (payload.eventType === "INSERT") {
             const newPlayer = payload.new as any;
-            setPlayers((prev) => [
-              ...prev,
-              {
-                id: newPlayer.id,
-                name: newPlayer.name,
-                avatar: newPlayer.avatar,
-                role: newPlayer.role || "CIVILIAN",
-                word: newPlayer.word || "",
-                is_alive: newPlayer.is_alive ?? true,
-                vote_count: newPlayer.vote_count || 0,
-                has_voted: newPlayer.has_voted || false,
-                voted_for: newPlayer.voted_for,
-                is_host: newPlayer.is_host,
-              } as UndercoverPlayer,
-            ]);
-            toast({
-              title: "👋 ผู้เล่นใหม่เข้ามา",
-              description: `${newPlayer.name} เข้าห้องแล้ว`,
-              duration: 3000,
+            setPlayers((prev) => {
+              // Prevent duplicates - check if player already exists
+              if (prev.some((p) => p.id === newPlayer.id)) {
+                return prev;
+              }
+              // Show toast after state update to avoid "setState during render" warning
+              setTimeout(() => {
+                toast({
+                  title: "👋 ผู้เล่นใหม่เข้ามา",
+                  description: `${newPlayer.name} เข้าห้องแล้ว`,
+                  duration: 3000,
+                });
+              }, 0);
+              return [
+                ...prev,
+                {
+                  id: newPlayer.id,
+                  name: newPlayer.name,
+                  avatar: newPlayer.avatar,
+                  role: newPlayer.role || "CIVILIAN",
+                  word: newPlayer.word || "",
+                  is_alive: newPlayer.is_alive ?? true,
+                  vote_count: newPlayer.vote_count || 0,
+                  has_voted: newPlayer.has_voted || false,
+                  voted_for: newPlayer.voted_for,
+                  is_host: newPlayer.is_host,
+                } as UndercoverPlayer,
+              ];
             });
           } else if (payload.eventType === "DELETE") {
             const oldPlayer = payload.old as any;
+            console.log(
+              "DELETE event received for player:",
+              oldPlayer.id,
+              oldPlayer.name
+            );
             setPlayers((prev) => {
               const leavingPlayer = prev.find((p) => p.id === oldPlayer.id);
               if (leavingPlayer) {
-                toast({
-                  title: "ผู้เล่นออกห้อง",
-                  description: `${leavingPlayer.name} ออกไปแล้ว`,
-                  duration: 3000,
-                });
+                console.log("Removing player from list:", leavingPlayer.name);
+                // Show toast after state update to avoid "setState during render" warning
+                setTimeout(() => {
+                  toast({
+                    title: "ผู้เล่นออกห้อง",
+                    description: `${leavingPlayer.name} ออกไปแล้ว`,
+                    duration: 3000,
+                  });
+                }, 0);
+              } else {
+                console.log(
+                  "Player not found in current list, ID:",
+                  oldPlayer.id
+                );
               }
-              return prev.filter((p) => p.id !== oldPlayer.id);
+              const filtered = prev.filter((p) => p.id !== oldPlayer.id);
+              console.log("Players after filter:", filtered.length, "players");
+              return filtered;
             });
           } else if (payload.eventType === "UPDATE") {
             const updatedPlayer = payload.new as any;
@@ -258,7 +283,8 @@ export function useUndercoverRoom() {
           description: `รหัสห้อง: ${code}`,
         });
 
-        return roomData;
+        // Return room data with playerId for session recovery
+        return { ...roomData, playerId: playerData.id };
       } catch (error: any) {
         toast({
           title: "เกิดข้อผิดพลาด",
@@ -274,7 +300,7 @@ export function useUndercoverRoom() {
   );
 
   const joinRoom = useCallback(
-    async (roomCode: string, playerName: string) => {
+    async (roomCode: string, playerName: string, savedPlayerId?: string) => {
       setIsLoading(true);
       try {
         const { data: roomData, error: roomError } = await supabase
@@ -285,9 +311,6 @@ export function useUndercoverRoom() {
           .single();
 
         if (roomError) throw new Error("ไม่พบห้องนี้");
-        if (roomData.game_phase !== "WAITING") {
-          throw new Error("เกมเริ่มไปแล้ว ไม่สามารถเข้าร่วมได้");
-        }
 
         const { data: existingPlayers } = await supabase
           .from("players")
@@ -295,53 +318,100 @@ export function useUndercoverRoom() {
           .eq("room_id", roomData.id)
           .eq("is_active", true);
 
-        const usedAvatars = (existingPlayers || []).map((p: any) => p.avatar);
-        const playerAvatar = getRandomAvatar(usedAvatars);
+        // Check if player with same ID already exists (session recovery with ID)
+        // Then fall back to name check for backward compatibility
+        let existingPlayer = savedPlayerId
+          ? (existingPlayers || []).find((p: any) => p.id === savedPlayerId)
+          : null;
 
-        const { data: playerData, error: playerError } = await supabase
-          .from("players")
-          .insert({
-            room_id: roomData.id,
-            name: playerName,
-            is_host: false,
-            avatar: playerAvatar,
-            is_alive: true,
-            vote_count: 0,
-            has_voted: false,
-          })
-          .select()
-          .single();
+        // If not found by ID, try by name (for users without saved ID)
+        if (!existingPlayer) {
+          existingPlayer = (existingPlayers || []).find(
+            (p: any) => p.name === playerName
+          );
+        }
 
-        if (playerError) throw playerError;
+        let playerData;
+
+        if (existingPlayer) {
+          // Rejoin as existing player
+          playerData = existingPlayer;
+          console.log(
+            "Session recovery: found existing player",
+            playerData.id,
+            "is_host:",
+            playerData.is_host
+          );
+        } else {
+          // Check if game already started for new players
+          if (roomData.game_phase !== "WAITING") {
+            throw new Error("เกมเริ่มไปแล้ว ไม่สามารถเข้าร่วมได้");
+          }
+
+          const usedAvatars = (existingPlayers || []).map((p: any) => p.avatar);
+          const playerAvatar = getRandomAvatar(usedAvatars);
+
+          const { data: newPlayerData, error: playerError } = await supabase
+            .from("players")
+            .insert({
+              room_id: roomData.id,
+              name: playerName,
+              is_host: false,
+              avatar: playerAvatar,
+              is_alive: true,
+              vote_count: 0,
+              has_voted: false,
+            })
+            .select()
+            .single();
+
+          if (playerError) throw playerError;
+          playerData = newPlayerData;
+        }
 
         setRoom({
           id: roomData.id,
           code: roomData.code,
           host_name: roomData.host_name,
           is_active: roomData.is_active,
-          game_phase: "WAITING",
-          current_turn_index: 0,
-          vocabulary: null,
-          round: 1,
-          timer_seconds: 30,
-          include_mr_white: false,
-          selected_category: "ทั้งหมด",
+          game_phase: roomData.game_phase || "WAITING",
+          current_turn_index: roomData.current_player_index || 0,
+          vocabulary: roomData.current_card || null,
+          round: roomData.cards_remaining || 1,
+          timer_seconds: roomData.timer_seconds || 30,
+          include_mr_white: roomData.include_mr_white || false,
+          selected_category: roomData.selected_category || "ทั้งหมด",
         });
 
-        const allPlayers = [...(existingPlayers || []), playerData].map(
+        // Deduplicate players - use existing players from DB directly
+        // The playerData is already in existingPlayers if it was a rejoin
+        const uniquePlayersMap = new Map();
+        for (const p of existingPlayers || []) {
+          uniquePlayersMap.set(p.id, p);
+        }
+        // Add new player only if not already in the map
+        if (!uniquePlayersMap.has(playerData.id)) {
+          uniquePlayersMap.set(playerData.id, playerData);
+        }
+
+        const allPlayers = Array.from(uniquePlayersMap.values()).map(
           (p: any) => ({
             id: p.id,
             name: p.name,
             avatar: p.avatar,
-            role: "CIVILIAN" as const,
-            word: "",
-            is_alive: true,
-            vote_count: 0,
-            has_voted: false,
+            role: p.role || ("CIVILIAN" as const),
+            word: p.word || "",
+            is_alive: p.is_alive ?? true,
+            vote_count: p.vote_count || 0,
+            has_voted: p.has_voted || false,
             is_host: p.is_host,
           })
         );
 
+        console.log(
+          "All players after join:",
+          allPlayers.map((p) => ({ name: p.name, is_host: p.is_host }))
+        );
         setPlayers(allPlayers);
         setCurrentPlayerId(playerData.id);
 
@@ -350,7 +420,8 @@ export function useUndercoverRoom() {
           description: `ยินดีต้อนรับ ${playerName}`,
         });
 
-        return roomData;
+        // Return room data with playerId for session recovery
+        return { room: roomData, playerId: playerData.id };
       } catch (error: any) {
         toast({
           title: "เกิดข้อผิดพลาด",
@@ -368,6 +439,13 @@ export function useUndercoverRoom() {
   // เริ่มเกม - แจกบทบาท
   const startGame = useCallback(
     async (category: string = "ทั้งหมด", includeMrWhite: boolean = false) => {
+      console.log("startGame called with:", {
+        category,
+        includeMrWhite,
+        room,
+        playersCount: players.length,
+      });
+
       if (!room || players.length < 4) {
         toast({
           title: "ไม่สามารถเริ่มเกมได้",
@@ -377,53 +455,76 @@ export function useUndercoverRoom() {
         return;
       }
 
-      // สุ่มคำศัพท์
-      const vocabulary = getRandomVocabulary(category);
+      try {
+        // สุ่มคำศัพท์
+        const vocabulary = getRandomVocabulary(category);
+        console.log("Selected vocabulary:", vocabulary);
 
-      // กำหนดบทบาท
-      const assignedPlayers = assignRoles(
-        players.map((p) => ({
-          id: p.id,
-          name: p.name,
-          avatar: p.avatar,
-          is_host: p.is_host,
-        })),
-        vocabulary,
-        includeMrWhite
-      );
+        // กำหนดบทบาท
+        const assignedPlayers = assignRoles(
+          players.map((p) => ({
+            id: p.id,
+            name: p.name,
+            avatar: p.avatar,
+            is_host: p.is_host,
+          })),
+          vocabulary,
+          includeMrWhite
+        );
+        console.log("Assigned roles:", assignedPlayers);
 
-      // อัพเดท players ใน database
-      for (const player of assignedPlayers) {
-        await supabase
-          .from("players")
+        // อัพเดท players ใน database
+        for (const player of assignedPlayers) {
+          const { error: playerError } = await supabase
+            .from("players")
+            .update({
+              role: player.role,
+              word: player.word,
+              is_alive: true,
+              vote_count: 0,
+              has_voted: false,
+            })
+            .eq("id", player.id);
+
+          if (playerError) {
+            console.error("Error updating player:", playerError);
+            throw playerError;
+          }
+        }
+        console.log("Players updated successfully");
+
+        // อัพเดท room
+        const { error: roomError } = await supabase
+          .from("rooms")
           .update({
-            role: player.role,
-            word: player.word,
-            is_alive: true,
-            vote_count: 0,
-            has_voted: false,
+            game_phase: "REVEAL_WORD",
+            current_card: vocabulary as any,
+            current_player_index: 0,
+            cards_remaining: 1,
+            game_started: true,
           })
-          .eq("id", player.id);
+          .eq("id", room.id);
+
+        if (roomError) {
+          console.error("Error updating room:", roomError);
+          throw roomError;
+        }
+        console.log("Room updated successfully");
+
+        setPlayers(assignedPlayers);
+
+        toast({
+          title: "🎮 เกมเริ่มแล้ว!",
+          description: "แตะค้างเพื่อดูคำศัพท์ของคุณ",
+        });
+      } catch (error) {
+        console.error("Error starting game:", error);
+        toast({
+          title: "เกิดข้อผิดพลาด",
+          description: "ไม่สามารถเริ่มเกมได้ กรุณาลองใหม่อีกครั้ง",
+          variant: "destructive",
+        });
       }
-
-      // อัพเดท room
-      await supabase
-        .from("rooms")
-        .update({
-          game_phase: "REVEAL_WORD",
-          current_card: vocabulary as any,
-          current_player_index: 0,
-          cards_remaining: 1,
-          game_started: true,
-        })
-        .eq("id", room.id);
-
-      setPlayers(assignedPlayers);
-
-      toast({
-        title: "🎮 เกมเริ่มแล้ว!",
-        description: "แตะค้างเพื่อดูคำศัพท์ของคุณ",
-      });
     },
     [room, players, toast]
   );
@@ -614,8 +715,7 @@ export function useUndercoverRoom() {
         .eq("id", room.id);
 
       toast({
-        title:
-          result.winner === "CIVILIAN" ? "👥 พลเมืองดีชนะ!" : "สายลับชนะ!",
+        title: result.winner === "CIVILIAN" ? "👥 พลเมืองดีชนะ!" : "สายลับชนะ!",
         description: result.reason,
       });
     } else {
@@ -683,7 +783,23 @@ export function useUndercoverRoom() {
   const leaveRoom = useCallback(async () => {
     if (!currentPlayerId || !room) return;
 
-    await supabase.from("players").delete().eq("id", currentPlayerId);
+    console.log("Leaving room - deleting player:", currentPlayerId);
+    const { error: deleteError } = await supabase
+      .from("players")
+      .delete()
+      .eq("id", currentPlayerId);
+
+    if (deleteError) {
+      console.error("Error deleting player:", deleteError);
+      toast({
+        title: "เกิดข้อผิดพลาด",
+        description: "ไม่สามารถออกจากห้องได้",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    console.log("Player deleted successfully");
 
     const { data: remainingPlayers } = await supabase
       .from("players")
@@ -692,6 +808,7 @@ export function useUndercoverRoom() {
       .eq("is_active", true);
 
     if (!remainingPlayers || remainingPlayers.length === 0) {
+      console.log("No remaining players, deleting room");
       await supabase.from("rooms").delete().eq("id", room.id);
     }
 

@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react';
-import { FiveSecState } from '@/lib/partyGameTypes';
-import { Button } from '@/components/ui/button';
-import { motion, AnimatePresence } from 'framer-motion';
+import { useState, useEffect } from "react";
+import { FiveSecState } from "@/lib/partyGameTypes";
+import { Button } from "@/components/ui/button";
+import { motion, AnimatePresence } from "framer-motion";
 
 interface Player {
   id: string;
@@ -25,8 +25,10 @@ export function FiveSecGame({
   onVote,
   onNextRound,
 }: FiveSecGameProps) {
-  const [timeLeft, setTimeLeft] = useState<number>(5);
+  const timeLimit = gameState.timeLimit || 5;
+  const [timeLeft, setTimeLeft] = useState<number>(timeLimit);
   const [isTimedOut, setIsTimedOut] = useState(false);
+  const [hasAutoTransitioned, setHasAutoTransitioned] = useState(false);
 
   const currentPlayer = players.find((p) => p.id === gameState.player_id);
   const isMe = myId === gameState.player_id;
@@ -36,11 +38,13 @@ export function FiveSecGame({
   const voteCount = Object.values(gameState.votes || {}).length;
   const passCount = Object.values(gameState.votes || {}).filter(Boolean).length;
   const failCount = voteCount - passCount;
-  const totalVoters = players.filter((p) => p.id !== gameState.player_id).length;
+  const totalVoters = players.filter(
+    (p) => p.id !== gameState.player_id
+  ).length;
 
   // Timer logic (synced with server time)
   useEffect(() => {
-    if (gameState.phase !== 'PLAYING') return;
+    if (gameState.phase !== "PLAYING") return;
 
     const interval = setInterval(() => {
       const now = Date.now();
@@ -61,28 +65,49 @@ export function FiveSecGame({
 
   // Reset states when new round starts
   useEffect(() => {
-    if (gameState.phase === 'PLAYING') {
+    if (gameState.phase === "PLAYING") {
       setIsTimedOut(false);
-      setTimeLeft(5);
+      setTimeLeft(gameState.timeLimit || 5);
+      setHasAutoTransitioned(false);
     }
-  }, [gameState.player_id, gameState.phase]);
+  }, [gameState.player_id, gameState.phase, gameState.timeLimit]);
 
-  // Auto-transition to judging when time is up
+  // Debug log for phase changes
   useEffect(() => {
-    if (isTimedOut && gameState.phase === 'PLAYING') {
-      onFinishAnswering();
-    }
-  }, [isTimedOut, gameState.phase, onFinishAnswering]);
+    console.log("FiveSecGame state:", {
+      phase: gameState.phase,
+      player_id: gameState.player_id,
+      isMe,
+      hasVoted,
+      voteCount,
+      totalVoters,
+    });
+  }, [
+    gameState.phase,
+    gameState.player_id,
+    isMe,
+    hasVoted,
+    voteCount,
+    totalVoters,
+  ]);
 
   const getTimerColor = () => {
-    if (timeLeft <= 1) return 'from-red-600 to-red-800';
-    if (timeLeft <= 2) return 'from-orange-500 to-red-600';
-    if (timeLeft <= 3) return 'from-yellow-500 to-orange-500';
-    return 'from-blue-500 to-blue-700';
+    // คนที่ตอบ - ใช้โทนสี orange/yellow
+    if (isMe) {
+      if (timeLeft <= 1) return "from-red-600 to-red-800";
+      if (timeLeft <= 2) return "from-orange-500 to-red-600";
+      if (timeLeft <= 3) return "from-yellow-500 to-orange-500";
+      return "from-orange-500 to-yellow-600";
+    }
+    // คนที่ดู - ใช้โทนสี blue/purple
+    if (timeLeft <= 1) return "from-red-600 to-pink-800";
+    if (timeLeft <= 2) return "from-purple-500 to-red-600";
+    if (timeLeft <= 3) return "from-indigo-500 to-purple-500";
+    return "from-blue-500 to-indigo-700";
   };
 
   // Playing phase
-  if (gameState.phase === 'PLAYING') {
+  if (gameState.phase === "PLAYING") {
     return (
       <motion.div
         initial={{ opacity: 0, scale: 0.9 }}
@@ -100,7 +125,9 @@ export function FiveSecGame({
           className="bg-white text-black p-6 rounded-xl shadow-lg my-6"
         >
           <p className="text-gray-500 mb-2 text-sm">บอกมา 3 อย่าง...</p>
-          <h1 className="text-xl md:text-2xl font-extrabold">{gameState.topic}</h1>
+          <h1 className="text-xl md:text-2xl font-extrabold">
+            {gameState.topic}
+          </h1>
         </motion.div>
 
         {/* Timer Circle */}
@@ -110,12 +137,12 @@ export function FiveSecGame({
           className="relative w-32 h-32 mx-auto flex items-center justify-center border-4 border-white rounded-full bg-black/30"
         >
           <span className="text-5xl font-mono font-bold">
-            {timeLeft > 0 ? timeLeft.toFixed(1) : '💥'}
+            {timeLeft > 0 ? timeLeft.toFixed(1) : "💥"}
           </span>
         </motion.div>
 
         {/* Finish button for current player */}
-        {isMe && timeLeft > 0 && (
+        {isMe && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -125,14 +152,14 @@ export function FiveSecGame({
               onClick={onFinishAnswering}
               className="mt-6 w-full bg-yellow-500 hover:bg-yellow-400 text-black font-bold py-4 text-xl shadow-lg"
             >
-              ✋ ตอบครบแล้ว!
+              {timeLeft > 0 ? "✋ ตอบครบแล้ว!" : "⏭️ ต่อไป"}
             </Button>
           </motion.div>
         )}
 
         {!isMe && (
           <p className="mt-4 text-sm opacity-80">
-            รอ {currentPlayer?.name} ตอบ...
+            รอ {currentPlayer?.name} {timeLeft > 0 ? "ตอบ" : "กดต่อไป"}...
           </p>
         )}
       </motion.div>
@@ -140,7 +167,7 @@ export function FiveSecGame({
   }
 
   // Judging phase
-  if (gameState.phase === 'JUDGING') {
+  if (gameState.phase === "JUDGING") {
     return (
       <motion.div
         initial={{ opacity: 0, scale: 0.9 }}
@@ -150,7 +177,9 @@ export function FiveSecGame({
         <div className="text-4xl mb-4">⚖️</div>
         <h2 className="text-xl font-bold mb-2">ตัดสิน!</h2>
         <p className="text-lg mb-4">
-          <span className="text-yellow-400 font-bold">{currentPlayer?.name}</span>{' '}
+          <span className="text-yellow-400 font-bold">
+            {currentPlayer?.name}
+          </span>{" "}
           ตอบ
         </p>
 
@@ -188,9 +217,7 @@ export function FiveSecGame({
           <p className="text-green-400 mb-4">✓ คุณโหวตแล้ว</p>
         )}
 
-        {isMe && (
-          <p className="text-yellow-400 mb-4">รอเพื่อนตัดสิน...</p>
-        )}
+        {isMe && <p className="text-yellow-400 mb-4">รอเพื่อนตัดสิน...</p>}
 
         {/* Vote count */}
         <div className="bg-black/30 rounded-xl p-4 mb-6">

@@ -121,7 +121,13 @@ export function useGameRoom() {
         },
         (payload) => {
           if (payload.eventType === "INSERT") {
-            setPlayers((prev) => [...prev, payload.new as Player]);
+            setPlayers((prev) => {
+              // Prevent duplicates
+              if (prev.some((p) => p.id === (payload.new as Player).id)) {
+                return prev;
+              }
+              return [...prev, payload.new as Player];
+            });
           } else if (payload.eventType === "DELETE") {
             setPlayers((prev) =>
               prev.filter((p) => p.id !== (payload.old as Player).id)
@@ -189,7 +195,8 @@ export function useGameRoom() {
           description: `รหัสห้อง: ${code}`,
         });
 
-        return roomData;
+        // Return room data with playerId for session recovery
+        return { ...roomData, playerId: playerData.id };
       } catch (error: any) {
         toast({
           title: "เกิดข้อผิดพลาด",
@@ -205,7 +212,7 @@ export function useGameRoom() {
   );
 
   const joinRoom = useCallback(
-    async (code: string, playerName: string) => {
+    async (code: string, playerName: string, savedPlayerId?: string) => {
       setIsLoading(true);
       try {
         const { data: roomData, error: roomError } = await supabase
@@ -225,31 +232,62 @@ export function useGameRoom() {
           .eq("room_id", roomData.id)
           .eq("is_active", true);
 
-        // Get used avatars from existing players
-        const usedAvatars = (existingPlayers || [])
-          .map((p) => p.avatar)
-          .filter(Boolean) as number[];
-        const playerAvatar = getRandomAvatar(usedAvatars);
+        // Check if player with same ID already exists (session recovery with ID)
+        // Then fall back to name check for backward compatibility
+        let existingPlayer = savedPlayerId
+          ? (existingPlayers || []).find((p: any) => p.id === savedPlayerId)
+          : null;
 
-        const { data: playerData, error: playerError } = await supabase
-          .from("players")
-          .insert({
-            room_id: roomData.id,
-            name: playerName,
-            is_host: false,
-            avatar: playerAvatar,
-          })
-          .select()
-          .single();
+        // If not found by ID, try by name (for users without saved ID)
+        if (!existingPlayer) {
+          existingPlayer = (existingPlayers || []).find(
+            (p: any) => p.name === playerName
+          );
+        }
 
-        if (playerError) throw playerError;
+        let playerData;
+
+        if (existingPlayer) {
+          // Rejoin as existing player
+          playerData = existingPlayer;
+          console.log("Session recovery: found existing player", playerData.id);
+        } else {
+          // Get used avatars from existing players
+          const usedAvatars = (existingPlayers || [])
+            .map((p) => p.avatar)
+            .filter(Boolean) as number[];
+          const playerAvatar = getRandomAvatar(usedAvatars);
+
+          const { data: newPlayerData, error: playerError } = await supabase
+            .from("players")
+            .insert({
+              room_id: roomData.id,
+              name: playerName,
+              is_host: false,
+              avatar: playerAvatar,
+            })
+            .select()
+            .single();
+
+          if (playerError) throw playerError;
+          playerData = newPlayerData;
+        }
 
         setRoom({
           ...roomData,
           deck: roomData.deck as unknown as PlayingCard[],
           current_card: roomData.current_card as unknown as PlayingCard | null,
         });
-        setPlayers([...(existingPlayers || []), playerData]);
+
+        // Deduplicate players
+        const uniquePlayersMap = new Map();
+        for (const p of existingPlayers || []) {
+          uniquePlayersMap.set(p.id, p);
+        }
+        if (!uniquePlayersMap.has(playerData.id)) {
+          uniquePlayersMap.set(playerData.id, playerData);
+        }
+        setPlayers(Array.from(uniquePlayersMap.values()));
         setCurrentPlayerId(playerData.id);
 
         toast({
@@ -257,7 +295,8 @@ export function useGameRoom() {
           description: `ยินดีต้อนรับ ${playerName}`,
         });
 
-        return roomData;
+        // Return room data with playerId for session recovery
+        return { room: roomData, playerId: playerData.id };
       } catch (error: any) {
         toast({
           title: "เกิดข้อผิดพลาด",

@@ -153,30 +153,40 @@ export function usePokDengRoom() {
               console.error("Error parsing cards:", e);
             }
 
-            setPlayers((prev) => [
-              ...prev,
-              {
-                ...newPlayer,
-                cards: parsedCards,
-              } as PokDengPlayer,
-            ]);
-            // แจ้งเมื่อผู้เล่นเข้ามาใหม่
-            toast({
-              title: "👋 ผู้เล่นใหม่เข้ามา",
-              description: `${newPlayer.name} เข้าห้องแล้ว`,
-              duration: 3000,
+            setPlayers((prev) => {
+              // Prevent duplicates
+              if (prev.some((p) => p.id === newPlayer.id)) {
+                return prev;
+              }
+              // Show toast after state update to avoid "setState during render" warning
+              setTimeout(() => {
+                toast({
+                  title: "👋 ผู้เล่นใหม่เข้ามา",
+                  description: `${newPlayer.name} เข้าห้องแล้ว`,
+                  duration: 3000,
+                });
+              }, 0);
+              return [
+                ...prev,
+                {
+                  ...newPlayer,
+                  cards: parsedCards,
+                } as PokDengPlayer,
+              ];
             });
           } else if (payload.eventType === "DELETE") {
             const oldPlayer = payload.old as any;
             setPlayers((prev) => {
               const leavingPlayer = prev.find((p) => p.id === oldPlayer.id);
               if (leavingPlayer) {
-                // แจ้งเมื่อผู้เล่นออก
-                toast({
-                  title: "ผู้เล่นออกห้อง",
-                  description: `${leavingPlayer.name} ออกไปแล้ว`,
-                  duration: 3000,
-                });
+                // Show toast after state update to avoid "setState during render" warning
+                setTimeout(() => {
+                  toast({
+                    title: "ผู้เล่นออกห้อง",
+                    description: `${leavingPlayer.name} ออกไปแล้ว`,
+                    duration: 3000,
+                  });
+                }, 0);
               }
               return prev.filter((p) => p.id !== oldPlayer.id);
             });
@@ -279,7 +289,8 @@ export function usePokDengRoom() {
           description: `รหัสห้อง: ${code}`,
         });
 
-        return roomData;
+        // Return room data with playerId for session recovery
+        return { ...roomData, playerId: playerData.id };
       } catch (error: any) {
         toast({
           title: "เกิดข้อผิดพลาด",
@@ -295,7 +306,7 @@ export function usePokDengRoom() {
   );
 
   const joinRoom = useCallback(
-    async (code: string, playerName: string) => {
+    async (code: string, playerName: string, savedPlayerId?: string) => {
       setIsLoading(true);
       try {
         const { data: roomData, error: roomError } = await supabase
@@ -310,43 +321,66 @@ export function usePokDengRoom() {
           throw new Error("ไม่พบห้อง หรือห้องถูกปิดแล้ว");
         }
 
-        if (roomData.game_started) {
-          throw new Error("เกมเริ่มไปแล้ว ไม่สามารถเข้าร่วมได้");
-        }
-
         const { data: existingPlayers } = await supabase
           .from("players")
           .select()
           .eq("room_id", roomData.id)
           .eq("is_active", true);
 
-        if ((existingPlayers?.length || 0) >= 8) {
-          throw new Error("ห้องเต็มแล้ว (สูงสุด 8 คน)");
+        // Check if player with same ID already exists (session recovery with ID)
+        // Then fall back to name check for backward compatibility
+        let existingPlayer = savedPlayerId
+          ? (existingPlayers || []).find((p: any) => p.id === savedPlayerId)
+          : null;
+
+        // If not found by ID, try by name (for users without saved ID)
+        if (!existingPlayer) {
+          existingPlayer = (existingPlayers || []).find(
+            (p: any) => p.name === playerName
+          );
         }
 
-        const usedAvatars = (existingPlayers || [])
-          .map((p: any) => p.avatar)
-          .filter(Boolean) as number[];
-        const playerAvatar = getRandomAvatar(usedAvatars);
+        let playerData;
 
-        const { data: playerData, error: playerError } = await supabase
-          .from("players")
-          .insert({
-            room_id: roomData.id,
-            name: playerName,
-            is_host: false,
-            avatar: playerAvatar,
-            is_dealer: false,
-            player_order: existingPlayers?.length || 0,
-            cards: [] as any,
-            points: 0,
-            bet: 0,
-            has_drawn: false,
-          })
-          .select()
-          .single();
+        if (existingPlayer) {
+          // Rejoin as existing player
+          playerData = existingPlayer;
+          console.log("Session recovery: found existing player", playerData.id);
+        } else {
+          // Only block new players if game has started
+          if (roomData.game_started) {
+            throw new Error("เกมเริ่มไปแล้ว ไม่สามารถเข้าร่วมได้");
+          }
 
-        if (playerError) throw playerError;
+          if ((existingPlayers?.length || 0) >= 8) {
+            throw new Error("ห้องเต็มแล้ว (สูงสุด 8 คน)");
+          }
+
+          const usedAvatars = (existingPlayers || [])
+            .map((p: any) => p.avatar)
+            .filter(Boolean) as number[];
+          const playerAvatar = getRandomAvatar(usedAvatars);
+
+          const { data: newPlayerData, error: playerError } = await supabase
+            .from("players")
+            .insert({
+              room_id: roomData.id,
+              name: playerName,
+              is_host: false,
+              avatar: playerAvatar,
+              is_dealer: false,
+              player_order: existingPlayers?.length || 0,
+              cards: [] as any,
+              points: 0,
+              bet: 0,
+              has_drawn: false,
+            })
+            .select()
+            .single();
+
+          if (playerError) throw playerError;
+          playerData = newPlayerData;
+        }
 
         setRoom({
           id: roomData.id,
@@ -379,7 +413,15 @@ export function usePokDengRoom() {
           });
         };
 
-        setPlayers(parsePlayers([...(existingPlayers || []), playerData]));
+        // Deduplicate players
+        const uniquePlayersMap = new Map();
+        for (const p of existingPlayers || []) {
+          uniquePlayersMap.set(p.id, p);
+        }
+        if (!uniquePlayersMap.has(playerData.id)) {
+          uniquePlayersMap.set(playerData.id, playerData);
+        }
+        setPlayers(parsePlayers(Array.from(uniquePlayersMap.values())));
         setCurrentPlayerId(playerData.id);
 
         toast({
@@ -387,7 +429,8 @@ export function usePokDengRoom() {
           description: `ยินดีต้อนรับ ${playerName}`,
         });
 
-        return roomData;
+        // Return room data with playerId for session recovery
+        return { room: roomData, playerId: playerData.id };
       } catch (error: any) {
         toast({
           title: "เกิดข้อผิดพลาด",

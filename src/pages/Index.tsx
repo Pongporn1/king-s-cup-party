@@ -5,6 +5,7 @@ import { usePokDengRoom } from "@/hooks/usePokDengRoom";
 import { useUndercoverRoom } from "@/hooks/useUndercoverRoom";
 import { useParanoiaGame } from "@/hooks/useParanoiaGame";
 import { useFiveSecGame } from "@/hooks/useFiveSecGame";
+import { useSessionRecovery } from "@/hooks/useSessionRecovery";
 import { Lobby } from "@/components/Lobby";
 import { GameRoom } from "@/components/GameRoom";
 import { PokDengLobby } from "@/components/PokDengLobby";
@@ -20,7 +21,6 @@ import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import ThemeSwitcher from "@/components/ThemeSwitcher";
 import ThemedBackground from "@/components/ThemedBackground";
 import { FloatingNames, AdminPanel } from "@/components/AdminPanel";
-import { GameRulesAssistant } from "@/components/GameRulesAssistant";
 import { getFloatingNamesFromDB, getGameCovers } from "@/lib/adminStorage";
 import { t } from "@/lib/i18n";
 import { LoginButton } from "@/components/LoginButton";
@@ -32,6 +32,7 @@ import {
   Grid3X3,
   ImageIcon,
   Sparkles,
+  Loader2,
 } from "lucide-react";
 
 type GameMode =
@@ -46,13 +47,15 @@ const Index = () => {
   const [gameMode, setGameMode] = useState<GameMode>("select");
   const [floatingNames, setFloatingNames] = useState<string[]>([]);
   const [isPokDengLiveMode, setIsPokDengLiveMode] = useState(false);
+  const [isRecoveringSession, setIsRecoveringSession] = useState(true);
+
+  // Session Recovery
+  const { sessionData, hasSession, saveSession, clearSession } =
+    useSessionRecovery();
 
   // Admin Panel State
   const [showAdminPanel, setShowAdminPanel] = useState(false);
   const [gameCovers, setGameCovers] = useState<Record<string, string>>({});
-
-  // AI Assistant State
-  const [showAIAssistant, setShowAIAssistant] = useState(false);
 
   // King's Cup game hook
   const {
@@ -152,14 +155,22 @@ const Index = () => {
 
   // Get current room info for friend invites
   const getCurrentRoomInfo = () => {
-    if (room) return { code: room.code, type: 'kingscup', name: t("kingsCup") };
-    if (pokDengRoom) return { code: pokDengRoom.code, type: 'pokdeng', name: t("pokDeng") };
-    if (undercoverRoom) return { code: undercoverRoom.code, type: 'undercover', name: t("undercoverTitle") };
-    if (paranoiaRoom) return { code: paranoiaRoom.code, type: 'paranoia', name: 'Paranoia' };
-    if (fiveSecRoom) return { code: fiveSecRoom.code, type: '5-sec', name: '5 Second Rule' };
+    if (room) return { code: room.code, type: "kingscup", name: t("kingsCup") };
+    if (pokDengRoom)
+      return { code: pokDengRoom.code, type: "pokdeng", name: t("pokDeng") };
+    if (undercoverRoom)
+      return {
+        code: undercoverRoom.code,
+        type: "undercover",
+        name: t("undercoverTitle"),
+      };
+    if (paranoiaRoom)
+      return { code: paranoiaRoom.code, type: "paranoia", name: "Paranoia" };
+    if (fiveSecRoom)
+      return { code: fiveSecRoom.code, type: "5-sec", name: "5 Second Rule" };
     return null;
   };
-  
+
   const currentRoomInfo = getCurrentRoomInfo();
 
   // Games array - Define at component level so it's accessible everywhere
@@ -219,6 +230,209 @@ const Index = () => {
     setSelectedGameIndex((prev) => (prev - 1 + games.length) % games.length);
   }, [games.length]);
 
+  // Session Recovery Effect - Attempt to rejoin room on page load
+  useEffect(() => {
+    const attemptRecovery = async () => {
+      if (
+        !hasSession ||
+        !sessionData.roomCode ||
+        !sessionData.gameType ||
+        !sessionData.playerName
+      ) {
+        setIsRecoveringSession(false);
+        return;
+      }
+
+      console.log("Attempting session recovery:", sessionData);
+
+      try {
+        const gameType = sessionData.gameType;
+        const roomCode = sessionData.roomCode;
+        const playerName = sessionData.playerName;
+        const playerId = sessionData.playerId;
+
+        // Set game mode first
+        if (
+          gameType === "doraemon" ||
+          gameType === "pokdeng" ||
+          gameType === "undercover" ||
+          gameType === "paranoia" ||
+          gameType === "5-sec"
+        ) {
+          setGameMode(gameType);
+        }
+
+        // Attempt to rejoin based on game type, passing saved playerId for accurate session recovery
+        let success: unknown = false;
+        switch (gameType) {
+          case "doraemon":
+            success = await joinRoom(roomCode, playerName, playerId);
+            break;
+          case "pokdeng":
+            success = await pokDengJoinRoom(roomCode, playerName, playerId);
+            break;
+          case "undercover":
+            success = await undercoverJoinRoom(roomCode, playerName, playerId);
+            break;
+          case "paranoia":
+            success = await paranoiaJoinRoom(roomCode, playerName, playerId);
+            break;
+          case "5-sec":
+            success = await fiveSecJoinRoom(roomCode, playerName, playerId);
+            break;
+        }
+
+        if (!success) {
+          console.log("Session recovery failed, clearing session");
+          clearSession();
+          setGameMode("select");
+        } else {
+          console.log("Session recovery successful!");
+        }
+      } catch (error) {
+        console.error("Session recovery error:", error);
+        clearSession();
+        setGameMode("select");
+      } finally {
+        setIsRecoveringSession(false);
+      }
+    };
+
+    attemptRecovery();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasSession]); // Only run once when hasSession is determined
+
+  // Wrapper functions to save session when creating/joining rooms
+  const handleCreateRoom = useCallback(
+    async (hostName: string, gameType: GameMode) => {
+      let result;
+      switch (gameType) {
+        case "doraemon":
+          result = await createRoom(hostName);
+          break;
+        case "pokdeng":
+          result = await pokDengCreateRoom(hostName);
+          break;
+        case "undercover":
+          result = await undercoverCreateRoom(hostName);
+          break;
+        case "paranoia":
+          result = await paranoiaCreateRoom(hostName);
+          break;
+        case "5-sec":
+          result = await fiveSecCreateRoom(hostName);
+          break;
+      }
+
+      if (result) {
+        // Extract roomCode and playerId from result
+        const roomCode =
+          typeof result === "string"
+            ? result
+            : result.code || (result as any).code;
+        const playerId =
+          typeof result === "object" && result !== null && "playerId" in result
+            ? (result as { playerId: string }).playerId
+            : undefined;
+
+        saveSession({
+          playerName: hostName,
+          roomCode,
+          gameType,
+          playerId,
+        });
+      }
+      return result;
+    },
+    [
+      createRoom,
+      pokDengCreateRoom,
+      undercoverCreateRoom,
+      paranoiaCreateRoom,
+      fiveSecCreateRoom,
+      saveSession,
+    ]
+  );
+
+  const handleJoinRoom = useCallback(
+    async (code: string, playerName: string, gameType: GameMode) => {
+      let result: unknown = null;
+      switch (gameType) {
+        case "doraemon":
+          result = await joinRoom(code, playerName);
+          break;
+        case "pokdeng":
+          result = await pokDengJoinRoom(code, playerName);
+          break;
+        case "undercover":
+          result = await undercoverJoinRoom(code, playerName);
+          break;
+        case "paranoia":
+          result = await paranoiaJoinRoom(code, playerName);
+          break;
+        case "5-sec":
+          result = await fiveSecJoinRoom(code, playerName);
+          break;
+      }
+
+      if (result) {
+        // Extract playerId from result if available
+        const playerId =
+          typeof result === "object" && result !== null && "playerId" in result
+            ? (result as { playerId: string }).playerId
+            : undefined;
+
+        saveSession({
+          playerName,
+          roomCode: code.toUpperCase(),
+          gameType,
+          playerId,
+        });
+      }
+      return !!result;
+    },
+    [
+      joinRoom,
+      pokDengJoinRoom,
+      undercoverJoinRoom,
+      paranoiaJoinRoom,
+      fiveSecJoinRoom,
+      saveSession,
+    ]
+  );
+
+  const handleLeaveRoom = useCallback(
+    (gameType: GameMode) => {
+      clearSession();
+      switch (gameType) {
+        case "doraemon":
+          leaveRoom();
+          break;
+        case "pokdeng":
+          pokDengLeaveRoom();
+          break;
+        case "undercover":
+          undercoverLeaveRoom();
+          break;
+        case "paranoia":
+          paranoiaLeaveRoom();
+          break;
+        case "5-sec":
+          fiveSecLeaveRoom();
+          break;
+      }
+      setGameMode("select");
+    },
+    [
+      clearSession,
+      leaveRoom,
+      pokDengLeaveRoom,
+      undercoverLeaveRoom,
+      paranoiaLeaveRoom,
+      fiveSecLeaveRoom,
+    ]
+  );
+
   // Load floating names and game covers
   useEffect(() => {
     const loadNames = async () => {
@@ -251,6 +465,17 @@ const Index = () => {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [gameMode, selectedGameIndex, nextGame, prevGame, games]);
 
+  // Show loading screen during session recovery
+  if (isRecoveringSession) {
+    return (
+      <div className="min-h-screen min-h-[100dvh] bg-zinc-900 flex flex-col items-center justify-center gap-4">
+        <Loader2 className="w-12 h-12 animate-spin text-cyan-400" />
+        <p className="text-white text-xl font-medium">กำลังกลับเข้าห้อง...</p>
+        <p className="text-zinc-400 text-sm">Recovering session...</p>
+      </div>
+    );
+  }
+
   if (gameMode === "select") {
     const selectedGame = games[selectedGameIndex];
 
@@ -280,7 +505,7 @@ const Index = () => {
             <span className="text-xl font-bold">Party Games</span>
           </div>
           <div className="flex items-center gap-3">
-            <LoginButton 
+            <LoginButton
               currentRoomCode={currentRoomInfo?.code}
               currentGameType={currentRoomInfo?.type}
               currentGameName={currentRoomInfo?.name}
@@ -439,15 +664,6 @@ const Index = () => {
               <Play fill="black" size={24} />
               Start Game
             </Button>
-
-            <Button
-              size="lg"
-              onClick={() => setShowAIAssistant(true)}
-              className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 px-8 py-6 rounded-full font-bold text-xl shadow-2xl hover:scale-105 transition-transform flex items-center gap-3"
-            >
-              <Sparkles size={24} />
-              ถามกติกา AI
-            </Button>
           </motion.div>
         </div>
 
@@ -486,20 +702,6 @@ const Index = () => {
         </div>
 
         {/* Admin Panel Modal */}
-        {/* AI Assistant */}
-        <AnimatePresence>
-          {showAIAssistant && (
-            <GameRulesAssistant
-              onClose={() => setShowAIAssistant(false)}
-              currentGame={{
-                id: selectedGame.id,
-                name: selectedGame.name,
-                emoji: selectedGame.emoji,
-              }}
-            />
-          )}
-        </AnimatePresence>
-
         {showAdminPanel && (
           <AdminPanel
             onClose={() => setShowAdminPanel(false)}
@@ -520,11 +722,26 @@ const Index = () => {
     if (!pokDengRoom) {
       return (
         <PokDengLobby
-          onCreateRoom={pokDengCreateRoom}
-          onJoinRoom={pokDengJoinRoom}
+          onCreateRoom={async (name) => {
+            const result = await handleCreateRoom(name, "pokdeng");
+            return result;
+          }}
+          onJoinRoom={async (code, name) => {
+            return handleJoinRoom(code, name, "pokdeng");
+          }}
           onQuickStart={async (name) => {
             setIsPokDengLiveMode(true);
-            return pokDengQuickStart(name, true); // true = LIVE mode
+            const result = await pokDengQuickStart(name, true);
+            if (result) {
+              const roomCode =
+                typeof result === "string" ? result : result.code;
+              saveSession({
+                playerName: name,
+                roomCode,
+                gameType: "pokdeng",
+              });
+            }
+            return result;
           }}
           isLoading={pokDengIsLoading}
           onBack={() => setGameMode("select")}
@@ -548,9 +765,8 @@ const Index = () => {
         onShowdown={pokDengShowdown}
         onNextRound={pokDengNextRound}
         onLeave={() => {
-          pokDengLeaveRoom();
           setIsPokDengLiveMode(false);
-          setGameMode("select");
+          handleLeaveRoom("pokdeng");
         }}
         onSetDealer={pokDengSetDealer}
       />
@@ -563,8 +779,12 @@ const Index = () => {
     if (!undercoverRoom) {
       return (
         <UndercoverLobby
-          onCreateRoom={undercoverCreateRoom}
-          onJoinRoom={undercoverJoinRoom}
+          onCreateRoom={async (name) => {
+            return handleCreateRoom(name, "undercover");
+          }}
+          onJoinRoom={async (code, name) => {
+            return handleJoinRoom(code, name, "undercover");
+          }}
           onBack={() => setGameMode("select")}
           isLoading={undercoverIsLoading}
         />
@@ -584,16 +804,8 @@ const Index = () => {
         isHost={isHost}
         categories={undercoverCategories}
         onStartGame={undercoverStartGame}
-        onStartDescribePhase={undercoverStartDescribePhase}
-        onNextTurn={undercoverNextTurn}
-        onStartVoting={undercoverStartVoting}
-        onVotePlayer={undercoverVotePlayer}
-        onCheckResultAndContinue={undercoverCheckResultAndContinue}
         onRestartGame={undercoverRestartGame}
-        onLeave={() => {
-          undercoverLeaveRoom();
-          setGameMode("select");
-        }}
+        onLeave={() => handleLeaveRoom("undercover")}
       />
     );
   }
@@ -603,8 +815,12 @@ const Index = () => {
     if (!paranoiaRoom) {
       return (
         <ParanoiaLobby
-          onCreateRoom={paranoiaCreateRoom}
-          onJoinRoom={paranoiaJoinRoom}
+          onCreateRoom={async (name) => {
+            return handleCreateRoom(name, "paranoia");
+          }}
+          onJoinRoom={async (code, name) => {
+            return handleJoinRoom(code, name, "paranoia");
+          }}
           onBack={() => setGameMode("select")}
           isLoading={paranoiaIsLoading}
         />
@@ -624,10 +840,7 @@ const Index = () => {
         onSelectVictim={paranoiaSelectVictim}
         onRevealQuestion={paranoiaRevealQuestion}
         onSkipQuestion={paranoiaSkipQuestion}
-        onLeave={() => {
-          paranoiaLeaveRoom();
-          setGameMode("select");
-        }}
+        onLeave={() => handleLeaveRoom("paranoia")}
       />
     );
   }
@@ -637,8 +850,12 @@ const Index = () => {
     if (!fiveSecRoom) {
       return (
         <FiveSecLobby
-          onCreateRoom={fiveSecCreateRoom}
-          onJoinRoom={fiveSecJoinRoom}
+          onCreateRoom={async (name) => {
+            return handleCreateRoom(name, "5-sec");
+          }}
+          onJoinRoom={async (code, name) => {
+            return handleJoinRoom(code, name, "5-sec");
+          }}
           onBack={() => setGameMode("select")}
           isLoading={fiveSecIsLoading}
         />
@@ -657,10 +874,7 @@ const Index = () => {
         onStartRound={fiveSecStartRound}
         onFinishAnswering={fiveSecFinishAnswering}
         onVote={fiveSecVote}
-        onLeave={() => {
-          fiveSecLeaveRoom();
-          setGameMode("select");
-        }}
+        onLeave={() => handleLeaveRoom("5-sec")}
       />
     );
   }
@@ -669,9 +883,24 @@ const Index = () => {
   if (!room) {
     return (
       <Lobby
-        onCreateRoom={createRoom}
-        onJoinRoom={joinRoom}
-        onQuickStart={quickStart}
+        onCreateRoom={async (name) => {
+          return handleCreateRoom(name, "doraemon");
+        }}
+        onJoinRoom={async (code, name) => {
+          return handleJoinRoom(code, name, "doraemon");
+        }}
+        onQuickStart={async (name) => {
+          const result = await quickStart(name);
+          if (result) {
+            const roomCode = typeof result === "string" ? result : result.code;
+            saveSession({
+              playerName: name,
+              roomCode,
+              gameType: "doraemon",
+            });
+          }
+          return result;
+        }}
         isLoading={isLoading}
         onBack={() => setGameMode("select")}
       />
@@ -687,7 +916,7 @@ const Index = () => {
       onStartGame={startGame}
       onDrawCard={drawCard}
       onReshuffle={reshuffleDeck}
-      onLeave={leaveRoom}
+      onLeave={() => handleLeaveRoom("doraemon")}
     />
   );
 };
