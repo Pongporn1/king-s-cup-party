@@ -1,13 +1,27 @@
 import React, { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/contexts/AuthContext';
+import { useFriendSystem } from '@/hooks/useFriendSystem';
 import { Button } from '@/components/ui/button';
 import { FriendSystem } from '@/components/FriendSystem';
-import { LogIn, Users, Loader2 } from 'lucide-react';
+import { LogIn, Users, Loader2, Bell } from 'lucide-react';
 import { toast } from 'sonner';
 
-export const LoginButton: React.FC = () => {
+interface LoginButtonProps {
+  currentRoomCode?: string;
+  currentGameType?: string;
+  currentGameName?: string;
+  onJoinRoom?: (roomCode: string) => void;
+}
+
+export const LoginButton: React.FC<LoginButtonProps> = ({
+  currentRoomCode,
+  currentGameType,
+  currentGameName,
+  onJoinRoom
+}) => {
   const { user, loading, login } = useAuth();
+  const { gameInvites, friendRequests } = useFriendSystem();
   const [showFriendSystem, setShowFriendSystem] = useState(false);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
 
@@ -23,6 +37,8 @@ export const LoginButton: React.FC = () => {
     }
   };
 
+  const totalNotifications = (gameInvites?.length || 0) + (friendRequests?.length || 0);
+
   if (loading) {
     return (
       <Button variant="ghost" size="icon" disabled>
@@ -36,10 +52,15 @@ export const LoginButton: React.FC = () => {
       {user ? (
         <Button
           onClick={() => setShowFriendSystem(true)}
-          className="bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700"
+          className="bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700 relative"
         >
           <Users size={18} className="mr-2" />
           เพื่อน
+          {totalNotifications > 0 && (
+            <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full text-xs flex items-center justify-center animate-pulse">
+              {totalNotifications}
+            </span>
+          )}
         </Button>
       ) : (
         <Button
@@ -58,7 +79,13 @@ export const LoginButton: React.FC = () => {
 
       <AnimatePresence>
         {showFriendSystem && (
-          <FriendSystem onClose={() => setShowFriendSystem(false)} />
+          <FriendSystem 
+            onClose={() => setShowFriendSystem(false)}
+            currentRoomCode={currentRoomCode}
+            currentGameType={currentGameType}
+            currentGameName={currentGameName}
+            onJoinRoom={onJoinRoom}
+          />
         )}
       </AnimatePresence>
     </>
