@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
@@ -24,6 +24,7 @@ import {
 import { t } from "@/lib/i18n";
 import { validateName } from "@/lib/nameValidation";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface UndercoverLobbyProps {
   onCreateRoom: (hostName: string) => void;
@@ -38,6 +39,7 @@ export function UndercoverLobby({
   onBack,
   isLoading,
 }: UndercoverLobbyProps) {
+  const { displayName: authDisplayName } = useAuth();
   const [hostName, setHostName] = useState("");
   const [playerName, setPlayerName] = useState("");
   const [roomCode, setRoomCode] = useState("");
@@ -46,6 +48,14 @@ export function UndercoverLobby({
   );
   const [isVocabDialogOpen, setIsVocabDialogOpen] = useState(false);
   const { toast } = useToast();
+
+  // Auto-fill name from Firebase displayName
+  useEffect(() => {
+    if (authDisplayName) {
+      if (!hostName) setHostName(authDisplayName);
+      if (!playerName) setPlayerName(authDisplayName);
+    }
+  }, [authDisplayName]);
 
   const handleAddVocab = (vocab: Omit<VocabularyPair, "id">) => {
     addVocabulary(vocab);

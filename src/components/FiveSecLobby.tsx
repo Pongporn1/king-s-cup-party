@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -6,6 +6,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { ArrowLeft, Copy, Check, Users, Clock } from "lucide-react";
 import { motion } from "framer-motion";
 import ThemedBackground from "@/components/ThemedBackground";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface FiveSecLobbyProps {
   onCreateRoom: (
@@ -23,12 +24,20 @@ export function FiveSecLobby({
   onBack,
   isLoading,
 }: FiveSecLobbyProps) {
+  const { displayName: authDisplayName } = useAuth();
   const [mode, setMode] = useState<"select" | "create" | "join">("select");
   const [playerName, setPlayerName] = useState("");
   const [roomCode, setRoomCode] = useState("");
   const [createdCode, setCreatedCode] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [timeLimit, setTimeLimit] = useState<number>(5);
+
+  // Auto-fill name from Firebase displayName
+  useEffect(() => {
+    if (authDisplayName && !playerName) {
+      setPlayerName(authDisplayName);
+    }
+  }, [authDisplayName]);
 
   const handleCreate = async () => {
     if (!playerName.trim()) return;

@@ -24,6 +24,7 @@ import { FloatingNames, AdminPanel } from "@/components/AdminPanel";
 import { getFloatingNamesFromDB, getGameCovers } from "@/lib/adminStorage";
 import { t } from "@/lib/i18n";
 import { LoginButton } from "@/components/LoginButton";
+import { useAuth } from "@/contexts/AuthContext";
 import {
   Play,
   ChevronLeft,
@@ -44,6 +45,7 @@ type GameMode =
   | "5-sec";
 
 const Index = () => {
+  const { displayName: authDisplayName } = useAuth();
   const [gameMode, setGameMode] = useState<GameMode>("select");
   const [floatingNames, setFloatingNames] = useState<string[]>([]);
   const [isPokDengLiveMode, setIsPokDengLiveMode] = useState(false);
@@ -257,7 +259,8 @@ const Index = () => {
       try {
         const gameType = sessionData.gameType;
         const roomCode = sessionData.roomCode;
-        const playerName = sessionData.playerName;
+        // Use Firebase displayName first, then fallback to session name
+        const playerName = authDisplayName || sessionData.playerName;
         const playerId = sessionData.playerId;
 
         // Set game mode first
@@ -413,8 +416,9 @@ const Index = () => {
   // Handle joining room from friend invite
   const handleJoinFromInvite = useCallback(
     async (roomCode: string, gameType: string) => {
-      // Get player name from session or prompt
+      // Use Firebase displayName first, fallback to localStorage
       const savedName =
+        authDisplayName ||
         localStorage.getItem("playerName") ||
         `Player_${Math.random().toString(36).slice(2, 6)}`;
 
@@ -437,7 +441,7 @@ const Index = () => {
         setGameMode("select");
       }
     },
-    [handleJoinRoom]
+    [handleJoinRoom, authDisplayName]
   );
 
   const handleLeaveRoom = useCallback(

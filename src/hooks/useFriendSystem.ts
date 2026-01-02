@@ -47,18 +47,52 @@ export const useFriendSystem = () => {
     const requestsRef = ref(database, `users/${userId}/friendRequests`);
     const invitesRef = ref(database, `users/${userId}/gameInvites`);
 
+    const friendNameListeners = new Map<string, () => void>();
+
     const unsubFriends = onValue(friendsRef, (snapshot) => {
       const data = snapshot.val();
       if (data) {
         const friendsList: Friend[] = Object.entries(data).map(
           ([key, value]: [string, any]) => ({
             id: key,
-            displayName: value.displayName,
+            displayName: value.displayName, // Initial name, will be updated by listeners
             addedAt: value.addedAt,
           })
         );
+
+        // Set up listeners for each friend's current name
+        friendsList.forEach((friend) => {
+          if (!friendNameListeners.has(friend.id)) {
+            const friendRef = ref(database, `users/${friend.id}`);
+            const unsubName = onValue(friendRef, (nameSnapshot) => {
+              if (nameSnapshot.exists()) {
+                const updatedName = nameSnapshot.val().displayName;
+                // Update the friend name in the state
+                setFriends((prev) =>
+                  prev.map((f) =>
+                    f.id === friend.id ? { ...f, displayName: updatedName } : f
+                  )
+                );
+              }
+            });
+            friendNameListeners.set(friend.id, unsubName);
+          }
+        });
+
+        // Clean up listeners for friends no longer in the list
+        const currentFriendIds = new Set(friendsList.map((f) => f.id));
+        friendNameListeners.forEach((unsubFn, friendId) => {
+          if (!currentFriendIds.has(friendId)) {
+            unsubFn();
+            friendNameListeners.delete(friendId);
+          }
+        });
+
         setFriends(friendsList);
       } else {
+        // Clean up all name listeners when no friends
+        friendNameListeners.forEach((unsubFn) => unsubFn());
+        friendNameListeners.clear();
         setFriends([]);
       }
       setLoading(false);
@@ -81,40 +115,63 @@ export const useFriendSystem = () => {
       }
     });
 
-    const unsubInvites = onValue(invitesRef, async (snapshot) => {
+    const userNameListeners = new Map<string, () => void>();
+
+    const unsubInvites = onValue(invitesRef, (snapshot) => {
       const data = snapshot.val();
       if (data) {
-        const invitesList: GameInvite[] = await Promise.all(
-          Object.entries(data).map(async ([key, value]: [string, any]) => {
-            // Fetch current display name from user profile
-            let currentName = value.fromName; // fallback to saved name
-            try {
-              const senderRef = ref(database, `users/${value.fromId}`);
-              const senderSnapshot = await get(senderRef);
-              if (senderSnapshot.exists()) {
-                currentName = senderSnapshot.val().displayName;
-              }
-            } catch (error) {
-              console.error("Failed to fetch sender name:", error);
-            }
-
-            return {
-              id: key,
-              fromId: value.fromId,
-              fromName: currentName, // Use current name instead of saved name
-              roomCode: value.roomCode,
-              gameType: value.gameType,
-              gameName: value.gameName,
-              sentAt: value.sentAt,
-            };
+        const invitesList: GameInvite[] = Object.entries(data).map(
+          ([key, value]: [string, any]) => ({
+            id: key,
+            fromId: value.fromId,
+            fromName: value.fromName, // Initial name, will be updated by listeners
+            roomCode: value.roomCode,
+            gameType: value.gameType,
+            gameName: value.gameName,
+            sentAt: value.sentAt,
           })
         );
+
         // Filter out expired invites (older than 10 minutes)
         const validInvites = invitesList.filter(
           (inv) => Date.now() - inv.sentAt < 10 * 60 * 1000
         );
+
+        // Set up listeners for each unique sender's name
+        validInvites.forEach((invite) => {
+          if (!userNameListeners.has(invite.fromId)) {
+            const senderRef = ref(database, `users/${invite.fromId}`);
+            const unsubName = onValue(senderRef, (nameSnapshot) => {
+              if (nameSnapshot.exists()) {
+                const updatedName = nameSnapshot.val().displayName;
+                // Update the invite name in the state
+                setGameInvites((prev) =>
+                  prev.map((inv) =>
+                    inv.fromId === invite.fromId
+                      ? { ...inv, fromName: updatedName }
+                      : inv
+                  )
+                );
+              }
+            });
+            userNameListeners.set(invite.fromId, unsubName);
+          }
+        });
+
+        // Clean up listeners for senders no longer in the list
+        const currentSenderIds = new Set(validInvites.map((inv) => inv.fromId));
+        userNameListeners.forEach((unsubFn, senderId) => {
+          if (!currentSenderIds.has(senderId)) {
+            unsubFn();
+            userNameListeners.delete(senderId);
+          }
+        });
+
         setGameInvites(validInvites);
       } else {
+        // Clean up all name listeners when no invites
+        userNameListeners.forEach((unsubFn) => unsubFn());
+        userNameListeners.clear();
         setGameInvites([]);
       }
     });
@@ -123,6 +180,11 @@ export const useFriendSystem = () => {
       unsubFriends();
       unsubRequests();
       unsubInvites();
+      // Clean up all name listeners
+      friendNameListeners.forEach((unsubFn) => unsubFn());
+      friendNameListeners.clear();
+      userNameListeners.forEach((unsubFn) => unsubFn());
+      userNameListeners.clear();
     };
   }, [userId]);
 

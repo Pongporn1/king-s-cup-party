@@ -14,6 +14,7 @@ import { getFloatingNamesFromDB } from "@/lib/adminStorage";
 import { t } from "@/lib/i18n";
 import { validateName } from "@/lib/nameValidation";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface LobbyProps {
   onCreateRoom: (hostName: string) => Promise<any>;
@@ -30,6 +31,7 @@ export function Lobby({
   isLoading,
   onBack,
 }: LobbyProps) {
+  const { displayName: authDisplayName } = useAuth();
   const [mode, setMode] = useState<"menu" | "create" | "join">("menu");
   const [name, setName] = useState("");
   const [roomCode, setRoomCode] = useState("");
@@ -39,6 +41,13 @@ export function Lobby({
   const [floatingNames, setFloatingNames] = useState<string[]>([]);
   const secretCodeRef = useRef("");
   const { toast } = useToast();
+
+  // Auto-fill name from Firebase displayName
+  useEffect(() => {
+    if (authDisplayName && !name) {
+      setName(authDisplayName);
+    }
+  }, [authDisplayName]);
 
   // Load floating names from Supabase on mount and when admin panel closes
   useEffect(() => {

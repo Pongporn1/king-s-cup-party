@@ -12,6 +12,7 @@ import {
 import { Plus, Users, ArrowRight, Loader2, Zap } from "lucide-react";
 import { FloatingNames } from "@/components/AdminPanel";
 import { getFloatingNamesFromDB } from "@/lib/adminStorage";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface PokDengLobbyProps {
   onCreateRoom: (hostName: string) => Promise<any>;
@@ -28,6 +29,7 @@ export function PokDengLobby({
   isLoading,
   onBack,
 }: PokDengLobbyProps) {
+  const { displayName: authDisplayName } = useAuth();
   const [mode, setMode] = useState<"menu" | "create" | "join">("menu");
   const [name, setName] = useState("");
   const [roomCode, setRoomCode] = useState("");
@@ -35,6 +37,13 @@ export function PokDengLobby({
   const [showQuickStartModal, setShowQuickStartModal] = useState(false);
   const [floatingNames, setFloatingNames] = useState<string[]>([]);
   const secretCodeRef = useRef("");
+
+  // Auto-fill name from Firebase displayName
+  useEffect(() => {
+    if (authDisplayName && !name) {
+      setName(authDisplayName);
+    }
+  }, [authDisplayName]);
 
   // Load floating names from Supabase
   useEffect(() => {

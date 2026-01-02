@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ArrowLeft, Copy, Check, Users } from "lucide-react";
 import { motion } from "framer-motion";
 import ThemedBackground from "@/components/ThemedBackground";
 import { ParanoiaQuestionManager } from "@/components/ParanoiaQuestionManager";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface ParanoiaLobbyProps {
   onCreateRoom: (hostName: string) => Promise<string | null>;
@@ -19,11 +20,19 @@ export function ParanoiaLobby({
   onBack,
   isLoading,
 }: ParanoiaLobbyProps) {
+  const { displayName: authDisplayName } = useAuth();
   const [mode, setMode] = useState<"select" | "create" | "join">("select");
   const [playerName, setPlayerName] = useState("");
   const [roomCode, setRoomCode] = useState("");
   const [createdCode, setCreatedCode] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+
+  // Auto-fill name from Firebase displayName
+  useEffect(() => {
+    if (authDisplayName && !playerName) {
+      setPlayerName(authDisplayName);
+    }
+  }, [authDisplayName]);
 
   const handleCreate = async () => {
     if (!playerName.trim()) return;
