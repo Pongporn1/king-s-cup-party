@@ -83,6 +83,7 @@ export type Database = {
       paranoia_questions: {
         Row: {
           created_at: string | null
+          created_by: string | null
           id: number
           is_default: boolean | null
           level: string | null
@@ -90,6 +91,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string | null
+          created_by?: string | null
           id?: never
           is_default?: boolean | null
           level?: string | null
@@ -97,6 +99,7 @@ export type Database = {
         }
         Update: {
           created_at?: string | null
+          created_by?: string | null
           id?: never
           is_default?: boolean | null
           level?: string | null
