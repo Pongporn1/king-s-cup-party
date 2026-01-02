@@ -24,6 +24,7 @@ interface ParanoiaGameRoomProps {
   players: Player[];
   currentPlayerId: string | null;
   isHost: boolean;
+  totalQuestions: number;
   onStartGame: () => void;
   onStartRound: () => void;
   onSelectVictim: (victimId: string) => void;
@@ -37,6 +38,7 @@ export function ParanoiaGameRoom({
   players,
   currentPlayerId,
   isHost,
+  totalQuestions,
   onStartGame,
   onStartRound,
   onSelectVictim,
@@ -45,6 +47,8 @@ export function ParanoiaGameRoom({
   onLeave,
 }: ParanoiaGameRoomProps) {
   const gameState = room.game_state as ParanoiaState | null;
+  const usedQuestionsCount = gameState?.used_question_ids?.length || 0;
+  const remainingQuestions = totalQuestions - usedQuestionsCount;
 
   return (
     <div className="min-h-screen min-h-[100dvh] flex flex-col p-4 relative">
@@ -64,6 +68,18 @@ export function ParanoiaGameRoom({
         <div className="text-white text-center">
           <p className="text-sm opacity-70">รหัสห้อง</p>
           <p className="font-mono font-bold">{room.code}</p>
+          {room.game_started && totalQuestions > 0 && (
+            <div className="mt-1 text-xs opacity-80 flex items-center gap-1 justify-center">
+              <span>📝</span>
+              <span>
+                {remainingQuestions > 0 ? remainingQuestions : totalQuestions} /{" "}
+                {totalQuestions} คำถาม
+              </span>
+              {remainingQuestions === 0 && (
+                <span className="text-yellow-300">🔄</span>
+              )}
+            </div>
+          )}
         </div>
         <div className="flex items-center gap-2">
           <LoginButton

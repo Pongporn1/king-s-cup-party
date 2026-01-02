@@ -117,6 +117,7 @@ const Index = () => {
     players: paranoiaPlayers,
     currentPlayerId: paranoiaCurrentPlayerId,
     isLoading: paranoiaIsLoading,
+    questions: paranoiaQuestions,
     createRoom: paranoiaCreateRoom,
     joinRoom: paranoiaJoinRoom,
     startGame: paranoiaStartGame,
@@ -880,6 +881,7 @@ const Index = () => {
         players={paranoiaPlayers}
         currentPlayerId={paranoiaCurrentPlayerId}
         isHost={isHost}
+        totalQuestions={paranoiaQuestions.length}
         onStartGame={paranoiaStartGame}
         onStartRound={paranoiaStartRound}
         onSelectVictim={paranoiaSelectVictim}

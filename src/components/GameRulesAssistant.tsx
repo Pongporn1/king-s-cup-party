@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import ReactDOM from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -475,12 +476,13 @@ ${!currentGame ? '- "เกมไหนเล่นง่าย"' : ""}
     { text: "ยกตัวอย่าง", emoji: "📝" },
   ];
 
-  return (
+  return ReactDOM.createPortal(
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4"
+      className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
+      style={{ zIndex: 9999 }}
       onClick={onClose}
     >
       <motion.div
@@ -489,6 +491,7 @@ ${!currentGame ? '- "เกมไหนเล่นง่าย"' : ""}
         exit={{ scale: 0.9, opacity: 0, y: 20 }}
         transition={{ type: "spring", duration: 0.5 }}
         onClick={(e) => e.stopPropagation()}
+        style={{ zIndex: 10000 }}
         className="bg-gradient-to-br from-slate-900 via-purple-900/20 to-slate-900 rounded-3xl shadow-2xl w-full max-w-3xl h-[600px] flex flex-col border border-purple-500/30 overflow-hidden"
       >
         {/* Header */}
@@ -647,6 +650,7 @@ ${!currentGame ? '- "เกมไหนเล่นง่าย"' : ""}
           </div>
         </div>
       </motion.div>
-    </motion.div>
+    </motion.div>,
+    document.body
   );
 }

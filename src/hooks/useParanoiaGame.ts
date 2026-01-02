@@ -52,18 +52,39 @@ export function useParanoiaGame() {
     };
   }, [currentPlayerId, room]);
 
-  // Fetch paranoia questions - only custom questions (written by user)
+  // Fetch ALL paranoia questions (both default and custom)
   const fetchQuestions = useCallback(async () => {
+    // Get current user ID for filtering custom questions
+    let userId = localStorage.getItem("anonymousUserId");
+    if (!userId) {
+      userId = `anon_${Math.random().toString(36).slice(2, 11)}`;
+      localStorage.setItem("anonymousUserId", userId);
+    }
+
     const { data, error } = await supabase
       .from("paranoia_questions")
       .select("*")
-      .eq("is_default", false);
+      .order("created_at", { ascending: false });
 
     if (error) {
       console.error("Error fetching questions:", error);
       return;
     }
-    setQuestions(data || []);
+
+    // Include: default questions OR questions created by current user
+    const filteredQuestions = (data || []).filter(
+      (q: any) => q.is_default === true || q.created_by === userId
+    );
+
+    console.log(
+      `🎲 Loaded ${filteredQuestions.length} questions (${
+        (data || []).filter((q: any) => q.is_default).length
+      } default + ${
+        filteredQuestions.length -
+        (data || []).filter((q: any) => q.is_default).length
+      } custom)`
+    );
+    setQuestions(filteredQuestions);
   }, []);
 
   useEffect(() => {
@@ -73,21 +94,39 @@ export function useParanoiaGame() {
   // Get random question (excluding already used ones)
   const getRandomQuestion = useCallback(
     (usedQuestionIds: number[] = []) => {
-      if (questions.length === 0) return null;
+      if (questions.length === 0) {
+        console.log("❌ No questions available at all");
+        return null;
+      }
 
       // Filter out used questions
       const availableQuestions = questions.filter(
         (q) => !usedQuestionIds.includes(q.id)
       );
 
-      // If all questions used, reset and use all questions
+      console.log(
+        `🎲 Available questions: ${availableQuestions.length} of ${questions.length} total (${usedQuestionIds.length} used)`
+      );
+
+      // If all questions used, reset and use all questions again
       if (availableQuestions.length === 0) {
-        return questions[Math.floor(Math.random() * questions.length)];
+        console.log(
+          "🔄 All questions used! Resetting and picking from full set"
+        );
+        const randomQuestion =
+          questions[Math.floor(Math.random() * questions.length)];
+        console.log(
+          `✅ Selected question (reset): "${randomQuestion.question}"`
+        );
+        return randomQuestion;
       }
 
-      return availableQuestions[
-        Math.floor(Math.random() * availableQuestions.length)
-      ];
+      const randomQuestion =
+        availableQuestions[
+          Math.floor(Math.random() * availableQuestions.length)
+        ];
+      console.log(`✅ Selected question: "${randomQuestion.question}"`);
+      return randomQuestion;
     },
     [questions]
   );
@@ -113,15 +152,35 @@ export function useParanoiaGame() {
 
     const question = getRandomQuestion(usedQuestionIds);
     if (!question) {
-      toast({ title: "Error", description: "No questions available" });
+      toast({
+        title: "ไม่มีคำถาม",
+        description: "กรุณาเพิ่มคำถามใหม่ในการตั้งค่า",
+        variant: "destructive",
+      });
       return;
     }
 
     const nextAskerId = getNextAskerId();
     if (!nextAskerId) return;
 
-    // Add current question ID to used list
-    const newUsedQuestionIds = [...usedQuestionIds, question.id];
+    // Check if all questions were used - reset if needed
+    const availableQuestionsCount = questions.filter(
+      (q) => !usedQuestionIds.includes(q.id)
+    ).length;
+
+    let newUsedQuestionIds: number[];
+    if (availableQuestionsCount === 0) {
+      // All questions used - reset and start fresh with only current question
+      console.log("🔄 Resetting used questions list");
+      newUsedQuestionIds = [question.id];
+      toast({
+        title: "🔄 รีเซ็ตคำถาม",
+        description: "ใช้คำถามครบแล้ว เริ่มใหม่!",
+      });
+    } else {
+      // Add current question ID to used list
+      newUsedQuestionIds = [...usedQuestionIds, question.id];
+    }
 
     const newState: ParanoiaState = {
       phase: "ASKING",
@@ -461,6 +520,7 @@ export function useParanoiaGame() {
     players,
     currentPlayerId,
     isLoading,
+    questions,
     createRoom,
     joinRoom,
     startGame,
