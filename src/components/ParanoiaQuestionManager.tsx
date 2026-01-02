@@ -39,9 +39,18 @@ export function ParanoiaQuestionManager() {
   }, [isOpen]);
 
   const loadQuestions = async () => {
+    // Get current user ID
+    let userId = localStorage.getItem("anonymousUserId");
+    if (!userId) {
+      userId = `anon_${Math.random().toString(36).slice(2, 11)}`;
+      localStorage.setItem("anonymousUserId", userId);
+    }
+
+    // Load only default questions and questions created by current user
     const { data, error } = await supabase
       .from("paranoia_questions")
       .select("*")
+      .or(`is_default.eq.true,created_by.eq.${userId}`)
       .order("created_at", { ascending: false });
 
     if (error) {
@@ -68,9 +77,17 @@ export function ParanoiaQuestionManager() {
       return;
     }
 
+    // Get current user ID (from localStorage or generate anonymous ID)
+    let userId = localStorage.getItem("anonymousUserId");
+    if (!userId) {
+      userId = `anon_${Math.random().toString(36).slice(2, 11)}`;
+      localStorage.setItem("anonymousUserId", userId);
+    }
+
     const { error } = await supabase.from("paranoia_questions").insert({
       question: newQuestion.trim(),
       is_default: false,
+      created_by: userId,
     });
 
     if (error) {

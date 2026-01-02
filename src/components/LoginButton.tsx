@@ -42,8 +42,8 @@ export const LoginButton: React.FC<LoginButtonProps> = ({
 
   if (loading) {
     return (
-      <Button variant="ghost" size="icon" disabled>
-        <Loader2 className="animate-spin" size={20} />
+      <Button variant="ghost" size="sm" disabled className="text-white">
+        <Loader2 className="animate-spin" size={18} />
       </Button>
     );
   }
@@ -53,12 +53,13 @@ export const LoginButton: React.FC<LoginButtonProps> = ({
       {user ? (
         <Button
           onClick={() => setShowFriendSystem(true)}
-          className="bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700 relative"
+          size="sm"
+          className="bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700 relative text-white"
         >
-          <Users size={18} className="mr-2" />
+          <Users size={16} className="mr-1" />
           เพื่อน
           {totalNotifications > 0 && (
-            <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full text-xs flex items-center justify-center animate-pulse">
+            <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full text-[10px] flex items-center justify-center animate-pulse">
               {totalNotifications}
             </span>
           )}
@@ -67,14 +68,15 @@ export const LoginButton: React.FC<LoginButtonProps> = ({
         <Button
           onClick={handleLogin}
           disabled={isLoggingIn}
-          className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700"
+          size="sm"
+          className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white"
         >
           {isLoggingIn ? (
-            <Loader2 className="animate-spin mr-2" size={18} />
+            <Loader2 className="animate-spin mr-1" size={16} />
           ) : (
-            <LogIn size={18} className="mr-2" />
+            <LogIn size={16} className="mr-1" />
           )}
-          เข้าสู่ระบบ
+          เข้าระบบ
         </Button>
       )}
 
