@@ -7,6 +7,7 @@ import {
   PlayingCard,
 } from "@/lib/cardRules";
 import { useToast } from "@/hooks/use-toast";
+import { cleanupOnCreate } from "@/lib/roomCleanup";
 
 interface Room {
   id: string;
@@ -154,6 +155,9 @@ export function useGameRoom() {
     async (hostName: string) => {
       setIsLoading(true);
       try {
+        // Cleanup old rooms opportunistically
+        await cleanupOnCreate();
+
         const code = generateRoomCode();
         const deck = shuffleDeck(createDeck());
 

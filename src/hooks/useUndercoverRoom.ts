@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { cleanupOnCreate } from "@/lib/roomCleanup";
 import {
   UndercoverPlayer,
   GamePhase,
@@ -217,6 +218,9 @@ export function useUndercoverRoom() {
     async (hostName: string) => {
       setIsLoading(true);
       try {
+        // Cleanup old rooms opportunistically
+        await cleanupOnCreate();
+
         const code = generateRoomCode();
         const hostAvatar = getRandomAvatar([]);
 

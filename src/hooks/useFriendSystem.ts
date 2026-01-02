@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react';
-import { ref, set, get, onValue, remove } from 'firebase/database';
-import { database } from '@/lib/firebase';
-import { useAuth } from '@/contexts/AuthContext';
+import { useState, useEffect } from "react";
+import { ref, set, get, onValue, remove } from "firebase/database";
+import { database } from "@/lib/firebase";
+import { useAuth } from "@/contexts/AuthContext";
 
 export interface Friend {
   id: string;
@@ -50,11 +50,13 @@ export const useFriendSystem = () => {
     const unsubFriends = onValue(friendsRef, (snapshot) => {
       const data = snapshot.val();
       if (data) {
-        const friendsList: Friend[] = Object.entries(data).map(([key, value]: [string, any]) => ({
-          id: key,
-          displayName: value.displayName,
-          addedAt: value.addedAt
-        }));
+        const friendsList: Friend[] = Object.entries(data).map(
+          ([key, value]: [string, any]) => ({
+            id: key,
+            displayName: value.displayName,
+            addedAt: value.addedAt,
+          })
+        );
         setFriends(friendsList);
       } else {
         setFriends([]);
@@ -65,32 +67,52 @@ export const useFriendSystem = () => {
     const unsubRequests = onValue(requestsRef, (snapshot) => {
       const data = snapshot.val();
       if (data) {
-        const requestsList: FriendRequest[] = Object.entries(data).map(([key, value]: [string, any]) => ({
-          id: key,
-          fromId: value.fromId,
-          fromName: value.fromName,
-          sentAt: value.sentAt
-        }));
+        const requestsList: FriendRequest[] = Object.entries(data).map(
+          ([key, value]: [string, any]) => ({
+            id: key,
+            fromId: value.fromId,
+            fromName: value.fromName,
+            sentAt: value.sentAt,
+          })
+        );
         setFriendRequests(requestsList);
       } else {
         setFriendRequests([]);
       }
     });
 
-    const unsubInvites = onValue(invitesRef, (snapshot) => {
+    const unsubInvites = onValue(invitesRef, async (snapshot) => {
       const data = snapshot.val();
       if (data) {
-        const invitesList: GameInvite[] = Object.entries(data).map(([key, value]: [string, any]) => ({
-          id: key,
-          fromId: value.fromId,
-          fromName: value.fromName,
-          roomCode: value.roomCode,
-          gameType: value.gameType,
-          gameName: value.gameName,
-          sentAt: value.sentAt
-        }));
+        const invitesList: GameInvite[] = await Promise.all(
+          Object.entries(data).map(async ([key, value]: [string, any]) => {
+            // Fetch current display name from user profile
+            let currentName = value.fromName; // fallback to saved name
+            try {
+              const senderRef = ref(database, `users/${value.fromId}`);
+              const senderSnapshot = await get(senderRef);
+              if (senderSnapshot.exists()) {
+                currentName = senderSnapshot.val().displayName;
+              }
+            } catch (error) {
+              console.error("Failed to fetch sender name:", error);
+            }
+
+            return {
+              id: key,
+              fromId: value.fromId,
+              fromName: currentName, // Use current name instead of saved name
+              roomCode: value.roomCode,
+              gameType: value.gameType,
+              gameName: value.gameName,
+              sentAt: value.sentAt,
+            };
+          })
+        );
         // Filter out expired invites (older than 10 minutes)
-        const validInvites = invitesList.filter(inv => Date.now() - inv.sentAt < 10 * 60 * 1000);
+        const validInvites = invitesList.filter(
+          (inv) => Date.now() - inv.sentAt < 10 * 60 * 1000
+        );
         setGameInvites(validInvites);
       } else {
         setGameInvites([]);
@@ -105,17 +127,19 @@ export const useFriendSystem = () => {
   }, [userId]);
 
   // Search user by ID
-  const searchUserById = async (searchId: string): Promise<{ id: string; displayName: string } | null> => {
+  const searchUserById = async (
+    searchId: string
+  ): Promise<{ id: string; displayName: string } | null> => {
     if (!searchId || searchId === userId) return null;
-    
+
     const userRef = ref(database, `users/${searchId}`);
     const snapshot = await get(userRef);
-    
+
     if (snapshot.exists()) {
       const data = snapshot.val();
       return {
         id: data.id,
-        displayName: data.displayName
+        displayName: data.displayName,
       };
     }
     return null;
@@ -124,112 +148,133 @@ export const useFriendSystem = () => {
   // Send friend request
   const sendFriendRequest = async (targetUserId: string) => {
     if (!userId) return false;
-    
+
     const currentUserRef = ref(database, `users/${userId}`);
     const currentUserSnapshot = await get(currentUserRef);
-    
+
     if (!currentUserSnapshot.exists()) return false;
-    
+
     const currentUserData = currentUserSnapshot.val();
-    
+
     const friendRef = ref(database, `users/${userId}/friends/${targetUserId}`);
     const friendSnapshot = await get(friendRef);
     if (friendSnapshot.exists()) return false;
-    
-    const requestRef = ref(database, `users/${targetUserId}/friendRequests/${userId}`);
+
+    const requestRef = ref(
+      database,
+      `users/${targetUserId}/friendRequests/${userId}`
+    );
     await set(requestRef, {
       fromId: userId,
       fromName: currentUserData.displayName,
-      sentAt: Date.now()
+      sentAt: Date.now(),
     });
-    
+
     return true;
   };
 
   // Accept friend request
-  const acceptFriendRequest = async (requestId: string, fromId: string, fromName: string) => {
+  const acceptFriendRequest = async (
+    requestId: string,
+    fromId: string,
+    fromName: string
+  ) => {
     if (!userId) return false;
-    
+
     const currentUserRef = ref(database, `users/${userId}`);
     const currentUserSnapshot = await get(currentUserRef);
-    
+
     if (!currentUserSnapshot.exists()) return false;
-    
+
     const currentUserData = currentUserSnapshot.val();
-    
+
     const myFriendRef = ref(database, `users/${userId}/friends/${fromId}`);
     const theirFriendRef = ref(database, `users/${fromId}/friends/${userId}`);
-    
+
     await set(myFriendRef, {
       displayName: fromName,
-      addedAt: Date.now()
+      addedAt: Date.now(),
     });
-    
+
     await set(theirFriendRef, {
       displayName: currentUserData.displayName,
-      addedAt: Date.now()
+      addedAt: Date.now(),
     });
-    
-    const requestRef = ref(database, `users/${userId}/friendRequests/${requestId}`);
+
+    const requestRef = ref(
+      database,
+      `users/${userId}/friendRequests/${requestId}`
+    );
     await remove(requestRef);
-    
+
     return true;
   };
 
   // Decline friend request
   const declineFriendRequest = async (requestId: string) => {
     if (!userId) return false;
-    
-    const requestRef = ref(database, `users/${userId}/friendRequests/${requestId}`);
+
+    const requestRef = ref(
+      database,
+      `users/${userId}/friendRequests/${requestId}`
+    );
     await remove(requestRef);
-    
+
     return true;
   };
 
   // Remove friend
   const removeFriend = async (friendId: string) => {
     if (!userId) return false;
-    
+
     const myFriendRef = ref(database, `users/${userId}/friends/${friendId}`);
     const theirFriendRef = ref(database, `users/${friendId}/friends/${userId}`);
-    
+
     await remove(myFriendRef);
     await remove(theirFriendRef);
-    
+
     return true;
   };
 
   // Send game invite to a friend
-  const sendGameInvite = async (friendId: string, roomCode: string, gameType: string, gameName: string) => {
+  const sendGameInvite = async (
+    friendId: string,
+    roomCode: string,
+    gameType: string,
+    gameName: string
+  ) => {
     if (!userId) return false;
-    
+
     const currentUserRef = ref(database, `users/${userId}`);
     const currentUserSnapshot = await get(currentUserRef);
-    
+
     if (!currentUserSnapshot.exists()) return false;
-    
+
     const currentUserData = currentUserSnapshot.val();
-    
-    const inviteRef = ref(database, `users/${friendId}/gameInvites/${Date.now()}`);
+
+    const inviteRef = ref(
+      database,
+      `users/${friendId}/gameInvites/${Date.now()}`
+    );
     await set(inviteRef, {
       fromId: userId,
       fromName: currentUserData.displayName,
       roomCode,
       gameType,
       gameName,
-      sentAt: Date.now()
+      sentAt: Date.now(),
     });
-    
+
     return true;
   };
 
   // Dismiss game invite
   const dismissGameInvite = async (inviteId: string) => {
     if (!userId) return false;
-    
+
     const inviteRef = ref(database, `users/${userId}/gameInvites/${inviteId}`);
     await remove(inviteRef);
-    
+
     return true;
   };
 
@@ -244,6 +289,6 @@ export const useFriendSystem = () => {
     declineFriendRequest,
     removeFriend,
     sendGameInvite,
-    dismissGameInvite
+    dismissGameInvite,
   };
 };

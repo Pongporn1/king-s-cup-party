@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { ParanoiaState, ParanoiaQuestion } from "@/lib/partyGameTypes";
 import { useToast } from "@/hooks/use-toast";
+import { cleanupOnCreate } from "@/lib/roomCleanup";
 
 interface Player {
   id: string;
@@ -294,6 +295,9 @@ export function useParanoiaGame() {
     async (hostName: string) => {
       setIsLoading(true);
       try {
+        // Cleanup old rooms opportunistically
+        await cleanupOnCreate();
+
         const code = Math.random().toString(36).substring(2, 8).toUpperCase();
 
         const { data: roomData, error: roomError } = await supabase
