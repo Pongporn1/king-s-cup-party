@@ -605,7 +605,6 @@ const Index = () => {
                       scale: isActive ? 1.15 : 0.75,
                       rotateY: adjustedOffset * 8,
                       opacity: isActive ? 1 : 0.4,
-                      filter: isActive ? "grayscale(0)" : "grayscale(0.4)",
                     }}
                     transition={{
                       type: "spring",
@@ -616,6 +615,7 @@ const Index = () => {
                     onClick={() => setSelectedGameIndex(index)}
                     style={{
                       zIndex: isActive ? 20 : 10 - Math.abs(adjustedOffset),
+                      filter: isActive ? "grayscale(0)" : "grayscale(0.4)",
                     }}
                   >
                     <div
