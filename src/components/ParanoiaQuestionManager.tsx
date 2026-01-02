@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -46,26 +47,39 @@ export function ParanoiaQuestionManager() {
       localStorage.setItem("anonymousUserId", userId);
     }
 
-    // Load only default questions and questions created by current user
+    // Try to load all questions first (for backward compatibility)
     const { data, error } = await supabase
       .from("paranoia_questions")
       .select("*")
-      .or(`is_default.eq.true,created_by.eq.${userId}`)
       .order("created_at", { ascending: false });
+
+    console.log("Paranoia questions loaded:", data, "Error:", error);
 
     if (error) {
       console.error("Error loading questions:", error);
       return;
     }
 
-    // Ensure is_default field exists (default to false if missing)
+    // Filter: show default questions OR questions created by current user OR old questions without owner
     const questionsWithDefaults = (data || []).map(
-      (q: Partial<ParanoiaQuestion> & { id: number; question: string }) => ({
-        ...q,
-        is_default: q.is_default ?? false,
+      (q: Record<string, unknown>) => ({
+        id: q.id as number,
+        question: q.question as string,
+        is_default: (q.is_default as boolean) ?? false,
+        created_by: q.created_by as string | undefined,
+        created_at: q.created_at as string | undefined,
       })
     );
-    setQuestions(questionsWithDefaults);
+
+    const filteredQuestions = questionsWithDefaults.filter(
+      (q) => q.is_default === true || !q.created_by || q.created_by === userId
+    );
+
+    console.log(
+      `User ${userId}: Showing ${filteredQuestions.length} of ${questionsWithDefaults.length} questions`
+    );
+
+    setQuestions(filteredQuestions);
   };
 
   const handleAdd = async () => {
@@ -208,6 +222,9 @@ export function ParanoiaQuestionManager() {
       <DialogContent className="sm:max-w-[600px] max-h-[90vh]">
         <DialogHeader>
           <DialogTitle className="text-2xl">จัดการคำถาม Paranoia</DialogTitle>
+          <DialogDescription className="sr-only">
+            เพิ่ม แก้ไข หรือลบคำถาม Paranoia สำหรับเกม
+          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
@@ -273,8 +290,8 @@ export function ParanoiaQuestionManager() {
           />
 
           {/* Questions List */}
-          <ScrollArea className="h-[400px] pr-4">
-            <div className="space-y-2">
+          <ScrollArea className="h-[500px] w-full pr-4">
+            <div className="space-y-2 pb-4">
               {filteredQuestions.length === 0 ? (
                 <p className="text-center text-muted-foreground py-8">
                   {searchQuery

@@ -5,6 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -187,6 +188,9 @@ export function VocabularyManager({
               <DialogTitle>
                 {editingVocab ? t("editVocabulary") : t("addVocabulary")}
               </DialogTitle>
+              <DialogDescription className="sr-only">
+                {editingVocab ? "แก้ไขคำศัพท์" : "เพิ่มคำศัพท์ใหม่"}
+              </DialogDescription>
             </DialogHeader>
             <div className="space-y-4 mt-4">
               <div>

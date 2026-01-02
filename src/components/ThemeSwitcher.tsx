@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -57,6 +58,9 @@ export default function ThemeSwitcher() {
           <DialogTitle className="text-2xl font-bold text-white">
             {t("themeSelectTheme")}
           </DialogTitle>
+          <DialogDescription className="sr-only">
+            เลือกธีมสีสำหรับเกม
+          </DialogDescription>
         </DialogHeader>
         <div className="grid grid-cols-2 gap-4 mt-4">
           {themes.map((theme) => (

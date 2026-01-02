@@ -5,6 +5,7 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -89,6 +90,9 @@ export function RuleEditor({
           <DialogTitle className="text-xl font-bold flex items-center gap-2">
             ⚙️ แก้ไขกฎไพ่
           </DialogTitle>
+          <DialogDescription className="sr-only">
+            แก้ไขกฎสำหรับแต่ละใบไพ่
+          </DialogDescription>
         </DialogHeader>
 
         <ScrollArea className="h-[60vh] pr-4">

@@ -5,6 +5,7 @@ import { Label } from "@/components/ui/label";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -100,6 +101,9 @@ export function PokDengRuleEditor({
           <DialogTitle className="text-xl font-bold flex items-center gap-2">
             ⚙️ แก้ไขกติกาป๊อกเด้ง
           </DialogTitle>
+          <DialogDescription className="sr-only">
+            แก้ไขตัวคูณสำหรับแต่ละรูปแบบไพ่
+          </DialogDescription>
         </DialogHeader>
 
         <ScrollArea className="h-[60vh] pr-4">

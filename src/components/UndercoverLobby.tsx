@@ -6,6 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -134,6 +135,9 @@ export function UndercoverLobby({
         <DialogContent className="bg-gray-900 text-white border-white/20 max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{t("vocabularyManager")}</DialogTitle>
+            <DialogDescription className="sr-only">
+              จัดการคำศัพท์สำหรับเกม Undercover
+            </DialogDescription>
           </DialogHeader>
           <VocabularyManager
             vocabularies={vocabularies}

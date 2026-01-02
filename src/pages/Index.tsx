@@ -605,12 +605,13 @@ const Index = () => {
                       scale: isActive ? 1.15 : 0.75,
                       rotateY: adjustedOffset * 8,
                       opacity: isActive ? 1 : 0.4,
-                      filter: isActive ? "grayscale(0%)" : "grayscale(40%)",
+                      filter: isActive ? "grayscale(0)" : "grayscale(0.4)",
                     }}
                     transition={{
                       type: "spring",
                       stiffness: 300,
                       damping: 30,
+                      clamp: true,
                     }}
                     onClick={() => setSelectedGameIndex(index)}
                     style={{
