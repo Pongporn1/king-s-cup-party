@@ -17,6 +17,7 @@ import {
   Loader2,
   Gamepad2,
   Send,
+  Pencil,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -35,7 +36,7 @@ export const FriendSystem: React.FC<FriendSystemProps> = ({
   currentGameName,
   onJoinRoom,
 }) => {
-  const { userId, logout } = useAuth();
+  const { userId, displayName, logout, updateDisplayName } = useAuth();
   const {
     friends,
     friendRequests,
@@ -60,6 +61,31 @@ export const FriendSystem: React.FC<FriendSystemProps> = ({
     "friends" | "requests" | "invites" | "search"
   >("friends");
   const [sendingInviteTo, setSendingInviteTo] = useState<string | null>(null);
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [newDisplayName, setNewDisplayName] = useState(displayName || "");
+  const [isSavingName, setIsSavingName] = useState(false);
+
+  const handleSaveName = async () => {
+    if (newDisplayName.trim().length < 2) {
+      toast.error("ชื่อต้องมีอย่างน้อย 2 ตัวอักษร");
+      return;
+    }
+    if (newDisplayName.trim().length > 20) {
+      toast.error("ชื่อต้องไม่เกิน 20 ตัวอักษร");
+      return;
+    }
+
+    setIsSavingName(true);
+    const success = await updateDisplayName(newDisplayName.trim());
+    setIsSavingName(false);
+
+    if (success) {
+      toast.success("เปลี่ยนชื่อสำเร็จ!");
+      setIsEditingName(false);
+    } else {
+      toast.error("ไม่สามารถเปลี่ยนชื่อได้");
+    }
+  };
 
   const handleSearch = async () => {
     if (!searchId.trim()) return;
@@ -184,11 +210,56 @@ export const FriendSystem: React.FC<FriendSystemProps> = ({
         <div className="bg-gradient-to-r from-cyan-600 to-blue-600 p-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center">
-                <Users size={20} />
+              <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center font-bold text-lg">
+                {displayName?.charAt(0).toUpperCase() || "?"}
               </div>
               <div>
-                <h2 className="font-bold text-lg">ระบบเพื่อน</h2>
+                {isEditingName ? (
+                  <div className="flex items-center gap-2">
+                    <Input
+                      value={newDisplayName}
+                      onChange={(e) => setNewDisplayName(e.target.value)}
+                      className="h-8 w-32 bg-white/20 border-white/30 text-white placeholder:text-white/50"
+                      placeholder="ชื่อใหม่..."
+                      maxLength={20}
+                    />
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      onClick={handleSaveName}
+                      disabled={isSavingName}
+                      className="h-8 w-8 text-white hover:bg-white/20"
+                    >
+                      {isSavingName ? <Loader2 className="animate-spin" size={16} /> : <Check size={16} />}
+                    </Button>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      onClick={() => {
+                        setIsEditingName(false);
+                        setNewDisplayName(displayName || "");
+                      }}
+                      className="h-8 w-8 text-white hover:bg-white/20"
+                    >
+                      <X size={16} />
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <h2 className="font-bold text-lg">{displayName}</h2>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      onClick={() => {
+                        setNewDisplayName(displayName || "");
+                        setIsEditingName(true);
+                      }}
+                      className="h-6 w-6 text-white/70 hover:text-white hover:bg-white/20"
+                    >
+                      <Pencil size={14} />
+                    </Button>
+                  </div>
+                )}
                 <p className="text-xs text-white/70">
                   ID: {userId?.slice(0, 8)}...
                 </p>
