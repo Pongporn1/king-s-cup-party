@@ -219,7 +219,7 @@ export function ParanoiaQuestionManager() {
           จัดการคำถาม
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[600px] max-h-[90vh]">
+      <DialogContent className="sm:max-w-[600px] max-h-[90vh] z-[100]">
         <DialogHeader>
           <DialogTitle className="text-2xl">จัดการคำถาม Paranoia</DialogTitle>
           <DialogDescription className="sr-only">

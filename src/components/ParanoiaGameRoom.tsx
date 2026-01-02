@@ -85,7 +85,7 @@ export function ParanoiaGameRoom({
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="w-full max-w-sm"
+            className="w-full max-w-sm relative z-20"
           >
             <div className="text-center mb-6">
               <div className="text-5xl mb-4">🤫</div>
@@ -119,13 +119,19 @@ export function ParanoiaGameRoom({
 
             {/* Start button */}
             {isHost && players.length >= 3 && (
-              <Button
-                onClick={onStartGame}
-                className="w-full bg-gradient-to-r from-red-600 to-pink-600 hover:from-red-500 hover:to-pink-500 py-6 text-lg"
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: 0.3 }}
               >
-                <Play className="w-5 h-5 mr-2" />
-                เริ่มเกม
-              </Button>
+                <Button
+                  onClick={onStartGame}
+                  className="w-full bg-gradient-to-r from-red-600 to-pink-600 hover:from-red-500 hover:to-pink-500 py-6 text-lg relative z-30"
+                >
+                  <Play className="w-5 h-5 mr-2" />
+                  เริ่มเกม
+                </Button>
+              </motion.div>
             )}
 
             {isHost && players.length < 3 && (

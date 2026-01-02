@@ -150,14 +150,40 @@ export function useParanoiaGame() {
   // Select victim
   const selectVictim = useCallback(
     async (victimId: string) => {
-      if (!room || !room.game_state) return;
+      if (!room || !room.game_state) {
+        console.error("❌ Cannot select victim: No room or game state");
+        toast({
+          title: "Error",
+          description: "ไม่มีห้องหรือเกมยังไม่เริ่ม",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      console.log("🎯 Selecting victim:", victimId);
 
       const currentState = room.game_state as ParanoiaState;
+
+      if (currentState.phase !== "ASKING") {
+        console.error(
+          "❌ Cannot select victim: Wrong phase",
+          currentState.phase
+        );
+        toast({
+          title: "Error",
+          description: "ไม่ใช่ช่วงเวลาเลือกเหยื่อ",
+          variant: "destructive",
+        });
+        return;
+      }
+
       const newState: ParanoiaState = {
         ...currentState,
         phase: "REVEALING",
         victim_id: victimId,
       };
+
+      console.log("💾 Updating game state to REVEALING with victim:", victimId);
 
       const { error } = await supabase
         .from("rooms")
@@ -165,8 +191,14 @@ export function useParanoiaGame() {
         .eq("id", room.id);
 
       if (error) {
-        console.error("Error selecting victim:", error);
-        toast({ title: "Error", description: "Failed to select victim" });
+        console.error("❌ Error selecting victim:", error);
+        toast({
+          title: "Error",
+          description: `Failed to select victim: ${error.message}`,
+          variant: "destructive",
+        });
+      } else {
+        console.log("✅ Victim selected successfully");
       }
     },
     [room, toast]

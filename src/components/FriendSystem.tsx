@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import ReactDOM from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/contexts/AuthContext";
 import { useFriendSystem } from "@/hooks/useFriendSystem";
@@ -191,19 +192,22 @@ export const FriendSystem: React.FC<FriendSystemProps> = ({
 
   const totalNotifications = friendRequests.length + gameInvites.length;
 
-  return (
+  // Use Portal to render outside of parent DOM tree
+  return ReactDOM.createPortal(
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[100] flex items-center justify-center p-4"
+      className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4"
+      style={{ zIndex: 9999 }}
       onClick={onClose}
     >
       <motion.div
         initial={{ scale: 0.9, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         exit={{ scale: 0.9, opacity: 0 }}
-        className="bg-zinc-900 rounded-2xl w-full max-w-md max-h-[80vh] overflow-hidden border border-zinc-700"
+        className="bg-zinc-900 rounded-2xl w-full max-w-md max-h-[85vh] overflow-hidden border border-zinc-700"
+        style={{ zIndex: 10000 }}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -230,7 +234,11 @@ export const FriendSystem: React.FC<FriendSystemProps> = ({
                       disabled={isSavingName}
                       className="h-8 w-8 text-white hover:bg-white/20"
                     >
-                      {isSavingName ? <Loader2 className="animate-spin" size={16} /> : <Check size={16} />}
+                      {isSavingName ? (
+                        <Loader2 className="animate-spin" size={16} />
+                      ) : (
+                        <Check size={16} />
+                      )}
                     </Button>
                     <Button
                       size="icon"
@@ -623,6 +631,7 @@ export const FriendSystem: React.FC<FriendSystemProps> = ({
           )}
         </div>
       </motion.div>
-    </motion.div>
+    </motion.div>,
+    document.body
   );
 };

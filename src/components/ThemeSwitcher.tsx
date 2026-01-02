@@ -24,6 +24,8 @@ export default function ThemeSwitcher() {
   const [currentTheme, setCurrentTheme] = useState<Theme>(getCurrentTheme());
   const [open, setOpen] = useState(false);
   const [weatherMode, setWeatherModeState] = useState(isWeatherModeEnabled());
+  const [weatherStatus, setWeatherStatus] = useState<string>("");
+  const [isLoading, setIsLoading] = useState(false);
   const currentLanguage = getLanguage();
 
   useEffect(() => {
@@ -31,11 +33,41 @@ export default function ThemeSwitcher() {
       setCurrentTheme(e.detail);
     };
 
+    const handleWeatherUpdate = (e: CustomEvent) => {
+      const { weather, description, isDay, theme } = e.detail;
+      setWeatherStatus(
+        `${weather} (${description}) - ${isDay ? "Day" : "Night"} → ${theme}`
+      );
+      setIsLoading(false);
+    };
+
+    const handleWeatherError = (e: CustomEvent) => {
+      setWeatherStatus(`Error: ${e.detail.error}`);
+      setIsLoading(false);
+    };
+
     window.addEventListener("themechange", handleThemeChange as EventListener);
+    window.addEventListener(
+      "weatherupdated",
+      handleWeatherUpdate as EventListener
+    );
+    window.addEventListener(
+      "weathererror",
+      handleWeatherError as EventListener
+    );
+
     return () => {
       window.removeEventListener(
         "themechange",
         handleThemeChange as EventListener
+      );
+      window.removeEventListener(
+        "weatherupdated",
+        handleWeatherUpdate as EventListener
+      );
+      window.removeEventListener(
+        "weathererror",
+        handleWeatherError as EventListener
       );
     };
   }, []);
@@ -51,8 +83,13 @@ export default function ThemeSwitcher() {
     setWeatherMode(newValue);
 
     if (newValue) {
+      setIsLoading(true);
+      setWeatherStatus("กำลังตรวจสอบสภาพอากาศ...");
       await updateThemeByWeather();
       setCurrentTheme(getCurrentTheme());
+    } else {
+      setWeatherStatus("");
+      setIsLoading(false);
     }
   };
 
@@ -92,13 +129,25 @@ export default function ThemeSwitcher() {
                     ? "เปลี่ยนธีมอัตโนมัติตามสภาพอากาศจริง"
                     : "Auto-change theme based on real weather"}
                 </p>
+                {weatherStatus && (
+                  <p className="text-xs text-cyan-300 mt-1 font-mono">
+                    {isLoading
+                      ? "⏳ "
+                      : weatherStatus.includes("Error")
+                      ? "❌ "
+                      : "✅ "}
+                    {weatherStatus}
+                  </p>
+                )}
               </div>
             </div>
             <button
               onClick={handleWeatherToggle}
+              disabled={isLoading}
               className={`
                 relative w-14 h-7 rounded-full transition-all duration-300
                 ${weatherMode ? "bg-cyan-500" : "bg-gray-600"}
+                ${isLoading ? "opacity-50 cursor-not-allowed" : ""}
               `}
             >
               <div

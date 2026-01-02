@@ -143,7 +143,6 @@ export const themes: Theme[] = [
 
 const THEME_STORAGE_KEY = "party-games-theme";
 const WEATHER_MODE_KEY = "party-games-weather-mode";
-const WEATHER_API_KEY = "439d4b804bc8187953eb36d2a8c26a02"; // OpenWeatherMap free API
 
 export function isWeatherModeEnabled(): boolean {
   if (typeof window === "undefined") return false;
@@ -158,67 +157,146 @@ export function setWeatherMode(enabled: boolean) {
   }
 }
 
-function mapWeatherToTheme(weatherMain: string, isDay: boolean): string {
-  const weatherLower = weatherMain.toLowerCase();
-
+function mapWeatherCodeToTheme(weatherCode: number, isDay: boolean): string {
   // Night time
   if (!isDay) return "dark";
 
-  // Weather conditions
-  if (weatherLower.includes("clear")) return "neon";
-  if (weatherLower.includes("cloud")) return "default";
-  if (weatherLower.includes("rain") || weatherLower.includes("drizzle"))
-    return "ocean";
-  if (weatherLower.includes("thunder")) return "royal";
-  if (weatherLower.includes("snow")) return "candy";
-  if (weatherLower.includes("mist") || weatherLower.includes("fog"))
-    return "forest";
-  if (weatherLower.includes("sun")) return "sunset";
+  // WMO Weather interpretation codes
+  // 0 = Clear sky
+  if (weatherCode === 0) return "sunset";
 
-  return "default";
+  // 1-3 = Mainly clear, partly cloudy, overcast
+  if (weatherCode >= 1 && weatherCode <= 3) return "default";
+
+  // 45-48 = Fog
+  if (weatherCode >= 45 && weatherCode <= 48) return "forest";
+
+  // 51-67 = Drizzle and rain
+  if (weatherCode >= 51 && weatherCode <= 67) return "ocean";
+
+  // 71-77 = Snow
+  if (weatherCode >= 71 && weatherCode <= 77) return "candy";
+
+  // 80-82 = Rain showers
+  if (weatherCode >= 80 && weatherCode <= 82) return "ocean";
+
+  // 85-86 = Snow showers
+  if (weatherCode >= 85 && weatherCode <= 86) return "candy";
+
+  // 95-99 = Thunderstorm
+  if (weatherCode >= 95 && weatherCode <= 99) return "royal";
+
+  return "neon"; // Clear/Sunny default
 }
 
 export async function updateThemeByWeather() {
   if (typeof window === "undefined" || !isWeatherModeEnabled()) return;
 
   try {
+    console.log("🌤️ Starting weather detection...");
+
     // Get user location
     const position = await new Promise<GeolocationPosition>(
       (resolve, reject) => {
-        navigator.geolocation.getCurrentPosition(resolve, reject);
+        navigator.geolocation.getCurrentPosition(
+          resolve,
+          (error) => {
+            console.error("Location error:", error.message);
+            reject(error);
+          },
+          {
+            enableHighAccuracy: false,
+            timeout: 10000,
+            maximumAge: 300000, // Cache for 5 minutes
+          }
+        );
       }
     );
 
     const { latitude, longitude } = position.coords;
+    console.log(`📍 Location: ${latitude.toFixed(2)}, ${longitude.toFixed(2)}`);
 
-    // Fetch weather data
+    // Fetch weather data from Open-Meteo (Free, no API key required)
     const response = await fetch(
-      `https://api.openweathermap.org/data/2.5/weather?lat=${latitude}&lon=${longitude}&appid=${WEATHER_API_KEY}`
+      `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=weather_code,is_day&timezone=auto`
     );
 
-    if (!response.ok) throw new Error("Weather API failed");
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Weather API failed: ${response.status} - ${errorText}`);
+    }
 
     const data = await response.json();
-    const weatherMain = data.weather[0].main;
-    const sunrise = data.sys.sunrise * 1000;
-    const sunset = data.sys.sunset * 1000;
-    const now = Date.now();
-    const isDay = now >= sunrise && now <= sunset;
+    const weatherCode = data.current.weather_code;
+    const isDay = data.current.is_day === 1;
 
     // Map weather to theme
-    const themeId = mapWeatherToTheme(weatherMain, isDay);
+    const themeId = mapWeatherCodeToTheme(weatherCode, isDay);
     setTheme(themeId);
 
+    // Weather code descriptions
+    const weatherDescriptions: Record<number, string> = {
+      0: "Clear sky",
+      1: "Mainly clear",
+      2: "Partly cloudy",
+      3: "Overcast",
+      45: "Foggy",
+      48: "Depositing rime fog",
+      51: "Light drizzle",
+      53: "Moderate drizzle",
+      55: "Dense drizzle",
+      61: "Slight rain",
+      63: "Moderate rain",
+      65: "Heavy rain",
+      71: "Slight snow",
+      73: "Moderate snow",
+      75: "Heavy snow",
+      80: "Slight rain showers",
+      81: "Moderate rain showers",
+      82: "Violent rain showers",
+      95: "Thunderstorm",
+      96: "Thunderstorm with slight hail",
+      99: "Thunderstorm with heavy hail",
+    };
+
+    const description =
+      weatherDescriptions[weatherCode] || `Weather code ${weatherCode}`;
+
     console.log(
-      `🌤️ Weather: ${weatherMain}, Time: ${
-        isDay ? "Day" : "Night"
+      `🌤️ Weather: ${description} (code ${weatherCode}), Time: ${
+        isDay ? "Day ☀️" : "Night 🌙"
       }, Theme: ${themeId}`
     );
+
+    // Dispatch custom event for UI feedback
+    window.dispatchEvent(
+      new CustomEvent("weatherupdated", {
+        detail: { weather: description, description, isDay, theme: themeId },
+      })
+    );
+
+    return { success: true, weather: description, theme: themeId };
   } catch (error) {
-    console.error("Failed to get weather:", error);
+    console.error("❌ Failed to get weather:", error);
+
+    // Dispatch error event
+    window.dispatchEvent(
+      new CustomEvent("weathererror", {
+        detail: {
+          error: error instanceof Error ? error.message : String(error),
+        },
+      })
+    );
+
     // Fallback to saved theme
     const savedThemeId = localStorage.getItem(THEME_STORAGE_KEY);
-    if (savedThemeId) setTheme(savedThemeId);
+    if (savedThemeId) {
+      setTheme(savedThemeId);
+    } else {
+      setTheme("default");
+    }
+
+    return { success: false, error };
   }
 }
 
@@ -258,6 +336,16 @@ export function initializeTheme() {
   // Check if weather mode is enabled
   if (isWeatherModeEnabled()) {
     updateThemeByWeather();
+
+    // Auto-refresh every 10 minutes
+    const refreshInterval = setInterval(() => {
+      if (isWeatherModeEnabled()) {
+        console.log("🔄 Auto-refreshing weather...");
+        updateThemeByWeather();
+      } else {
+        clearInterval(refreshInterval);
+      }
+    }, 10 * 60 * 1000); // 10 minutes
   } else {
     const theme = getCurrentTheme();
     setTheme(theme.id);
