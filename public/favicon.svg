@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#ef4444;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#f97316;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="100" fill="url(#grad1)"/>
+  <!-- Playing Card -->
+  <rect x="106" y="96" width="300" height="320" rx="20" fill="white" opacity="0.95"/>
+  <!-- King Crown -->
+  <path d="M 206 186 L 226 226 L 246 186 L 266 226 L 286 186 L 306 226 L 286 246 L 266 246 L 246 246 L 226 246 L 206 246 Z" fill="#fbbf24" stroke="#f59e0b" stroke-width="3"/>
+  <!-- Card Symbol (Heart/Cup) -->
+  <path d="M 256 316 C 236 316 216 296 216 276 C 216 256 236 246 256 246 C 276 246 296 256 296 276 C 296 296 276 316 256 316 Z M 256 246 L 256 366" fill="#ef4444" stroke="#dc2626" stroke-width="4"/>
+  <!-- Letter K -->
+  <text x="146" y="156" font-family="Arial, sans-serif" font-size="48" font-weight="bold" fill="#dc2626">K</text>
+  <text x="336" y="396" font-family="Arial, sans-serif" font-size="48" font-weight="bold" fill="#dc2626" transform="rotate(180 366 396)">K</text>
+</svg>
