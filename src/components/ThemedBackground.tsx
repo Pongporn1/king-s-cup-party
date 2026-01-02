@@ -6,14 +6,34 @@ export default function ThemedBackground() {
 
   useEffect(() => {
     const handleThemeChange = (e: CustomEvent) => {
+      console.log(
+        `🎨 ThemedBackground: Received theme change to ${e.detail.name}`
+      );
       setTheme(e.detail);
     };
 
+    const handleWeatherUpdate = () => {
+      // Force re-fetch current theme when weather updates
+      console.log(`🌤️ ThemedBackground: Weather updated, refreshing theme`);
+      const newTheme = getCurrentTheme();
+      console.log(`🎨 ThemedBackground: Applying theme ${newTheme.name}`);
+      setTheme(newTheme);
+    };
+
     window.addEventListener("themechange", handleThemeChange as EventListener);
+    window.addEventListener(
+      "weatherupdated",
+      handleWeatherUpdate as EventListener
+    );
+
     return () => {
       window.removeEventListener(
         "themechange",
         handleThemeChange as EventListener
+      );
+      window.removeEventListener(
+        "weatherupdated",
+        handleWeatherUpdate as EventListener
       );
     };
   }, []);

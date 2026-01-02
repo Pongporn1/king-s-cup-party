@@ -166,7 +166,7 @@ function mapWeatherCodeToTheme(weatherCode: number, isDay: boolean): string {
   if (weatherCode === 0) return "sunset";
 
   // 1-3 = Mainly clear, partly cloudy, overcast
-  if (weatherCode >= 1 && weatherCode <= 3) return "default";
+  if (weatherCode >= 1 && weatherCode <= 3) return "neon"; // Changed to neon for testing!
 
   // 45-48 = Fog
   if (weatherCode >= 45 && weatherCode <= 48) return "forest";
@@ -195,28 +195,73 @@ export async function updateThemeByWeather() {
   try {
     console.log("🌤️ Starting weather detection...");
 
-    // Get user location
-    const position = await new Promise<GeolocationPosition>(
-      (resolve, reject) => {
-        navigator.geolocation.getCurrentPosition(
-          resolve,
-          (error) => {
-            console.error("Location error:", error.message);
-            reject(error);
-          },
-          {
-            enableHighAccuracy: false,
-            timeout: 10000,
-            maximumAge: 300000, // Cache for 5 minutes
+    let latitude: number;
+    let longitude: number;
+
+    // Check if the site is running on a secure origin
+    const isSecureContext = window.isSecureContext;
+
+    if (!isSecureContext) {
+      console.log(
+        "⚠️ Not a secure context (HTTPS), using IP-based geolocation..."
+      );
+    }
+
+    try {
+      // Try GPS first if secure context
+      if (isSecureContext && navigator.geolocation) {
+        const position = await new Promise<GeolocationPosition>(
+          (resolve, reject) => {
+            navigator.geolocation.getCurrentPosition(
+              resolve,
+              (error) => {
+                console.log(
+                  `⚠️ GPS failed: ${error.message}, falling back to IP location`
+                );
+                reject(error);
+              },
+              {
+                enableHighAccuracy: false,
+                timeout: 5000,
+                maximumAge: 300000,
+              }
+            );
           }
         );
+        latitude = position.coords.latitude;
+        longitude = position.coords.longitude;
+        console.log(
+          `📍 GPS Location: ${latitude.toFixed(2)}, ${longitude.toFixed(2)}`
+        );
+      } else {
+        throw new Error("GPS not available");
       }
-    );
+    } catch (gpsError) {
+      // Fallback to IP-based geolocation
+      console.log("🌐 Fetching location from IP address...");
 
-    const { latitude, longitude } = position.coords;
-    console.log(`📍 Location: ${latitude.toFixed(2)}, ${longitude.toFixed(2)}`);
+      try {
+        const ipResponse = await fetch("https://ipapi.co/json/");
+        if (!ipResponse.ok) throw new Error("IP geolocation failed");
 
-    // Fetch weather data from Open-Meteo (Free, no API key required)
+        const ipData = await ipResponse.json();
+        latitude = ipData.latitude;
+        longitude = ipData.longitude;
+        console.log(
+          `📍 IP Location: ${latitude.toFixed(2)}, ${longitude.toFixed(2)} (${
+            ipData.city
+          }, ${ipData.country_name})`
+        );
+      } catch (ipError) {
+        // If IP geolocation also fails, use Bangkok as default
+        console.log("⚠️ IP geolocation failed, using Bangkok as default");
+        latitude = 13.7563;
+        longitude = 100.5018;
+        console.log(`📍 Default Location: Bangkok, Thailand`);
+      }
+    }
+
+    // Fetch weather data from Open-Meteo
     const response = await fetch(
       `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=weather_code,is_day&timezone=auto`
     );
@@ -311,7 +356,12 @@ export function setTheme(themeId: string) {
   if (typeof window === "undefined") return;
 
   const theme = themes.find((t) => t.id === themeId);
-  if (!theme) return;
+  if (!theme) {
+    console.error(`❌ Theme not found: ${themeId}`);
+    return;
+  }
+
+  console.log(`🎨 Applying theme: ${theme.name} (${theme.id})`);
 
   localStorage.setItem(THEME_STORAGE_KEY, themeId);
 
@@ -327,7 +377,10 @@ export function setTheme(themeId: string) {
   root.style.setProperty("--gradient", theme.gradient);
 
   // Trigger custom event for components to react
+  console.log(`📢 Dispatching themechange event for ${theme.name}`);
   window.dispatchEvent(new CustomEvent("themechange", { detail: theme }));
+
+  console.log(`✅ Theme ${theme.name} applied successfully`);
 }
 
 export function initializeTheme() {
