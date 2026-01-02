@@ -52,6 +52,12 @@ const DEFAULT_GAMES = [
     name: "5 Second Rule",
     gradient: "from-yellow-400 to-orange-500",
   },
+  {
+    id: "texas-holdem",
+    emoji: "♠️",
+    name: "Texas Hold'em",
+    gradient: "from-blue-600 to-cyan-600",
+  },
 ];
 
 interface AdminPanelProps {

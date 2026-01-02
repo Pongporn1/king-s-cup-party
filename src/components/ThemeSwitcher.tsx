@@ -8,11 +8,14 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Palette } from "lucide-react";
+import { Palette, CloudSun } from "lucide-react";
 import {
   themes,
   getCurrentTheme,
   setTheme,
+  isWeatherModeEnabled,
+  setWeatherMode,
+  updateThemeByWeather,
   type Theme,
 } from "@/lib/themeSystem";
 import { t, getLanguage } from "@/lib/i18n";
@@ -20,6 +23,7 @@ import { t, getLanguage } from "@/lib/i18n";
 export default function ThemeSwitcher() {
   const [currentTheme, setCurrentTheme] = useState<Theme>(getCurrentTheme());
   const [open, setOpen] = useState(false);
+  const [weatherMode, setWeatherModeState] = useState(isWeatherModeEnabled());
   const currentLanguage = getLanguage();
 
   useEffect(() => {
@@ -39,6 +43,17 @@ export default function ThemeSwitcher() {
   const handleThemeChange = (themeId: string) => {
     setTheme(themeId);
     setCurrentTheme(themes.find((t) => t.id === themeId) || themes[0]);
+  };
+
+  const handleWeatherToggle = async () => {
+    const newValue = !weatherMode;
+    setWeatherModeState(newValue);
+    setWeatherMode(newValue);
+
+    if (newValue) {
+      await updateThemeByWeather();
+      setCurrentTheme(getCurrentTheme());
+    }
   };
 
   return (
@@ -62,6 +77,40 @@ export default function ThemeSwitcher() {
             เลือกธีมสีสำหรับเกม
           </DialogDescription>
         </DialogHeader>
+
+        {/* Weather Mode Toggle */}
+        <div className="mt-4 p-4 rounded-lg bg-gradient-to-r from-blue-500/20 to-cyan-500/20 border border-blue-400/30">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <CloudSun className="h-6 w-6 text-cyan-400" />
+              <div>
+                <p className="text-white font-semibold">
+                  {currentLanguage === "th" ? "โหมดสภาพอากาศ" : "Weather Mode"}
+                </p>
+                <p className="text-xs text-white/60">
+                  {currentLanguage === "th"
+                    ? "เปลี่ยนธีมอัตโนมัติตามสภาพอากาศจริง"
+                    : "Auto-change theme based on real weather"}
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={handleWeatherToggle}
+              className={`
+                relative w-14 h-7 rounded-full transition-all duration-300
+                ${weatherMode ? "bg-cyan-500" : "bg-gray-600"}
+              `}
+            >
+              <div
+                className={`
+                  absolute top-1 left-1 w-5 h-5 bg-white rounded-full transition-transform duration-300
+                  ${weatherMode ? "translate-x-7" : "translate-x-0"}
+                `}
+              />
+            </button>
+          </div>
+        </div>
+
         <div className="grid grid-cols-2 gap-4 mt-4">
           {themes.map((theme) => (
             <button

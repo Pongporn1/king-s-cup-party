@@ -216,8 +216,16 @@ const Index = () => {
         gradient: "from-yellow-400 to-orange-500",
         bgColor: "#f59e0b",
       },
+      {
+        id: "texas-holdem",
+        emoji: "♠️",
+        name: "Texas Hold'em",
+        desc: "โป๊กเกอร์สุดคลาสสิก - เดิมพันสนุก",
+        gradient: "from-blue-600 to-cyan-600",
+        bgColor: "#2563eb",
+        externalLink: "https://pongporn1.github.io/texas-hold-em-power/#/auth",
+      },
     ],
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     []
   );
 
@@ -329,7 +337,7 @@ const Index = () => {
         const roomCode =
           typeof result === "string"
             ? result
-            : result.code || (result as any).code;
+            : result.code || (result as { code?: string }).code;
         const playerId =
           typeof result === "object" && result !== null && "playerId" in result
             ? (result as { playerId: string }).playerId
@@ -610,7 +618,6 @@ const Index = () => {
                       type: "spring",
                       stiffness: 300,
                       damping: 30,
-                      clamp: true,
                     }}
                     onClick={() => setSelectedGameIndex(index)}
                     style={{
@@ -690,7 +697,13 @@ const Index = () => {
           >
             <Button
               size="lg"
-              onClick={() => setGameMode(selectedGame.id as GameMode)}
+              onClick={() => {
+                if (selectedGame.externalLink) {
+                  window.location.href = selectedGame.externalLink;
+                } else {
+                  setGameMode(selectedGame.id as GameMode);
+                }
+              }}
               className="bg-white text-black hover:bg-white/90 px-10 py-6 rounded-full font-bold text-xl shadow-2xl hover:scale-105 transition-transform flex items-center gap-3"
             >
               <Play fill="black" size={24} />

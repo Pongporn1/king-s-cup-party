@@ -142,6 +142,85 @@ export const themes: Theme[] = [
 ];
 
 const THEME_STORAGE_KEY = "party-games-theme";
+const WEATHER_MODE_KEY = "party-games-weather-mode";
+const WEATHER_API_KEY = "439d4b804bc8187953eb36d2a8c26a02"; // OpenWeatherMap free API
+
+export function isWeatherModeEnabled(): boolean {
+  if (typeof window === "undefined") return false;
+  return localStorage.getItem(WEATHER_MODE_KEY) === "true";
+}
+
+export function setWeatherMode(enabled: boolean) {
+  if (typeof window === "undefined") return;
+  localStorage.setItem(WEATHER_MODE_KEY, enabled.toString());
+  if (enabled) {
+    updateThemeByWeather();
+  }
+}
+
+function mapWeatherToTheme(weatherMain: string, isDay: boolean): string {
+  const weatherLower = weatherMain.toLowerCase();
+
+  // Night time
+  if (!isDay) return "dark";
+
+  // Weather conditions
+  if (weatherLower.includes("clear")) return "neon";
+  if (weatherLower.includes("cloud")) return "default";
+  if (weatherLower.includes("rain") || weatherLower.includes("drizzle"))
+    return "ocean";
+  if (weatherLower.includes("thunder")) return "royal";
+  if (weatherLower.includes("snow")) return "candy";
+  if (weatherLower.includes("mist") || weatherLower.includes("fog"))
+    return "forest";
+  if (weatherLower.includes("sun")) return "sunset";
+
+  return "default";
+}
+
+export async function updateThemeByWeather() {
+  if (typeof window === "undefined" || !isWeatherModeEnabled()) return;
+
+  try {
+    // Get user location
+    const position = await new Promise<GeolocationPosition>(
+      (resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(resolve, reject);
+      }
+    );
+
+    const { latitude, longitude } = position.coords;
+
+    // Fetch weather data
+    const response = await fetch(
+      `https://api.openweathermap.org/data/2.5/weather?lat=${latitude}&lon=${longitude}&appid=${WEATHER_API_KEY}`
+    );
+
+    if (!response.ok) throw new Error("Weather API failed");
+
+    const data = await response.json();
+    const weatherMain = data.weather[0].main;
+    const sunrise = data.sys.sunrise * 1000;
+    const sunset = data.sys.sunset * 1000;
+    const now = Date.now();
+    const isDay = now >= sunrise && now <= sunset;
+
+    // Map weather to theme
+    const themeId = mapWeatherToTheme(weatherMain, isDay);
+    setTheme(themeId);
+
+    console.log(
+      `🌤️ Weather: ${weatherMain}, Time: ${
+        isDay ? "Day" : "Night"
+      }, Theme: ${themeId}`
+    );
+  } catch (error) {
+    console.error("Failed to get weather:", error);
+    // Fallback to saved theme
+    const savedThemeId = localStorage.getItem(THEME_STORAGE_KEY);
+    if (savedThemeId) setTheme(savedThemeId);
+  }
+}
 
 export function getCurrentTheme(): Theme {
   if (typeof window === "undefined") return themes[0];
@@ -176,6 +255,11 @@ export function setTheme(themeId: string) {
 export function initializeTheme() {
   if (typeof window === "undefined") return;
 
-  const theme = getCurrentTheme();
-  setTheme(theme.id);
+  // Check if weather mode is enabled
+  if (isWeatherModeEnabled()) {
+    updateThemeByWeather();
+  } else {
+    const theme = getCurrentTheme();
+    setTheme(theme.id);
+  }
 }
