@@ -19,8 +19,8 @@ export function Sidebar({ onNavigate, currentSection = "home" }: SidebarProps) {
 
   const navItems = [
     { id: "games", icon: Gamepad2, label: "Games" },
-    { id: "profile", icon: User, label: "Profile" },
     { id: "friends", icon: Users, label: "Friends" },
+    { id: "profile", icon: User, label: "Profile" },
     { id: "settings", icon: Settings, label: "Settings" },
   ];
 

@@ -37,7 +37,7 @@ export function HeroSection({
   }, []);
 
   return (
-    <div className="relative h-screen w-full overflow-hidden">
+    <div className="relative h-screen w-full overflow-hidden flex items-center justify-center">
       {/* Background Image with Parallax */}
       <motion.div
         className="absolute inset-0 bg-cover bg-center"
@@ -63,7 +63,7 @@ export function HeroSection({
       <div className="absolute inset-0 bg-gradient-to-b from-transparent via-black/50 to-black" />
 
       {/* Content */}
-      <div className="relative z-10 h-full flex flex-col items-center justify-center px-4 md:px-8">
+      <div className="relative z-10 flex flex-col items-center justify-center px-4 md:px-8 text-center">
         {/* Logo/Title */}
         <motion.div
           initial={{ y: -50, opacity: 0 }}
