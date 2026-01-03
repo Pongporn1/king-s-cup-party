@@ -10,6 +10,8 @@ import {
   Users,
   Loader2,
   ImageIcon,
+  Paintbrush,
+  Sparkles,
 } from "lucide-react";
 import {
   getFloatingNamesFromDB,
@@ -18,43 +20,44 @@ import {
   clearAllFloatingNames,
 } from "@/lib/adminStorage";
 import { GameCoverEditor } from "./GameCoverEditor";
-import { t } from "@/lib/i18n";
+import { GameProfileEditor } from "./GameProfileEditor";
+import { GameIconEditor } from "./GameIconEditor";
 
 // Default games list - จะใช้เมื่อไม่ได้รับ games prop
 const DEFAULT_GAMES = [
   {
     id: "doraemon",
-    emoji: "🎴",
+    emoji: "",
     name: "King's Cup",
     gradient: "from-red-500 to-orange-500",
   },
   {
     id: "pokdeng",
-    emoji: "🃏",
+    emoji: "",
     name: "Pok Deng",
     gradient: "from-emerald-500 to-green-600",
   },
   {
     id: "undercover",
-    emoji: "🕵️",
+    emoji: "",
     name: "Undercover",
     gradient: "from-purple-600 to-indigo-600",
   },
   {
     id: "paranoia",
-    emoji: "🤫",
+    emoji: "",
     name: "Paranoia",
     gradient: "from-pink-500 to-rose-600",
   },
   {
     id: "5-sec",
-    emoji: "⏱️",
+    emoji: "",
     name: "5 Second Rule",
     gradient: "from-yellow-400 to-orange-500",
   },
   {
     id: "texas-holdem",
-    emoji: "♠️",
+    emoji: "",
     name: "Texas Hold'em",
     gradient: "from-blue-600 to-cyan-600",
   },
@@ -69,12 +72,16 @@ interface AdminPanelProps {
     gradient: string;
   }>;
   onCoversUpdate?: () => void;
+  onProfilesUpdate?: () => void;
+  onIconsUpdate?: () => void;
 }
 
 export function AdminPanel({
   onClose,
   games,
   onCoversUpdate,
+  onProfilesUpdate,
+  onIconsUpdate,
 }: AdminPanelProps) {
   // Use provided games or fallback to default
   const gamesList = games && games.length > 0 ? games : DEFAULT_GAMES;
@@ -82,7 +89,11 @@ export function AdminPanel({
   const [newName, setNewName] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [showCoverEditor, setShowCoverEditor] = useState(false);
-  const [activeTab, setActiveTab] = useState<"names" | "covers">("names");
+  const [showProfileEditor, setShowProfileEditor] = useState(false);
+  const [showIconEditor, setShowIconEditor] = useState(false);
+  const [activeTab, setActiveTab] = useState<
+    "names" | "covers" | "profiles" | "icons"
+  >("names");
 
   // Load names from Supabase on mount
   useEffect(() => {
@@ -129,6 +140,32 @@ export function AdminPanel({
         onCoversUpdate={() => {
           setShowCoverEditor(false);
           onCoversUpdate?.();
+        }}
+      />
+    );
+  }
+
+  if (showProfileEditor && gamesList.length > 0) {
+    return (
+      <GameProfileEditor
+        games={gamesList}
+        onClose={() => setShowProfileEditor(false)}
+        onProfilesUpdate={() => {
+          setShowProfileEditor(false);
+          onProfilesUpdate?.();
+        }}
+      />
+    );
+  }
+
+  if (showIconEditor && gamesList.length > 0) {
+    return (
+      <GameIconEditor
+        games={gamesList}
+        onClose={() => setShowIconEditor(false)}
+        onIconsUpdate={() => {
+          setShowIconEditor(false);
+          onIconsUpdate?.();
         }}
       />
     );
@@ -188,10 +225,36 @@ export function AdminPanel({
             <ImageIcon className="w-4 h-4 mr-2" />
             ปกเกม
           </Button>
+          <Button
+            variant={activeTab === "profiles" ? "default" : "ghost"}
+            size="sm"
+            onClick={() => setActiveTab("profiles")}
+            className={
+              activeTab === "profiles"
+                ? "bg-purple-600 text-white"
+                : "text-purple-300 hover:text-white hover:bg-purple-600/20"
+            }
+          >
+            <Sparkles className="w-4 h-4 mr-2" />
+            โปรไฟล์เกม
+          </Button>
+          <Button
+            variant={activeTab === "icons" ? "default" : "ghost"}
+            size="sm"
+            onClick={() => setActiveTab("icons")}
+            className={
+              activeTab === "icons"
+                ? "bg-purple-600 text-white"
+                : "text-purple-300 hover:text-white hover:bg-purple-600/20"
+            }
+          >
+            <Paintbrush className="w-4 h-4 mr-2" />
+            ไอคอนเกม
+          </Button>
         </div>
 
         {/* Content */}
-        {activeTab === "names" ? (
+        {activeTab === "names" && (
           <div className="p-6 space-y-4">
             <div className="text-center">
               <p className="text-white/60 text-sm">
@@ -278,21 +341,76 @@ export function AdminPanel({
               </p>
             </div>
           </div>
-        ) : (
+        )}
+
+        {activeTab === "covers" && (
           <div className="p-6 space-y-4">
             <div className="text-center">
               <p className="text-white/60 text-sm mb-4">
-                แก้ไขรูปภาพปกของแต่ละเกม
+                แก้ไขรูปภาพปก (พื้นหลัง) และไอคอนของแต่ละเกม
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <Button
+                onClick={() => setShowIconEditor(true)}
+                disabled={gamesList.length === 0}
+                className="w-full bg-amber-500 hover:bg-amber-600 text-white py-6 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <Paintbrush className="w-5 h-5 mr-2" />
+                Upload Icon (เล็ก)
+              </Button>
+
+              <Button
+                onClick={() => setShowCoverEditor(true)}
+                disabled={gamesList.length === 0}
+                className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-6 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <ImageIcon className="w-5 h-5 mr-2" />
+                Upload Cover (พื้นหลัง)
+              </Button>
+            </div>
+
+            {gamesList.length === 0 && (
+              <div className="bg-yellow-500/20 border border-yellow-500/30 rounded-lg p-4 text-center">
+                <p className="text-yellow-300 text-sm">
+                  ⚠️ ไม่พบข้อมูลเกม กรุณาเปิด Admin Panel จากหน้าเลือกเกม
+                </p>
+              </div>
+            )}
+
+            <div className="bg-black/30 border border-purple-500/20 rounded-lg p-4">
+              <p className="text-white/60 text-sm">
+                💡 <strong>วิธีใช้:</strong> Upload Icon สำหรับรายการเกมเล็ก ๆ
+                และ Upload Cover สำหรับภาพพื้นหลังใหญ่ รองรับไฟล์ภาพสูงสุด 10MB
               </p>
             </div>
 
             <Button
-              onClick={() => setShowCoverEditor(true)}
-              disabled={gamesList.length === 0}
-              className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-6 disabled:opacity-50 disabled:cursor-not-allowed"
+              onClick={onClose}
+              variant="outline"
+              className="w-full border-purple-500/30 text-purple-300 hover:bg-purple-500/20"
             >
-              <ImageIcon className="w-5 h-5 mr-2" />
-              เปิดตัวแก้ไขปกเกม
+              ปิด
+            </Button>
+          </div>
+        )}
+
+        {activeTab === "profiles" && (
+          <div className="p-6 space-y-4">
+            <div className="text-center">
+              <p className="text-white/60 text-sm mb-4">
+                เปลี่ยนชื่อ อีโมจิ และสีพื้นหลังของเกม
+              </p>
+            </div>
+
+            <Button
+              onClick={() => setShowProfileEditor(true)}
+              disabled={gamesList.length === 0}
+              className="w-full bg-amber-600 hover:bg-amber-700 text-white py-6 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <Sparkles className="w-5 h-5 mr-2" />
+              เปิดตัวแก้ไขโปรไฟล์เกม
             </Button>
 
             {gamesList.length === 0 && (
@@ -305,8 +423,50 @@ export function AdminPanel({
 
             <div className="bg-black/30 border border-purple-500/20 rounded-lg p-4">
               <p className="text-white/60 text-sm">
-                💡 <strong>วิธีใช้:</strong> ใส่ลิงก์รูปภาพจากอินเทอร์เน็ต
-                (คลิกขวาที่รูป → คัดลอกที่อยู่รูปภาพ)
+                💡 <strong>วิธีใช้:</strong> กำหนดชื่อ อีโมจิ และคลาสสี Tailwind
+                เช่น from-amber-500 to-orange-600
+              </p>
+            </div>
+
+            <Button
+              onClick={onClose}
+              variant="outline"
+              className="w-full border-purple-500/30 text-purple-300 hover:bg-purple-500/20"
+            >
+              ปิด
+            </Button>
+          </div>
+        )}
+
+        {activeTab === "icons" && (
+          <div className="p-6 space-y-4">
+            <div className="text-center">
+              <p className="text-white/60 text-sm mb-4">
+                อัปโหลดไอคอนเกม (ใช้แทน emoji)
+              </p>
+            </div>
+
+            <Button
+              onClick={() => setShowIconEditor(true)}
+              disabled={gamesList.length === 0}
+              className="w-full bg-amber-500 hover:bg-amber-600 text-white py-6 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <Paintbrush className="w-5 h-5 mr-2" />
+              เปิดตัวแก้ไขไอคอนเกม
+            </Button>
+
+            {gamesList.length === 0 && (
+              <div className="bg-yellow-500/20 border border-yellow-500/30 rounded-lg p-4 text-center">
+                <p className="text-yellow-300 text-sm">
+                  ⚠️ ไม่พบข้อมูลเกม กรุณาเปิด Admin Panel จากหน้าเลือกเกม
+                </p>
+              </div>
+            )}
+
+            <div className="bg-black/30 border border-purple-500/20 rounded-lg p-4">
+              <p className="text-white/60 text-sm">
+                💡 <strong>วิธีใช้:</strong>{" "}
+                เลือกรูปสี่เหลี่ยมจัตุรัสเพื่อให้ดูสวยสุด
               </p>
             </div>
 

@@ -21,10 +21,19 @@ import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import ThemeSwitcher from "@/components/ThemeSwitcher";
 import ThemedBackground from "@/components/ThemedBackground";
 import { FloatingNames, AdminPanel } from "@/components/AdminPanel";
-import { getFloatingNamesFromDB, getGameCovers } from "@/lib/adminStorage";
+import {
+  GameProfile,
+  getFloatingNamesFromDB,
+  getGameCovers,
+  getGameIcons,
+  getGameProfiles,
+} from "@/lib/adminStorage";
 import { t } from "@/lib/i18n";
 import { LoginButton } from "@/components/LoginButton";
 import { useAuth } from "@/contexts/AuthContext";
+import { Sidebar } from "@/components/Sidebar";
+import { HeroSection } from "@/components/HeroSection";
+import { GameCard } from "@/components/GameCard";
 import {
   Play,
   ChevronLeft,
@@ -45,7 +54,7 @@ type GameMode =
   | "5-sec";
 
 const Index = () => {
-  const { displayName: authDisplayName } = useAuth();
+  const { user, displayName: authDisplayName } = useAuth();
   const [gameMode, setGameMode] = useState<GameMode>("select");
   const [floatingNames, setFloatingNames] = useState<string[]>([]);
   const [isPokDengLiveMode, setIsPokDengLiveMode] = useState(false);
@@ -58,6 +67,24 @@ const Index = () => {
   // Admin Panel State
   const [showAdminPanel, setShowAdminPanel] = useState(false);
   const [gameCovers, setGameCovers] = useState<Record<string, string>>({});
+  const [gameIcons, setGameIcons] = useState<Record<string, string>>({});
+  const [gameProfiles, setGameProfiles] = useState<Record<string, GameProfile>>(
+    {}
+  );
+  const [isAdminUnlocked, setIsAdminUnlocked] = useState(false);
+
+  // Harder admin gate: must be logged-in user whose uid is allowlisted via env
+  const adminUids = useMemo(() => {
+    const raw = import.meta.env.VITE_ADMIN_UIDS as string | undefined;
+    return raw
+      ? raw
+          .split(",")
+          .map((v) => v.trim())
+          .filter(Boolean)
+      : [];
+  }, []);
+  const adminCode = import.meta.env.VITE_ADMIN_CODE as string | undefined;
+  const isAllowlistedAdmin = !!user && adminUids.includes(user.uid);
 
   // King's Cup game hook
   const {
@@ -177,8 +204,8 @@ const Index = () => {
   const currentRoomInfo = getCurrentRoomInfo();
 
   // Games array - Define at component level so it's accessible everywhere
-  const games = useMemo(
-    () => [
+  const games = useMemo(() => {
+    const baseGames = [
       {
         id: "doraemon",
         emoji: "🎴",
@@ -228,9 +255,21 @@ const Index = () => {
         bgColor: "#2563eb",
         externalLink: "https://pongporn1.github.io/texas-hold-em-power/#/auth",
       },
-    ],
-    []
-  );
+    ];
+
+    return baseGames.map((game) => {
+      const profile = gameProfiles[game.id];
+      const iconUrl = gameIcons[game.id];
+
+      return {
+        ...game,
+        emoji: profile?.emoji ?? game.emoji,
+        name: profile?.title || game.name,
+        gradient: profile?.gradient || game.gradient,
+        iconUrl,
+      };
+    });
+  }, [gameProfiles, gameIcons]);
 
   // Navigation functions
   const nextGame = useCallback(() => {
@@ -476,7 +515,7 @@ const Index = () => {
     ]
   );
 
-  // Load floating names and game covers
+  // Load floating names, game covers, and profiles
   useEffect(() => {
     const loadNames = async () => {
       const names = await getFloatingNamesFromDB();
@@ -488,9 +527,29 @@ const Index = () => {
       setGameCovers(covers);
     };
 
+    const loadIcons = async () => {
+      const icons = await getGameIcons();
+      setGameIcons(icons);
+    };
+
+    const loadProfiles = async () => {
+      const profiles = await getGameProfiles();
+      setGameProfiles(profiles);
+    };
+
     loadNames();
     loadCovers();
+    loadIcons();
+    loadProfiles();
   }, [gameMode, showAdminPanel]);
+
+  // Restore admin unlock from previous session (per-uid)
+  useEffect(() => {
+    const stored = localStorage.getItem("admin_unlock_code");
+    if (stored && user?.uid && stored === "1" + user.uid) {
+      setIsAdminUnlocked(true);
+    }
+  }, [user?.uid]);
 
   // Keyboard Navigation (Arrow keys like Nintendo Switch)
   useEffect(() => {
@@ -520,235 +579,207 @@ const Index = () => {
   }
 
   if (gameMode === "select") {
-    const selectedGame = games[selectedGameIndex];
-
     return (
-      <div className="min-h-screen min-h-[100dvh] relative overflow-hidden bg-zinc-900 text-white flex flex-col">
-        {/* Themed Background - Changes based on selected theme */}
+      <div className="min-h-screen min-h-[100dvh] relative overflow-hidden bg-zinc-900 text-white flex">
+        {/* Themed Background */}
         <ThemedBackground />
-
-        {/* Dynamic Background - Changes color based on selected game */}
-        <motion.div
-          key={selectedGameIndex}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 0.3 }}
-          transition={{ duration: 0.8 }}
-          className={`absolute inset-0 bg-gradient-to-br ${selectedGame.gradient} mix-blend-overlay`}
-        />
 
         {/* Floating Names */}
         <FloatingNames names={floatingNames} />
 
-        {/* Header Bar */}
-        <div className="relative z-[60] flex items-center justify-between px-6 py-4">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-red-600 flex items-center justify-center font-bold text-lg shadow-lg">
-              🎮
+        {/* Sidebar Navigation */}
+        <Sidebar />
+
+        {/* Main Content with left padding for sidebar */}
+        <div className="flex-1 pl-20">
+          {/* Header Bar */}
+          <div className="relative z-[60] flex items-center justify-between px-6 py-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-red-600 flex items-center justify-center font-bold text-lg shadow-lg">
+                🎮
+              </div>
+              <span className="text-xl font-bold">King's Cup Party</span>
             </div>
-            <span className="text-xl font-bold">Party Games</span>
-          </div>
-          <div className="flex items-center gap-3">
-            <LoginButton
-              currentRoomCode={currentRoomInfo?.code}
-              currentGameType={currentRoomInfo?.type}
-              currentGameName={currentRoomInfo?.name}
-              onJoinRoom={handleJoinFromInvite}
-            />
-            <LanguageSwitcher />
-            <ThemeSwitcher />
-            <span className="text-zinc-400 text-sm">
-              {new Date().toLocaleTimeString("th-TH", {
-                hour: "2-digit",
-                minute: "2-digit",
-              })}
-            </span>
-          </div>
-        </div>
 
-        {/* Main Content */}
-        <div className="flex-1 flex flex-col items-center justify-center px-4 relative z-10">
-          {/* Game Title - Animated */}
-          <motion.div
-            key={selectedGame.name}
-            initial={{ y: 20, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ type: "spring", stiffness: 300, damping: 30 }}
-            className="text-center mb-8"
+            <div className="flex items-center gap-3">
+              <LoginButton
+                currentRoomCode={currentRoomInfo?.code}
+                currentGameType={currentRoomInfo?.type}
+                currentGameName={currentRoomInfo?.name}
+                onJoinRoom={handleJoinFromInvite}
+              />
+              <LanguageSwitcher />
+              <ThemeSwitcher />
+              <span className="text-zinc-400 text-sm">
+                {new Date().toLocaleTimeString("th-TH", {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
+              </span>
+            </div>
+          </div>
+
+          {/* Hero Section uses selected game profile + cover */}
+          <HeroSection
+            title={games[selectedGameIndex].name}
+            description={games[selectedGameIndex].desc}
+            coverUrl={undefined}
+            emoji={games[selectedGameIndex].emoji}
+            iconUrl={games[selectedGameIndex].iconUrl}
+            gradient={games[selectedGameIndex].gradient}
+          />
+
+          {/* Games Section with PS5-Style */}
+          <div
+            id="games-section"
+            className="relative min-h-screen flex flex-col"
           >
-            <h1 className="text-5xl md:text-6xl font-black mb-2 tracking-tight drop-shadow-2xl">
-              {selectedGame.name}
-            </h1>
-            <p className="text-zinc-400 text-lg">{selectedGame.desc}</p>
-          </motion.div>
+            {/* Large Background Image */}
+            <motion.div
+              key={games[selectedGameIndex].id}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.5 }}
+              className="absolute inset-0 bg-cover bg-center bg-gradient-to-br from-slate-900 via-slate-800 to-black"
+              style={
+                gameCovers[games[selectedGameIndex].id]
+                  ? {
+                      backgroundImage: `url(${
+                        gameCovers[games[selectedGameIndex].id]
+                      })`,
+                    }
+                  : undefined
+              }
+            />
 
-          {/* Carousel */}
-          <div className="relative w-full max-w-5xl h-[380px] flex items-center justify-center perspective-[1000px]">
-            {/* Left Arrow */}
-            <button
-              onClick={prevGame}
-              className="absolute left-0 z-30 p-3 rounded-full bg-black/50 hover:bg-black/80 transition-all hover:scale-110"
-            >
-              <ChevronLeft size={32} />
-            </button>
+            {/* Gradient Overlays */}
+            <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-black/90" />
+            <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-transparent to-transparent" />
 
-            {/* Game Cards */}
-            <div className="relative h-full w-full flex items-center justify-center">
-              {games.map((game, index) => {
-                const offset = index - selectedGameIndex;
-                // Handle wrapping for infinite feel
-                let adjustedOffset = offset;
-                if (offset > games.length / 2)
-                  adjustedOffset = offset - games.length;
-                if (offset < -games.length / 2)
-                  adjustedOffset = offset + games.length;
-
-                const isActive = index === selectedGameIndex;
-                const isVisible = Math.abs(adjustedOffset) <= 2;
-                const customCover = gameCovers[game.id];
-
-                if (!isVisible) return null;
-
-                return (
-                  <motion.div
-                    key={game.id}
-                    className="absolute cursor-pointer"
-                    initial={false}
-                    animate={{
-                      x: adjustedOffset * 280,
-                      scale: isActive ? 1.15 : 0.75,
-                      rotateY: adjustedOffset * 8,
-                      opacity: isActive ? 1 : 0.4,
-                    }}
-                    transition={{
-                      type: "spring",
-                      stiffness: 300,
-                      damping: 30,
-                    }}
-                    onClick={() => setSelectedGameIndex(index)}
-                    style={{
-                      zIndex: isActive ? 20 : 10 - Math.abs(adjustedOffset),
-                      filter: isActive ? "grayscale(0)" : "grayscale(0.4)",
-                    }}
-                  >
-                    <div
-                      className={`
-                        w-[240px] h-[320px] rounded-2xl shadow-2xl overflow-hidden
-                        flex flex-col items-center justify-center relative
-                        ${
-                          !customCover
-                            ? `bg-gradient-to-br ${game.gradient}`
-                            : ""
-                        }
-                        ${
-                          isActive
-                            ? "border-4 border-cyan-400 shadow-cyan-400/30"
-                            : "border-2 border-white/20"
-                        }
-                      `}
-                      style={{
-                        backgroundImage: customCover
-                          ? `url(${customCover})`
-                          : undefined,
-                        backgroundSize: "cover",
-                        backgroundPosition: "center",
-                      }}
+            {/* Game Icons Row (Top) */}
+            <div className="relative z-20 px-8 pt-24">
+              <div className="flex items-center gap-4 overflow-x-auto scrollbar-hide pb-4">
+                {games.map((game, index) => {
+                  const isActive = index === selectedGameIndex;
+                  return (
+                    <motion.button
+                      key={`${game.id}-${index}`}
+                      onClick={() => setSelectedGameIndex(index)}
+                      className="flex-shrink-0 relative"
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
                     >
-                      {!customCover ? (
-                        <>
-                          <span className="text-8xl mb-4 drop-shadow-lg">
+                      <div
+                        className={`w-32 h-32 rounded-2xl overflow-hidden transition-all ${
+                          isActive
+                            ? "ring-4 ring-white shadow-2xl scale-110"
+                            : "ring-2 ring-white/20 opacity-60"
+                        }`}
+                      >
+                        {game.iconUrl ? (
+                          <img
+                            src={game.iconUrl}
+                            alt={game.name}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : gameCovers[game.id] ? (
+                          <img
+                            src={gameCovers[game.id]}
+                            alt={game.name}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <div
+                            className={`w-full h-full bg-gradient-to-br ${game.gradient} flex items-center justify-center text-5xl`}
+                          >
                             {game.emoji}
-                          </span>
-                          <h3 className="text-2xl font-bold text-white drop-shadow-lg">
-                            {game.name}
-                          </h3>
-                        </>
-                      ) : (
-                        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent p-4">
-                          <h3 className="text-xl font-bold text-white drop-shadow-lg text-center">
-                            {game.name}
-                          </h3>
-                        </div>
+                          </div>
+                        )}
+                      </div>
+                      {isActive && (
+                        <motion.div
+                          layoutId="gameIndicator"
+                          className="absolute -bottom-2 left-0 right-0 h-1 bg-white rounded-full"
+                        />
                       )}
-                    </div>
-
-                    {/* Glow effect for active card */}
-                    {isActive && (
-                      <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        className="absolute -inset-4 bg-cyan-400/20 rounded-3xl blur-2xl -z-10"
-                      />
-                    )}
-                  </motion.div>
-                );
-              })}
+                    </motion.button>
+                  );
+                })}
+              </div>
             </div>
 
-            {/* Right Arrow */}
-            <button
-              onClick={nextGame}
-              className="absolute right-0 z-30 p-3 rounded-full bg-black/50 hover:bg-black/80 transition-all hover:scale-110"
+            {/* Game Info (Bottom Left) */}
+            <motion.div
+              key={games[selectedGameIndex].id}
+              initial={{ opacity: 0, x: -50 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.5 }}
+              className="relative z-20 mt-auto px-12 pb-16 max-w-2xl"
             >
-              <ChevronRight size={32} />
-            </button>
+              <h1 className="text-6xl font-black text-white mb-4 drop-shadow-2xl">
+                {games[selectedGameIndex].name}
+              </h1>
+              <p className="text-xl text-white/90 mb-8 drop-shadow-lg">
+                {games[selectedGameIndex].desc}
+              </p>
+
+              {/* Action Buttons */}
+              <div className="flex items-center gap-4">
+                <motion.button
+                  onClick={() => {
+                    const selectedGame = games[selectedGameIndex];
+                    if (selectedGame.externalLink) {
+                      window.location.href = selectedGame.externalLink;
+                    } else {
+                      setGameMode(selectedGame.id as GameMode);
+                    }
+                  }}
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  className="px-12 py-4 bg-white/90 hover:bg-white text-black rounded-full font-bold text-lg shadow-2xl flex items-center gap-3"
+                >
+                  <Play className="w-6 h-6 fill-black" />
+                  Play
+                </motion.button>
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  className="p-4 bg-white/20 hover:bg-white/30 backdrop-blur-sm rounded-full border border-white/30"
+                >
+                  <span className="text-2xl">⋯</span>
+                </motion.button>
+              </div>
+            </motion.div>
           </div>
 
-          {/* Start Button + Admin Controls */}
-          <motion.div
-            initial={{ y: 20, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ delay: 0.2 }}
-            className="mt-10 flex items-center gap-4"
-          >
-            <Button
-              size="lg"
+          {/* Admin Button (floating) - requires allowlisted uid + env code */}
+          {isAllowlistedAdmin && (
+            <motion.button
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.95 }}
               onClick={() => {
-                if (selectedGame.externalLink) {
-                  window.location.href = selectedGame.externalLink;
-                } else {
-                  setGameMode(selectedGame.id as GameMode);
+                if (!adminCode) {
+                  alert("ยังไม่ได้ตั้งค่า VITE_ADMIN_CODE ใน .env");
+                  return;
                 }
+
+                if (!isAdminUnlocked) {
+                  const code = window.prompt("ใส่รหัสแอดมิน");
+                  if (code === adminCode) {
+                    localStorage.setItem("admin_unlock_code", "1" + user?.uid);
+                    setIsAdminUnlocked(true);
+                    setShowAdminPanel(true);
+                  }
+                  return;
+                }
+
+                setShowAdminPanel(true);
               }}
-              className="bg-white text-black hover:bg-white/90 px-10 py-6 rounded-full font-bold text-xl shadow-2xl hover:scale-105 transition-transform flex items-center gap-3"
+              className="fixed bottom-6 right-6 z-50 p-4 rounded-full bg-purple-600 hover:bg-purple-700 shadow-lg shadow-purple-500/30"
             >
-              <Play fill="black" size={24} />
-              Start Game
-            </Button>
-          </motion.div>
-        </div>
-
-        {/* Bottom Navigation Hints */}
-        <div className="relative z-10 flex items-center justify-center gap-8 pb-6 text-zinc-500 text-sm font-medium">
-          <span className="flex items-center gap-2">
-            <span className="border border-zinc-600 px-2 py-1 rounded text-xs">
-              ←
-            </span>
-            <span className="border border-zinc-600 px-2 py-1 rounded text-xs">
-              →
-            </span>
-            Select
-          </span>
-          <span className="flex items-center gap-2">
-            <span className="border border-zinc-600 px-3 py-1 rounded text-xs">
-              A
-            </span>
-            OK
-          </span>
-        </div>
-
-        {/* Dots Indicator */}
-        <div className="relative z-10 flex items-center justify-center gap-2 pb-8">
-          {games.map((_, index) => (
-            <button
-              key={index}
-              onClick={() => setSelectedGameIndex(index)}
-              className={`w-2.5 h-2.5 rounded-full transition-all ${
-                index === selectedGameIndex
-                  ? "bg-cyan-400 w-8"
-                  : "bg-zinc-600 hover:bg-zinc-500"
-              }`}
-            />
-          ))}
+              <Settings size={24} />
+            </motion.button>
+          )}
         </div>
 
         {/* Admin Panel Modal */}
@@ -759,6 +790,14 @@ const Index = () => {
             onCoversUpdate={async () => {
               const covers = await getGameCovers();
               setGameCovers(covers);
+            }}
+            onProfilesUpdate={async () => {
+              const profiles = await getGameProfiles();
+              setGameProfiles(profiles);
+            }}
+            onIconsUpdate={async () => {
+              const icons = await getGameIcons();
+              setGameIcons(icons);
             }}
           />
         )}

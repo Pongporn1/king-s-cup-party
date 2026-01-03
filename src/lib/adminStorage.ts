@@ -1,6 +1,8 @@
 import { supabase } from "@/integrations/supabase/client";
 
 const STORAGE_KEY = "admin_floating_names";
+// Try games first, then fall back to legacy game_covers
+const GAME_TABLES = ["games", "game_covers"] as const;
 
 // Fallback to localStorage if Supabase fails
 function getLocalNames(): string[] {
@@ -106,7 +108,25 @@ export function saveFloatingNames(names: string[]) {
 // Game Cover Storage Functions
 const GAME_COVERS_KEY = "admin_game_covers";
 
+// Game Icon Storage Functions (local-first)
+const GAME_ICONS_KEY = "admin_game_icons";
+
+// Game Profile Storage Functions
+const GAME_PROFILES_KEY = "admin_game_profiles";
+
+export interface GameProfile {
+  title: string;
+  emoji?: string | null;
+  gradient?: string | null;
+}
+
 export interface GameCover {
+  gameId: string;
+  imageUrl: string;
+  updatedAt: string;
+}
+
+export interface GameIcon {
   gameId: string;
   imageUrl: string;
   updatedAt: string;
@@ -122,38 +142,118 @@ function getLocalGameCovers(): Record<string, string> {
   }
 }
 
+function getLocalGameIcons(): Record<string, string> {
+  try {
+    const stored = localStorage.getItem(GAME_ICONS_KEY);
+    return stored ? JSON.parse(stored) : {};
+  } catch {
+    return {};
+  }
+}
+
+function getLocalGameProfiles(): Record<string, GameProfile> {
+  try {
+    const stored = localStorage.getItem(GAME_PROFILES_KEY);
+    return stored ? JSON.parse(stored) : {};
+  } catch {
+    return {};
+  }
+}
+
 export async function getGameCovers(): Promise<Record<string, string>> {
   try {
-    // Try to get from Supabase first (primary storage)
-    const { data, error } = await supabase
-      .from("game_covers" as any)
-      .select("id, cover_url")
-      .not("cover_url", "is", null);
+    for (const table of GAME_TABLES) {
+      const { data, error } = await supabase
+        .from(table as any)
+        .select("id, cover_url")
+        .not("cover_url", "is", null);
 
-    if (error) {
-      console.error("Error fetching game covers from Supabase:", error);
-      // Fallback to localStorage
-      const localCovers = getLocalGameCovers();
-      console.log(`📦 Using localStorage covers:`, Object.keys(localCovers));
-      return localCovers;
-    }
-
-    // Convert Supabase data to object
-    const covers: Record<string, string> = {};
-    (data as any[])?.forEach((item: { id: string; cover_url: string }) => {
-      if (item.cover_url) {
-        covers[item.id] = item.cover_url;
+      if (error) {
+        console.error(`Error fetching covers from ${table}:`, error);
+        continue;
       }
-    });
 
-    console.log(`📦 Loaded ${Object.keys(covers).length} covers from Supabase`);
-    return covers;
+      const covers: Record<string, string> = {};
+      (data as any[])?.forEach((item: { id: string; cover_url: string }) => {
+        if (item.cover_url) covers[item.id] = item.cover_url;
+      });
+
+      if (Object.keys(covers).length > 0) {
+        return covers;
+      }
+    }
   } catch (err) {
     console.error("Exception loading covers:", err);
-    // Fallback to localStorage
-    const localCovers = getLocalGameCovers();
-    return localCovers;
   }
+
+  const localCovers = getLocalGameCovers();
+  return localCovers;
+}
+
+export async function getGameIcons(): Promise<Record<string, string>> {
+  try {
+    for (const table of GAME_TABLES) {
+      const { data, error } = await supabase
+        .from(table as any)
+        .select("id, image_url")
+        .not("image_url", "is", null);
+
+      if (error) {
+        console.error(`Error fetching icons from ${table}:`, error);
+        continue;
+      }
+
+      const icons: Record<string, string> = {};
+      (data as any[])?.forEach((item: { id: string; image_url: string }) => {
+        if (item.image_url) icons[item.id] = item.image_url;
+      });
+
+      if (Object.keys(icons).length > 0) {
+        return icons;
+      }
+    }
+  } catch (err) {
+    console.error("Exception loading icons:", err);
+  }
+
+  return getLocalGameIcons();
+}
+
+export async function getGameProfiles(): Promise<Record<string, GameProfile>> {
+  try {
+    for (const table of GAME_TABLES) {
+      const { data, error } = await supabase
+        .from(table as any)
+        .select("id, title, emoji, gradient");
+
+      if (error) {
+        console.error(`Error fetching profiles from ${table}:`, error);
+        continue;
+      }
+
+      const profiles: Record<string, GameProfile> = {};
+      (data as any[])?.forEach(
+        (item: {
+          id: string;
+          title: string;
+          emoji?: string | null;
+          gradient?: string | null;
+        }) => {
+          profiles[item.id] = {
+            title: item.title,
+            emoji: item.emoji ?? undefined,
+            gradient: item.gradient ?? undefined,
+          };
+        }
+      );
+
+      return profiles;
+    }
+  } catch (err) {
+    console.error("Exception loading game profiles:", err);
+  }
+
+  return getLocalGameProfiles();
 }
 
 // Synchronous version for backward compatibility
@@ -192,37 +292,33 @@ export async function saveGameCover(
   }
 
   try {
-    // Use upsert to handle both insert and update cases
-    const { error } = await supabase.from("game_covers" as any).upsert(
-      {
-        id: gameId,
-        cover_url: imageUrl,
-        updated_at: new Date().toISOString(),
-      },
-      { onConflict: "id" }
-    );
+    for (const table of GAME_TABLES) {
+      const { error } = await supabase.from(table as any).upsert(
+        {
+          id: gameId,
+          cover_url: imageUrl,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "id" }
+      );
 
-    if (error) {
-      console.error(`Error saving ${gameId} to Supabase:`, error);
-      console.error(`Data length: ${imageUrl.length} characters`);
-      // Supabase save failed, but localStorage succeeded
-      return true;
-    }
-
-    console.log(`✅ Saved ${gameId} to Supabase`);
-    // Clear from localStorage since it's now in Supabase
-    try {
-      const localCovers = getLocalGameCovers();
-      delete localCovers[gameId];
-      if (Object.keys(localCovers).length > 0) {
-        localStorage.setItem(GAME_COVERS_KEY, JSON.stringify(localCovers));
-      } else {
-        localStorage.removeItem(GAME_COVERS_KEY);
+      if (!error) {
+        try {
+          const localCovers = getLocalGameCovers();
+          delete localCovers[gameId];
+          if (Object.keys(localCovers).length > 0) {
+            localStorage.setItem(GAME_COVERS_KEY, JSON.stringify(localCovers));
+          } else {
+            localStorage.removeItem(GAME_COVERS_KEY);
+          }
+        } catch {
+          // ignore cleanup errors
+        }
+        return true;
       }
-    } catch {
-      // Ignore localStorage cleanup errors
+
+      console.error(`Error saving ${gameId} to ${table}:`, error);
     }
-    return true;
   } catch (err) {
     console.error("Exception saving game cover:", err);
     // Already saved to localStorage or single game mode
@@ -230,45 +326,242 @@ export async function saveGameCover(
   }
 }
 
-export async function removeGameCover(gameId: string): Promise<boolean> {
+export async function saveGameIcon(
+  gameId: string,
+  imageUrl: string
+): Promise<boolean> {
+  const icons = getLocalGameIcons();
+  icons[gameId] = imageUrl;
+
   try {
-    const { error } = await supabase
-      .from("game_covers" as any)
-      .update({
-        cover_url: null,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", gameId);
+    for (const table of GAME_TABLES) {
+      const { error } = await supabase.from(table as any).upsert(
+        {
+          id: gameId,
+          image_url: imageUrl,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "id" }
+      );
 
-    if (error) {
-      console.error("Error removing game cover:", error);
-      return false;
+      if (!error) {
+        try {
+          delete icons[gameId];
+          if (Object.keys(icons).length > 0) {
+            localStorage.setItem(GAME_ICONS_KEY, JSON.stringify(icons));
+          } else {
+            localStorage.removeItem(GAME_ICONS_KEY);
+          }
+        } catch {
+          // ignore cleanup errors
+        }
+        return true;
+      }
+
+      console.error(`Error saving icon for ${gameId} to ${table}:`, error);
     }
+  } catch (err) {
+    console.error("Error saving game icon:", err);
+  }
 
+  try {
+    localStorage.setItem(GAME_ICONS_KEY, JSON.stringify(icons));
     return true;
-  } catch {
+  } catch (err) {
+    console.error("Error saving game icon to localStorage:", err);
     return false;
   }
 }
 
-export async function clearAllGameCovers(): Promise<boolean> {
+export async function removeGameIcon(gameId: string): Promise<boolean> {
   try {
-    const { error } = await supabase
-      .from("game_covers" as any)
-      .update({
-        cover_url: null,
-        updated_at: new Date().toISOString(),
-      })
-      .not("cover_url", "is", null);
+    for (const table of GAME_TABLES) {
+      const { error } = await supabase
+        .from(table as any)
+        .update({ image_url: null, updated_at: new Date().toISOString() })
+        .eq("id", gameId);
 
-    if (error) {
-      console.error("Error clearing game covers:", error);
-      return false;
+      if (!error) {
+        try {
+          const icons = getLocalGameIcons();
+          delete icons[gameId];
+          if (Object.keys(icons).length > 0) {
+            localStorage.setItem(GAME_ICONS_KEY, JSON.stringify(icons));
+          } else {
+            localStorage.removeItem(GAME_ICONS_KEY);
+          }
+        } catch {
+          // ignore cleanup errors
+        }
+        return true;
+      }
+
+      console.error(`Error removing game icon in ${table}:`, error);
     }
+  } catch (err) {
+    console.error("Error removing game icon:", err);
+  }
 
-    localStorage.removeItem(GAME_COVERS_KEY);
-    return true;
-  } catch {
+  return false;
+}
+
+export async function clearAllGameIcons(): Promise<boolean> {
+  try {
+    for (const table of GAME_TABLES) {
+      const { error } = await supabase
+        .from(table as any)
+        .update({ image_url: null, updated_at: new Date().toISOString() })
+        .not("image_url", "is", null);
+
+      if (!error) {
+        localStorage.removeItem(GAME_ICONS_KEY);
+        return true;
+      }
+
+      console.error(`Error clearing icons in ${table}:`, error);
+    }
+  } catch (err) {
+    console.error("Error clearing game icons:", err);
+  }
+
+  return false;
+}
+
+export async function saveGameProfile(
+  gameId: string,
+  profile: GameProfile
+): Promise<boolean> {
+  const profiles = getLocalGameProfiles();
+  profiles[gameId] = profile;
+
+  try {
+    localStorage.setItem(GAME_PROFILES_KEY, JSON.stringify(profiles));
+  } catch (error) {
+    console.error("❌ Error saving profile to localStorage:", error);
+  }
+
+  try {
+    for (const table of GAME_TABLES) {
+      const { error } = await supabase.from(table as any).upsert(
+        {
+          id: gameId,
+          title: profile.title,
+          emoji: profile.emoji ?? null,
+          gradient: profile.gradient ?? null,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "id" }
+      );
+
+      if (!error) {
+        try {
+          const localProfiles = getLocalGameProfiles();
+          delete localProfiles[gameId];
+          if (Object.keys(localProfiles).length > 0) {
+            localStorage.setItem(
+              GAME_PROFILES_KEY,
+              JSON.stringify(localProfiles)
+            );
+          } else {
+            localStorage.removeItem(GAME_PROFILES_KEY);
+          }
+        } catch {
+          // ignore cleanup errors
+        }
+
+        return true;
+      }
+
+      console.error(`Error saving profile for ${gameId} to ${table}:`, error);
+    }
+  } catch (err) {
+    console.error("Exception saving game profile:", err);
     return false;
   }
+}
+
+export async function resetGameProfile(
+  gameId: string,
+  defaults: GameProfile
+): Promise<boolean> {
+  try {
+    for (const table of GAME_TABLES) {
+      const { error } = await supabase
+        .from(table as any)
+        .update({
+          title: defaults.title,
+          emoji: defaults.emoji ?? null,
+          gradient: defaults.gradient ?? null,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", gameId);
+
+      if (!error) {
+        const profiles = getLocalGameProfiles();
+        delete profiles[gameId];
+        if (Object.keys(profiles).length > 0) {
+          localStorage.setItem(GAME_PROFILES_KEY, JSON.stringify(profiles));
+        } else {
+          localStorage.removeItem(GAME_PROFILES_KEY);
+        }
+
+        return true;
+      }
+
+      console.error(
+        `Error resetting profile for ${gameId} in ${table}:`,
+        error
+      );
+    }
+  } catch (err) {
+    console.error("Exception resetting game profile:", err);
+    return false;
+  }
+}
+
+export async function removeGameCover(gameId: string): Promise<boolean> {
+  try {
+    for (const table of GAME_TABLES) {
+      const { error } = await supabase
+        .from(table as any)
+        .update({
+          cover_url: null,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", gameId);
+
+      if (!error) return true;
+
+      console.error(`Error removing game cover in ${table}:`, error);
+    }
+  } catch {
+    // ignore
+  }
+
+  return false;
+}
+
+export async function clearAllGameCovers(): Promise<boolean> {
+  try {
+    for (const table of GAME_TABLES) {
+      const { error } = await supabase
+        .from(table as any)
+        .update({
+          cover_url: null,
+          updated_at: new Date().toISOString(),
+        })
+        .not("cover_url", "is", null);
+
+      if (!error) {
+        localStorage.removeItem(GAME_COVERS_KEY);
+        return true;
+      }
+
+      console.error(`Error clearing covers in ${table}:`, error);
+    }
+  } catch {
+    // ignore
+  }
+
+  return false;
 }

@@ -1,1 +1,4 @@
 project_id = "tgvqlxyeoahcpplytvfu"
+
+[functions.cleanup-rooms]
+verify_jwt = false
