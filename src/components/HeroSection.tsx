@@ -62,17 +62,17 @@ export function HeroSection({
       {/* Gradient Overlay */}
       <div className="absolute inset-0 bg-gradient-to-b from-transparent via-black/50 to-black" />
 
-      {/* Content - centered with extra bottom offset for mobile */}
-      <div className="relative z-10 flex flex-col items-center justify-center px-4 md:px-8 text-center mb-16 md:mb-0">
+      {/* Content - centered with less bottom offset */}
+      <div className="relative z-10 flex flex-col items-center justify-center px-4 md:px-8 text-center mb-4 md:mb-0">
         {/* Logo/Title */}
         <motion.div
           initial={{ y: -50, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ duration: 0.8, delay: 0.2 }}
-          className="flex flex-col md:flex-row items-center gap-4 md:gap-4 mb-6 md:mb-8"
+          className="flex flex-col md:flex-row items-center gap-3 md:gap-4 mb-4 md:mb-8"
         >
           <div
-            className="w-24 h-24 md:w-16 md:h-16 rounded-2xl flex items-center justify-center text-4xl md:text-4xl shadow-lg shadow-black/30"
+            className="w-20 h-20 md:w-16 md:h-16 rounded-2xl flex items-center justify-center text-3xl md:text-4xl shadow-lg shadow-black/30"
             style={{ background: theme.gradient }}
           >
             {iconUrl ? (
@@ -88,7 +88,7 @@ export function HeroSection({
             )}
           </div>
           <h1
-            className="text-5xl md:text-7xl font-bold drop-shadow-[0_0_30px_rgba(255,255,255,0.5)] text-center"
+            className="text-4xl md:text-7xl font-bold drop-shadow-[0_0_30px_rgba(255,255,255,0.5)] text-center"
             style={{ color: theme.colors.text }}
           >
             {title}
@@ -100,10 +100,10 @@ export function HeroSection({
           initial={{ y: 30, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ duration: 0.8, delay: 0.4 }}
-          className="text-center mb-8 md:mb-12"
+          className="text-center mb-6 md:mb-12"
         >
           <h2
-            className="text-3xl md:text-4xl font-bold mb-3 md:mb-4"
+            className="text-2xl md:text-4xl font-bold mb-2 md:mb-4"
             style={{
               background: theme.gradient,
               WebkitBackgroundClip: "text",
@@ -114,7 +114,7 @@ export function HeroSection({
             ULTIMATE PARTY EXPERIENCE
           </h2>
           <p
-            className="text-lg md:text-xl max-w-2xl"
+            className="text-base md:text-xl max-w-2xl"
             style={{ color: theme.colors.textSecondary }}
           >
             {description}

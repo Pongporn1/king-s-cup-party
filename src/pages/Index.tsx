@@ -683,7 +683,7 @@ const Index = () => {
             <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-transparent to-transparent" />
 
             {/* Game Icons Row (Top) */}
-            <div className="relative z-20 px-2 md:px-8 pt-16 md:pt-28 pb-4 md:pb-8 overflow-visible">
+            <div className="relative z-20 px-2 md:px-8 pt-24 md:pt-28 pb-4 md:pb-8 overflow-visible">
               <div className="flex items-center gap-2 md:gap-6 overflow-x-auto overflow-y-visible scrollbar-hide py-2 md:py-8 px-1 md:px-4">
                 {games.map((game, index) => {
                   const isActive = index === selectedGameIndex;
@@ -744,7 +744,7 @@ const Index = () => {
               initial={{ opacity: 0, x: -50 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.5 }}
-              className="relative z-20 mt-auto px-4 md:px-12 pb-24 md:pb-16 max-w-2xl"
+              className="relative z-20 mt-auto px-4 md:px-12 pb-32 md:pb-16 max-w-2xl"
             >
               <h1 className="text-3xl md:text-6xl font-black text-white mb-2 md:mb-4 drop-shadow-2xl">
                 {games[selectedGameIndex].name}
