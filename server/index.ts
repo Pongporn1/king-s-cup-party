@@ -36,9 +36,9 @@ app.use(express.json({ limit: "50mb" }));
 // MySQL connection pool
 const pool = mysql.createPool({
   host: process.env.MYSQL_HOST || "localhost",
-  port: parseInt(process.env.MYSQL_PORT || "3306"),
-  user: process.env.MYSQL_USER || "kingscup",
-  password: process.env.MYSQL_PASSWORD || "kingscup123",
+  port: Number(process.env.MYSQL_PORT) || 3306,
+  user: process.env.MYSQL_USER || "root",
+  password: process.env.MYSQL_PASSWORD || "rootpassword",
   database: process.env.MYSQL_DATABASE || "kingscup",
   waitForConnections: true,
   connectionLimit: 10,
