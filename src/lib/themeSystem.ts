@@ -32,7 +32,6 @@ export const themes: Theme[] = [
       textSecondary: "rgba(255, 255, 255, 0.6)",
     },
     gradient: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-    backgroundImage: `url('${import.meta.env.BASE_URL}bg-party.jpg')`,
   },
   {
     id: "neon",

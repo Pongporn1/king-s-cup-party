@@ -45,10 +45,11 @@ export function Sidebar({ onNavigate, currentSection = "home" }: SidebarProps) {
 
   return (
     <>
+      {/* Desktop Sidebar - hidden on mobile */}
       <motion.div
         initial={{ x: -100, opacity: 0 }}
         animate={{ x: 0, opacity: 1 }}
-        className="fixed left-0 top-0 h-screen w-20 bg-black/40 backdrop-blur-xl border-r border-white/10 flex flex-col items-center py-6 z-40"
+        className="hidden md:flex fixed left-0 top-0 h-screen w-20 bg-black/40 backdrop-blur-xl border-r border-white/10 flex-col items-center py-6 z-40"
       >
         {/* Logo/Brand */}
         <motion.div
@@ -213,6 +214,93 @@ export function Sidebar({ onNavigate, currentSection = "home" }: SidebarProps) {
           </motion.div>
         </div>
       )}
+
+      {/* Mobile Bottom Navigation - shown only on mobile */}
+      <motion.div
+        initial={{ y: 100, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        className="md:hidden fixed bottom-0 left-0 right-0 bg-black/60 backdrop-blur-xl border-t border-white/10 z-40 pb-safe"
+      >
+        <div className="flex justify-around items-center px-4 py-3">
+          {/* Home Button */}
+          <motion.button
+            onClick={() => {
+              setActiveSection("home");
+              window.scrollTo({ top: 0, behavior: "smooth" });
+            }}
+            className={`flex flex-col items-center gap-1 px-4 py-2 rounded-xl transition-all ${
+              activeSection === "home"
+                ? "bg-gradient-to-br from-cyan-500 to-blue-600 shadow-lg"
+                : "bg-transparent"
+            }`}
+            whileTap={{ scale: 0.95 }}
+          >
+            <Crown
+              className={`w-5 h-5 ${
+                activeSection === "home" ? "text-white" : "text-zinc-400"
+              }`}
+            />
+            <span
+              className={`text-xs ${
+                activeSection === "home" ? "text-white" : "text-zinc-400"
+              }`}
+            >
+              Home
+            </span>
+          </motion.button>
+
+          {navItems.map((item) => {
+            const Icon = item.icon;
+            const isActive = activeSection === item.id;
+
+            return (
+              <motion.button
+                key={item.id}
+                onClick={() => handleNavClick(item.id)}
+                className={`flex flex-col items-center gap-1 px-4 py-2 rounded-xl transition-all ${
+                  isActive
+                    ? "bg-gradient-to-br from-cyan-500 to-blue-600 shadow-lg"
+                    : "bg-transparent"
+                }`}
+                whileTap={{ scale: 0.95 }}
+              >
+                <Icon
+                  className={`w-5 h-5 ${
+                    isActive ? "text-white" : "text-zinc-400"
+                  }`}
+                />
+                <span
+                  className={`text-xs ${
+                    isActive ? "text-white" : "text-zinc-400"
+                  }`}
+                >
+                  {item.label}
+                </span>
+              </motion.button>
+            );
+          })}
+
+          {/* User/Login Button */}
+          {userId ? (
+            <motion.button
+              onClick={() => setShowProfile(true)}
+              className="flex flex-col items-center gap-1 px-4 py-2 rounded-xl bg-transparent"
+              whileTap={{ scale: 0.95 }}
+            >
+              <div className="w-6 h-6 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white text-xs font-bold">
+                {displayName?.charAt(0).toUpperCase() || "?"}
+              </div>
+              <span className="text-xs text-zinc-400">
+                {displayName?.substring(0, 6) || "User"}
+              </span>
+            </motion.button>
+          ) : (
+            <motion.div whileTap={{ scale: 0.95 }}>
+              <LoginButton />
+            </motion.div>
+          )}
+        </div>
+      </motion.div>
     </>
   );
 }

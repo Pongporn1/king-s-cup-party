@@ -603,27 +603,31 @@ const Index = () => {
         {/* Sidebar Navigation */}
         <Sidebar />
 
-        {/* Main Content with left padding for sidebar */}
-        <div className="flex-1 pl-20">
+        {/* Main Content with padding for sidebar (desktop) and bottom nav (mobile) */}
+        <div className="flex-1 md:pl-20 pb-20 md:pb-0">
           {/* Header Bar */}
-          <div className="fixed top-0 left-20 right-0 z-[70] flex items-center justify-between px-6 py-3">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-red-600 flex items-center justify-center font-bold text-lg shadow-lg">
+          <div className="fixed top-0 left-0 md:left-20 right-0 z-[70] flex items-center justify-between px-4 md:px-6 py-3 bg-black/20 backdrop-blur-sm">
+            <div className="flex items-center gap-2 md:gap-3">
+              <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-red-600 flex items-center justify-center font-bold text-base md:text-lg shadow-lg">
                 🎮
               </div>
-              <span className="text-xl font-bold">King's Cup Party</span>
+              <span className="text-base md:text-xl font-bold">
+                King's Cup Party
+              </span>
             </div>
 
-            <div className="flex items-center gap-3">
-              <LoginButton
-                currentRoomCode={currentRoomInfo?.code}
-                currentGameType={currentRoomInfo?.type}
-                currentGameName={currentRoomInfo?.name}
-                onJoinRoom={handleJoinFromInvite}
-              />
+            <div className="flex items-center gap-2 md:gap-3">
+              <div className="hidden md:block">
+                <LoginButton
+                  currentRoomCode={currentRoomInfo?.code}
+                  currentGameType={currentRoomInfo?.type}
+                  currentGameName={currentRoomInfo?.name}
+                  onJoinRoom={handleJoinFromInvite}
+                />
+              </div>
               <LanguageSwitcher />
               <ThemeSwitcher />
-              <span className="text-zinc-400 text-sm">
+              <span className="hidden md:block text-zinc-400 text-sm">
                 {new Date().toLocaleTimeString("th-TH", {
                   hour: "2-digit",
                   minute: "2-digit",
@@ -669,8 +673,8 @@ const Index = () => {
             <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-transparent to-transparent" />
 
             {/* Game Icons Row (Top) */}
-            <div className="relative z-20 px-8 pt-28 pb-8 overflow-visible">
-              <div className="flex items-center gap-6 overflow-x-auto overflow-y-visible scrollbar-hide py-8 px-4">
+            <div className="relative z-20 px-4 md:px-8 pt-20 md:pt-28 pb-6 md:pb-8 overflow-visible">
+              <div className="flex items-center gap-3 md:gap-6 overflow-x-auto overflow-y-visible scrollbar-hide py-4 md:py-8 px-2 md:px-4">
                 {games.map((game, index) => {
                   const isActive = index === selectedGameIndex;
                   return (
@@ -690,7 +694,7 @@ const Index = () => {
                       }}
                     >
                       <div
-                        className={`w-28 h-28 rounded-2xl overflow-hidden transition-all duration-300 ${
+                        className={`w-20 h-20 md:w-28 md:h-28 rounded-xl md:rounded-2xl overflow-hidden transition-all duration-300 ${
                           isActive
                             ? "ring-4 ring-white shadow-[0_0_30px_rgba(255,255,255,0.6)] brightness-110"
                             : "ring-2 ring-white/20 opacity-60 hover:opacity-90"
@@ -730,17 +734,17 @@ const Index = () => {
               initial={{ opacity: 0, x: -50 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.5 }}
-              className="relative z-20 mt-auto px-12 pb-16 max-w-2xl"
+              className="relative z-20 mt-auto px-4 md:px-12 pb-12 md:pb-16 max-w-2xl"
             >
-              <h1 className="text-6xl font-black text-white mb-4 drop-shadow-2xl">
+              <h1 className="text-4xl md:text-6xl font-black text-white mb-3 md:mb-4 drop-shadow-2xl">
                 {games[selectedGameIndex].name}
               </h1>
-              <p className="text-xl text-white/90 mb-8 drop-shadow-lg">
+              <p className="text-base md:text-xl text-white/90 mb-6 md:mb-8 drop-shadow-lg">
                 {games[selectedGameIndex].desc}
               </p>
 
               {/* Action Buttons */}
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-3 md:gap-4">
                 <motion.button
                   onClick={() => {
                     const selectedGame = games[selectedGameIndex];
@@ -752,17 +756,17 @@ const Index = () => {
                   }}
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
-                  className="px-12 py-4 bg-white/90 hover:bg-white text-black rounded-full font-bold text-lg shadow-2xl flex items-center gap-3"
+                  className="px-8 md:px-12 py-3 md:py-4 bg-white/90 hover:bg-white text-black rounded-full font-bold text-base md:text-lg shadow-2xl flex items-center gap-2 md:gap-3"
                 >
-                  <Play className="w-6 h-6 fill-black" />
+                  <Play className="w-5 h-5 md:w-6 md:h-6 fill-black" />
                   Play
                 </motion.button>
                 <motion.button
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
-                  className="p-4 bg-white/20 hover:bg-white/30 backdrop-blur-sm rounded-full border border-white/30"
+                  className="p-3 md:p-4 bg-white/20 hover:bg-white/30 backdrop-blur-sm rounded-full border border-white/30"
                 >
-                  <span className="text-2xl">⋯</span>
+                  <span className="text-xl md:text-2xl">⋯</span>
                 </motion.button>
               </div>
             </motion.div>
@@ -784,9 +788,9 @@ const Index = () => {
                   "❌ คุณไม่มีสิทธิ์เข้าถึง Admin Panel\n\nกรุณาเปลี่ยนชื่อเป็น 'bonne' เพื่อเข้าใช้งาน"
                 );
               }}
-              className="fixed bottom-6 right-6 z-50 p-4 rounded-full bg-purple-600 hover:bg-purple-700 shadow-lg shadow-purple-500/30"
+              className="fixed bottom-24 right-4 md:bottom-6 md:right-6 z-50 p-3 md:p-4 rounded-full bg-purple-600 hover:bg-purple-700 shadow-lg shadow-purple-500/30"
             >
-              <Settings size={24} />
+              <Settings className="w-5 h-5 md:w-6 md:h-6" />
             </motion.button>
           )}
         </div>
