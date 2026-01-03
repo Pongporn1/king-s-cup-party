@@ -673,8 +673,8 @@ const Index = () => {
             <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-transparent to-transparent" />
 
             {/* Game Icons Row (Top) */}
-            <div className="relative z-20 px-4 md:px-8 pt-20 md:pt-28 pb-6 md:pb-8 overflow-visible">
-              <div className="flex items-center gap-3 md:gap-6 overflow-x-auto overflow-y-visible scrollbar-hide py-4 md:py-8 px-2 md:px-4">
+            <div className="relative z-20 px-2 md:px-8 pt-16 md:pt-28 pb-4 md:pb-8 overflow-visible">
+              <div className="flex items-center gap-2 md:gap-6 overflow-x-auto overflow-y-visible scrollbar-hide py-2 md:py-8 px-1 md:px-4">
                 {games.map((game, index) => {
                   const isActive = index === selectedGameIndex;
                   return (
@@ -682,10 +682,10 @@ const Index = () => {
                       key={`game-${game.id}-${index}`}
                       onClick={() => setSelectedGameIndex(index)}
                       className="flex-shrink-0 relative"
-                      whileHover={{ scale: 1.08 }}
+                      whileHover={{ scale: 1.05 }}
                       whileTap={{ scale: 0.95 }}
                       animate={
-                        isActive ? { scale: 1.2, y: 0 } : { scale: 1, y: 0 }
+                        isActive ? { scale: 1.1, y: 0 } : { scale: 0.95, y: 0 }
                       }
                       transition={{
                         type: "spring",
@@ -694,10 +694,10 @@ const Index = () => {
                       }}
                     >
                       <div
-                        className={`w-20 h-20 md:w-28 md:h-28 rounded-xl md:rounded-2xl overflow-hidden transition-all duration-300 ${
+                        className={`w-16 h-16 md:w-28 md:h-28 rounded-lg md:rounded-2xl overflow-hidden transition-all duration-300 ${
                           isActive
-                            ? "ring-4 ring-white shadow-[0_0_30px_rgba(255,255,255,0.6)] brightness-110"
-                            : "ring-2 ring-white/20 opacity-60 hover:opacity-90"
+                            ? "ring-2 md:ring-4 ring-white shadow-[0_0_20px_rgba(255,255,255,0.5)] md:shadow-[0_0_30px_rgba(255,255,255,0.6)] brightness-110"
+                            : "ring-1 md:ring-2 ring-white/20 opacity-50 hover:opacity-90"
                         }`}
                       >
                         {game.iconUrl ? (
@@ -708,7 +708,7 @@ const Index = () => {
                           />
                         ) : (
                           <div
-                            className={`w-full h-full bg-gradient-to-br ${game.gradient} flex items-center justify-center text-5xl`}
+                            className={`w-full h-full bg-gradient-to-br ${game.gradient} flex items-center justify-center text-3xl md:text-5xl`}
                           >
                             {game.emoji}
                           </div>
@@ -734,17 +734,17 @@ const Index = () => {
               initial={{ opacity: 0, x: -50 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.5 }}
-              className="relative z-20 mt-auto px-4 md:px-12 pb-12 md:pb-16 max-w-2xl"
+              className="relative z-20 mt-auto px-4 md:px-12 pb-24 md:pb-16 max-w-2xl"
             >
-              <h1 className="text-4xl md:text-6xl font-black text-white mb-3 md:mb-4 drop-shadow-2xl">
+              <h1 className="text-3xl md:text-6xl font-black text-white mb-2 md:mb-4 drop-shadow-2xl">
                 {games[selectedGameIndex].name}
               </h1>
-              <p className="text-base md:text-xl text-white/90 mb-6 md:mb-8 drop-shadow-lg">
+              <p className="text-sm md:text-xl text-white/90 mb-4 md:mb-8 drop-shadow-lg line-clamp-2 md:line-clamp-none">
                 {games[selectedGameIndex].desc}
               </p>
 
               {/* Action Buttons */}
-              <div className="flex items-center gap-3 md:gap-4">
+              <div className="flex items-center gap-2 md:gap-4">
                 <motion.button
                   onClick={() => {
                     const selectedGame = games[selectedGameIndex];
@@ -756,17 +756,17 @@ const Index = () => {
                   }}
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
-                  className="px-8 md:px-12 py-3 md:py-4 bg-white/90 hover:bg-white text-black rounded-full font-bold text-base md:text-lg shadow-2xl flex items-center gap-2 md:gap-3"
+                  className="px-6 md:px-12 py-2.5 md:py-4 bg-white/90 hover:bg-white text-black rounded-full font-bold text-sm md:text-lg shadow-2xl flex items-center gap-1.5 md:gap-3"
                 >
-                  <Play className="w-5 h-5 md:w-6 md:h-6 fill-black" />
+                  <Play className="w-4 h-4 md:w-6 md:h-6 fill-black" />
                   Play
                 </motion.button>
                 <motion.button
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
-                  className="p-3 md:p-4 bg-white/20 hover:bg-white/30 backdrop-blur-sm rounded-full border border-white/30"
+                  className="p-2 md:p-4 bg-white/20 hover:bg-white/30 backdrop-blur-sm rounded-full border border-white/30"
                 >
-                  <span className="text-xl md:text-2xl">⋯</span>
+                  <span className="text-lg md:text-2xl">⋯</span>
                 </motion.button>
               </div>
             </motion.div>

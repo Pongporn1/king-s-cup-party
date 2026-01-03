@@ -63,16 +63,16 @@ export function HeroSection({
       <div className="absolute inset-0 bg-gradient-to-b from-transparent via-black/50 to-black" />
 
       {/* Content */}
-      <div className="relative z-10 h-full flex flex-col items-center justify-center px-8">
+      <div className="relative z-10 h-full flex flex-col items-center justify-center px-4 md:px-8">
         {/* Logo/Title */}
         <motion.div
           initial={{ y: -50, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ duration: 0.8, delay: 0.2 }}
-          className="flex items-center gap-4 mb-8"
+          className="flex flex-col md:flex-row items-center gap-3 md:gap-4 mb-4 md:mb-8"
         >
           <div
-            className="w-16 h-16 rounded-2xl flex items-center justify-center text-4xl shadow-lg shadow-black/30"
+            className="w-20 h-20 md:w-16 md:h-16 rounded-2xl flex items-center justify-center text-3xl md:text-4xl shadow-lg shadow-black/30"
             style={{ background: theme.gradient }}
           >
             {iconUrl ? (
@@ -84,11 +84,11 @@ export function HeroSection({
             ) : emoji ? (
               emoji
             ) : (
-              <Crown className="w-10 h-10 text-white" />
+              <Crown className="w-8 h-8 md:w-10 md:h-10 text-white" />
             )}
           </div>
           <h1
-            className="text-7xl font-bold drop-shadow-[0_0_30px_rgba(255,255,255,0.5)]"
+            className="text-4xl md:text-7xl font-bold drop-shadow-[0_0_30px_rgba(255,255,255,0.5)] text-center md:text-left"
             style={{ color: theme.colors.text }}
           >
             {title}
@@ -97,7 +97,7 @@ export function HeroSection({
 
         {/* Tagline */}
         <motion.div
-          initial={{ y: 50, opacity: 0 }}
+          initial={{ y: 30, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ duration: 0.8, delay: 0.4 }}
           className="text-center mb-12"
