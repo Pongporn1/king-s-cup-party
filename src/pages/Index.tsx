@@ -616,7 +616,7 @@ const Index = () => {
         {/* Main Content with padding for sidebar (desktop) and bottom nav (mobile) */}
         <div className="flex-1 md:pl-20 pb-20 md:pb-0">
           {/* Header Bar */}
-          <div className="fixed top-0 left-0 md:left-20 right-0 z-[70] flex items-center justify-between px-4 md:px-6 py-3 bg-black/20 backdrop-blur-sm">
+          <div className="fixed top-0 left-0 md:left-20 right-0 z-[70] flex items-center justify-between px-4 md:px-6 py-3 md:py-3 pt-safe bg-black/20 backdrop-blur-sm">
             <div className="flex items-center gap-2 md:gap-3">
               <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-red-600 flex items-center justify-center font-bold text-base md:text-lg shadow-lg">
                 🎮
