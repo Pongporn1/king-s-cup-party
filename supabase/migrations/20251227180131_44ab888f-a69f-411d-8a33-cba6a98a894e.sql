@@ -1,1 +1,0 @@
-ALTER TABLE public.players ADD COLUMN avatar INTEGER DEFAULT 0;

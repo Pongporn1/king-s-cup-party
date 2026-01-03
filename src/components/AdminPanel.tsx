@@ -95,7 +95,7 @@ export function AdminPanel({
     "names" | "covers" | "profiles" | "icons"
   >("names");
 
-  // Load names from Supabase on mount
+  // Load names from database on mount
   useEffect(() => {
     loadNames();
   }, []);

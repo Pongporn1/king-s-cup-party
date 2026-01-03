@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import socketClient from "@/lib/socketClient";
 import {
   createDeck,
   shuffleDeck,
@@ -8,6 +8,8 @@ import {
 } from "@/lib/cardRules";
 import { useToast } from "@/hooks/use-toast";
 import { cleanupOnCreate } from "@/lib/roomCleanup";
+
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
 
 interface Room {
   id: string;
@@ -29,20 +31,15 @@ interface Player {
   avatar?: number;
 }
 
-// Available avatar images (1-11.jpg)
 const TOTAL_AVATARS = 11;
 
 function getRandomAvatar(usedAvatars: number[]): number {
-  const availableAvatars = Array.from(
-    { length: TOTAL_AVATARS },
-    (_, i) => i + 1
-  ).filter((num) => !usedAvatars.includes(num));
-
+  const availableAvatars = Array.from({ length: TOTAL_AVATARS }, (_, i) => i + 1).filter(
+    (num) => !usedAvatars.includes(num)
+  );
   if (availableAvatars.length === 0) {
-    // If all avatars are used, pick any random one
     return Math.floor(Math.random() * TOTAL_AVATARS) + 1;
   }
-
   return availableAvatars[Math.floor(Math.random() * availableAvatars.length)];
 }
 
@@ -53,458 +50,235 @@ export function useGameRoom() {
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
 
-  // ออกจากห้องเมื่อปิดหน้าเว็บ
+  // Leave room on page close
   useEffect(() => {
     const handleBeforeUnload = async () => {
       if (currentPlayerId && room) {
-        // ลบ player
-        await supabase.from("players").delete().eq("id", currentPlayerId);
-
-        // เช็คว่ายังมีผู้เล่นเหลืออยู่ไหม
-        const { data: remainingPlayers } = await supabase
-          .from("players")
-          .select("id")
-          .eq("room_id", room.id)
-          .eq("is_active", true);
-
-        // ลบห้องถ้าไม่มีผู้เล่น
-        if (!remainingPlayers || remainingPlayers.length === 0) {
-          await supabase.from("rooms").delete().eq("id", room.id);
+        await fetch(`${API_URL}/api/players/${currentPlayerId}`, { method: "DELETE" });
+        const res = await fetch(`${API_URL}/api/rooms/${room.id}/players`);
+        const remaining = await res.json();
+        if (!remaining || remaining.length === 0) {
+          await fetch(`${API_URL}/api/rooms/${room.id}`, { method: "DELETE" });
         }
       }
     };
-
     window.addEventListener("beforeunload", handleBeforeUnload);
-    return () => {
-      window.removeEventListener("beforeunload", handleBeforeUnload);
-    };
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
   }, [currentPlayerId, room]);
 
-  // Subscribe to room changes
+  // Subscribe to Socket.IO events
   useEffect(() => {
-    if (!room?.id) return;
+    if (!room?.code) return;
+    socketClient.joinRoom(room.code, currentPlayerId || "");
 
-    const channel = supabase
-      .channel(`room-${room.id}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "rooms",
-          filter: `id=eq.${room.id}`,
-        },
-        (payload) => {
-          if (payload.eventType === "UPDATE") {
-            const newData = payload.new as any;
-            setRoom((prev) =>
-              prev
-                ? {
-                    ...prev,
-                    deck: newData.deck || [],
-                    current_card: newData.current_card,
-                    cards_remaining: newData.cards_remaining,
-                    game_started: newData.game_started,
-                    is_active: newData.is_active,
-                  }
-                : null
-            );
-          }
-        }
-      )
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "players",
-          filter: `room_id=eq.${room.id}`,
-        },
-        (payload) => {
-          if (payload.eventType === "INSERT") {
-            setPlayers((prev) => {
-              // Prevent duplicates
-              if (prev.some((p) => p.id === (payload.new as Player).id)) {
-                return prev;
-              }
-              return [...prev, payload.new as Player];
-            });
-          } else if (payload.eventType === "DELETE") {
-            setPlayers((prev) =>
-              prev.filter((p) => p.id !== (payload.old as Player).id)
-            );
-          } else if (payload.eventType === "UPDATE") {
-            setPlayers((prev) =>
-              prev.map((p) =>
-                p.id === (payload.new as Player).id
-                  ? (payload.new as Player)
-                  : p
-              )
-            );
-          }
-        }
-      )
-      .subscribe();
+    const unsubRoom = socketClient.on("room-changed", (data: any) => {
+      setRoom((prev) =>
+        prev ? {
+          ...prev,
+          deck: data.deck ? (typeof data.deck === "string" ? JSON.parse(data.deck) : data.deck) : prev.deck,
+          current_card: data.current_card !== undefined ? (typeof data.current_card === "string" ? JSON.parse(data.current_card) : data.current_card) : prev.current_card,
+          cards_remaining: data.cards_remaining ?? prev.cards_remaining,
+          game_started: data.game_started ?? prev.game_started,
+          is_active: data.is_active ?? prev.is_active,
+        } : null
+      );
+    });
+
+    const unsubPlayerJoined = socketClient.on("player-joined", (data: any) => {
+      setPlayers((prev) => prev.some((p) => p.id === data.id) ? prev : [...prev, data as Player]);
+    });
+
+    const unsubPlayerLeft = socketClient.on("player-left", (data: any) => {
+      setPlayers((prev) => prev.filter((p) => p.id !== data.playerId));
+    });
+
+    const unsubPlayerChanged = socketClient.on("player-changed", (data: any) => {
+      setPlayers((prev) => prev.map((p) => (p.id === data.playerId ? { ...p, ...data } : p)));
+    });
+
+    const unsubRoomDeleted = socketClient.on("room-deleted", () => {
+      setRoom(null);
+      setPlayers([]);
+      setCurrentPlayerId(null);
+    });
 
     return () => {
-      supabase.removeChannel(channel);
+      unsubRoom();
+      unsubPlayerJoined();
+      unsubPlayerLeft();
+      unsubPlayerChanged();
+      unsubRoomDeleted();
+      socketClient.leaveRoom(room.code, currentPlayerId || "");
     };
-  }, [room?.id]);
+  }, [room?.code, currentPlayerId]);
 
-  const createRoom = useCallback(
-    async (hostName: string) => {
-      setIsLoading(true);
-      try {
-        // Cleanup old rooms opportunistically
-        await cleanupOnCreate();
+  const createRoom = useCallback(async (hostName: string) => {
+    setIsLoading(true);
+    try {
+      await cleanupOnCreate();
+      const code = generateRoomCode();
+      const deck = shuffleDeck(createDeck());
+      const roomId = crypto.randomUUID();
 
-        const code = generateRoomCode();
-        const deck = shuffleDeck(createDeck());
+      const roomRes = await fetch(`${API_URL}/api/rooms`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: roomId, code, host_name: hostName, deck, cards_remaining: 52 }),
+      });
+      if (!roomRes.ok) throw new Error("Failed to create room");
 
-        const { data: roomData, error: roomError } = await supabase
-          .from("rooms")
-          .insert({
-            code,
-            host_name: hostName,
-            deck: deck as any,
-            cards_remaining: 52,
-          })
-          .select()
-          .single();
+      const playerId = crypto.randomUUID();
+      const playerRes = await fetch(`${API_URL}/api/players`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: playerId, room_id: roomId, name: hostName, is_host: true, avatar: getRandomAvatar([]) }),
+      });
+      if (!playerRes.ok) throw new Error("Failed to create player");
 
-        if (roomError) throw roomError;
+      const roomData: Room = { id: roomId, code, host_name: hostName, is_active: true, deck, current_card: null, cards_remaining: 52, game_started: false };
+      const playerData: Player = { id: playerId, room_id: roomId, name: hostName, is_host: true, is_active: true, avatar: 1 };
 
-        const { data: playerData, error: playerError } = await supabase
-          .from("players")
-          .insert({
-            room_id: roomData.id,
-            name: hostName,
-            is_host: true,
-          })
-          .select()
-          .single();
+      setRoom(roomData);
+      setPlayers([playerData]);
+      setCurrentPlayerId(playerId);
+      toast({ title: "สร้างห้องสำเร็จ! 🎉", description: `รหัสห้อง: ${code}` });
+      return { ...roomData, playerId };
+    } catch (error: any) {
+      toast({ title: "เกิดข้อผิดพลาด", description: error.message, variant: "destructive" });
+      return null;
+    } finally {
+      setIsLoading(false);
+    }
+  }, [toast]);
 
-        if (playerError) throw playerError;
+  const joinRoom = useCallback(async (code: string, playerName: string, savedPlayerId?: string) => {
+    setIsLoading(true);
+    try {
+      const roomRes = await fetch(`${API_URL}/api/rooms/${code.toUpperCase()}`);
+      if (!roomRes.ok) throw new Error("ไม่พบห้อง หรือห้องถูกปิดแล้ว");
+      const roomData = await roomRes.json();
 
-        setRoom({
-          ...roomData,
-          deck: roomData.deck as unknown as PlayingCard[],
-          current_card: roomData.current_card as unknown as PlayingCard | null,
-        });
-        setPlayers([playerData]);
-        setCurrentPlayerId(playerData.id);
+      const playersRes = await fetch(`${API_URL}/api/rooms/${roomData.id}/players`);
+      const existingPlayers = await playersRes.json();
 
-        toast({
-          title: "สร้างห้องสำเร็จ! 🎉",
-          description: `รหัสห้อง: ${code}`,
-        });
-
-        // Return room data with playerId for session recovery
-        return { ...roomData, playerId: playerData.id };
-      } catch (error: any) {
-        toast({
-          title: "เกิดข้อผิดพลาด",
-          description: error.message,
-          variant: "destructive",
-        });
-        return null;
-      } finally {
-        setIsLoading(false);
+      let existingPlayer = savedPlayerId ? (existingPlayers || []).find((p: any) => p.id === savedPlayerId) : null;
+      if (!existingPlayer) {
+        existingPlayer = (existingPlayers || []).find((p: any) => p.name === playerName);
       }
-    },
-    [toast]
-  );
 
-  const joinRoom = useCallback(
-    async (code: string, playerName: string, savedPlayerId?: string) => {
-      setIsLoading(true);
-      try {
-        const { data: roomData, error: roomError } = await supabase
-          .from("rooms")
-          .select()
-          .eq("code", code.toUpperCase())
-          .eq("is_active", true)
-          .single();
-
-        if (roomError || !roomData) {
-          throw new Error("ไม่พบห้อง หรือห้องถูกปิดแล้ว");
-        }
-
-        const { data: existingPlayers } = await supabase
-          .from("players")
-          .select()
-          .eq("room_id", roomData.id)
-          .eq("is_active", true);
-
-        // Check if player with same ID already exists (session recovery with ID)
-        // Then fall back to name check for backward compatibility
-        let existingPlayer = savedPlayerId
-          ? (existingPlayers || []).find((p: any) => p.id === savedPlayerId)
-          : null;
-
-        // If not found by ID, try by name (for users without saved ID)
-        // This also prevents duplicate names in the same room
-        if (!existingPlayer) {
-          const playersWithSameName = (existingPlayers || []).filter(
-            (p: any) => p.name === playerName
-          );
-          if (playersWithSameName.length > 0) {
-            existingPlayer = playersWithSameName[0];
-            console.log(
-              "Found player with same name, reusing:",
-              existingPlayer.id
-            );
-
-            // Clean up duplicates
-            if (playersWithSameName.length > 1) {
-              const duplicateIds = playersWithSameName
-                .slice(1)
-                .map((p: any) => p.id);
-              await supabase.from("players").delete().in("id", duplicateIds);
-            }
-          }
-        }
-
-        let playerData;
-
-        if (existingPlayer) {
-          // Rejoin as existing player
-          playerData = existingPlayer;
-          console.log("Session recovery: found existing player", playerData.id);
-        } else {
-          // Get used avatars from existing players
-          const usedAvatars = (existingPlayers || [])
-            .map((p) => p.avatar)
-            .filter(Boolean) as number[];
-          const playerAvatar = getRandomAvatar(usedAvatars);
-
-          const { data: newPlayerData, error: playerError } = await supabase
-            .from("players")
-            .insert({
-              room_id: roomData.id,
-              name: playerName,
-              is_host: false,
-              avatar: playerAvatar,
-            })
-            .select()
-            .single();
-
-          if (playerError) throw playerError;
-          playerData = newPlayerData;
-        }
-
-        setRoom({
-          ...roomData,
-          deck: roomData.deck as unknown as PlayingCard[],
-          current_card: roomData.current_card as unknown as PlayingCard | null,
+      let playerData: Player;
+      if (existingPlayer) {
+        playerData = existingPlayer;
+      } else {
+        const usedAvatars = (existingPlayers || []).map((p: Player) => p.avatar).filter(Boolean) as number[];
+        const playerId = crypto.randomUUID();
+        await fetch(`${API_URL}/api/players`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id: playerId, room_id: roomData.id, name: playerName, is_host: false, avatar: getRandomAvatar(usedAvatars) }),
         });
-
-        // Deduplicate players
-        const uniquePlayersMap = new Map();
-        for (const p of existingPlayers || []) {
-          uniquePlayersMap.set(p.id, p);
-        }
-        if (!uniquePlayersMap.has(playerData.id)) {
-          uniquePlayersMap.set(playerData.id, playerData);
-        }
-        setPlayers(Array.from(uniquePlayersMap.values()));
-        setCurrentPlayerId(playerData.id);
-
-        toast({
-          title: "เข้าร่วมห้องสำเร็จ! 🎮",
-          description: `ยินดีต้อนรับ ${playerName}`,
-        });
-
-        // Return room data with playerId for session recovery
-        return { room: roomData, playerId: playerData.id };
-      } catch (error: any) {
-        toast({
-          title: "เกิดข้อผิดพลาด",
-          description: error.message,
-          variant: "destructive",
-        });
-        return null;
-      } finally {
-        setIsLoading(false);
+        playerData = { id: playerId, room_id: roomData.id, name: playerName, is_host: false, is_active: true, avatar: getRandomAvatar(usedAvatars) };
       }
-    },
-    [toast]
-  );
+
+      setRoom({
+        ...roomData,
+        deck: typeof roomData.deck === "string" ? JSON.parse(roomData.deck) : roomData.deck || [],
+        current_card: typeof roomData.current_card === "string" ? JSON.parse(roomData.current_card) : roomData.current_card,
+      });
+      const uniqueMap = new Map();
+      for (const p of existingPlayers || []) uniqueMap.set(p.id, p);
+      uniqueMap.set(playerData.id, playerData);
+      setPlayers(Array.from(uniqueMap.values()));
+      setCurrentPlayerId(playerData.id);
+      toast({ title: "เข้าร่วมห้องสำเร็จ! 🎮", description: `ยินดีต้อนรับ ${playerName}` });
+      return { room: roomData, playerId: playerData.id };
+    } catch (error: any) {
+      toast({ title: "เกิดข้อผิดพลาด", description: error.message, variant: "destructive" });
+      return null;
+    } finally {
+      setIsLoading(false);
+    }
+  }, [toast]);
 
   const startGame = useCallback(async () => {
     if (!room) return;
-
     const deck = shuffleDeck(createDeck());
-
-    const { error } = await supabase
-      .from("rooms")
-      .update({
-        game_started: true,
-        deck: deck as any,
-        cards_remaining: 52,
-        current_card: null,
-      })
-      .eq("id", room.id);
-
-    if (error) {
-      toast({
-        title: "เกิดข้อผิดพลาด",
-        description: error.message,
-        variant: "destructive",
-      });
-    }
-  }, [room, toast]);
+    await fetch(`${API_URL}/api/rooms/${room.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ game_started: true, deck, cards_remaining: 52, current_card: null }),
+    });
+  }, [room]);
 
   const drawCard = useCallback(async () => {
     if (!room || room.cards_remaining === 0) return;
-
     const deck = [...(room.deck || [])];
     const drawnCard = deck.pop();
-
     if (!drawnCard) return;
-
-    const { error } = await supabase
-      .from("rooms")
-      .update({
-        deck: deck as any,
-        current_card: drawnCard as any,
-        cards_remaining: deck.length,
-      })
-      .eq("id", room.id);
-
-    if (error) {
-      toast({
-        title: "เกิดข้อผิดพลาด",
-        description: error.message,
-        variant: "destructive",
-      });
-    }
-  }, [room, toast]);
+    await fetch(`${API_URL}/api/rooms/${room.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ deck, current_card: drawnCard, cards_remaining: deck.length }),
+    });
+  }, [room]);
 
   const reshuffleDeck = useCallback(async () => {
     if (!room) return;
-
     const deck = shuffleDeck(createDeck());
-
-    const { error } = await supabase
-      .from("rooms")
-      .update({
-        deck: deck as any,
-        cards_remaining: 52,
-        current_card: null,
-      })
-      .eq("id", room.id);
-
-    if (error) {
-      toast({
-        title: "เกิดข้อผิดพลาด",
-        description: error.message,
-        variant: "destructive",
-      });
-    } else {
-      toast({
-        title: "สับไพ่ใหม่แล้ว! 🎴",
-        description: "พร้อมเล่นรอบใหม่",
-      });
-    }
+    await fetch(`${API_URL}/api/rooms/${room.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ deck, cards_remaining: 52, current_card: null }),
+    });
+    toast({ title: "สับไพ่ใหม่แล้ว! 🎴", description: "พร้อมเล่นรอบใหม่" });
   }, [room, toast]);
 
   const leaveRoom = useCallback(async () => {
     if (!currentPlayerId || !room) return;
-
-    // ลบ player ออกจากห้อง
-    await supabase.from("players").delete().eq("id", currentPlayerId);
-
-    // เช็คว่ายังมีผู้เล่นเหลืออยู่ไหม ถ้าไม่มีให้ลบห้อง
-    const { data: remainingPlayers } = await supabase
-      .from("players")
-      .select("id")
-      .eq("room_id", room.id)
-      .eq("is_active", true);
-
-    if (!remainingPlayers || remainingPlayers.length === 0) {
-      // ลบห้องเมื่อไม่มีผู้เล่นเหลือ
-      await supabase.from("rooms").delete().eq("id", room.id);
+    await fetch(`${API_URL}/api/players/${currentPlayerId}`, { method: "DELETE" });
+    const res = await fetch(`${API_URL}/api/rooms/${room.id}/players`);
+    const remaining = await res.json();
+    if (!remaining || remaining.length === 0) {
+      await fetch(`${API_URL}/api/rooms/${room.id}`, { method: "DELETE" });
     }
-
     setRoom(null);
     setPlayers([]);
     setCurrentPlayerId(null);
   }, [currentPlayerId, room]);
 
-  // Quick start - creates room and starts game immediately with custom name
-  const quickStart = useCallback(
-    async (hostName: string) => {
-      setIsLoading(true);
-      try {
-        const code = generateRoomCode();
-        const deck = shuffleDeck(createDeck());
+  const quickStart = useCallback(async (hostName: string) => {
+    setIsLoading(true);
+    try {
+      const code = generateRoomCode();
+      const deck = shuffleDeck(createDeck());
+      const roomId = crypto.randomUUID();
 
-        const { data: roomData, error: roomError } = await supabase
-          .from("rooms")
-          .insert({
-            code,
-            host_name: hostName,
-            deck: deck as any,
-            cards_remaining: 52,
-            game_started: true, // Start immediately
-          })
-          .select()
-          .single();
+      await fetch(`${API_URL}/api/rooms`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: roomId, code, host_name: hostName, deck, cards_remaining: 52, game_started: true }),
+      });
 
-        if (roomError) throw roomError;
+      const playerId = crypto.randomUUID();
+      await fetch(`${API_URL}/api/players`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: playerId, room_id: roomId, name: hostName, is_host: true, avatar: 1 }),
+      });
 
-        const { data: playerData, error: playerError } = await supabase
-          .from("players")
-          .insert({
-            room_id: roomData.id,
-            name: hostName,
-            is_host: true,
-          })
-          .select()
-          .single();
+      const roomData: Room = { id: roomId, code, host_name: hostName, is_active: true, deck, current_card: null, cards_remaining: 52, game_started: true };
+      setRoom(roomData);
+      setPlayers([{ id: playerId, room_id: roomId, name: hostName, is_host: true, is_active: true, avatar: 1 }]);
+      setCurrentPlayerId(playerId);
+      toast({ title: "🚀 Quick Start!", description: `ห้อง ${code} พร้อมเล่น` });
+      return roomData;
+    } catch (error: any) {
+      toast({ title: "เกิดข้อผิดพลาด", description: error.message, variant: "destructive" });
+      return null;
+    } finally {
+      setIsLoading(false);
+    }
+  }, [toast]);
 
-        if (playerError) throw playerError;
-
-        setRoom({
-          ...roomData,
-          deck: roomData.deck as unknown as PlayingCard[],
-          current_card: roomData.current_card as unknown as PlayingCard | null,
-        });
-        setPlayers([playerData]);
-        setCurrentPlayerId(playerData.id);
-
-        toast({
-          title: "🚀 Quick Start!",
-          description: `ห้อง ${code} พร้อมเล่น`,
-        });
-
-        return roomData;
-      } catch (error: any) {
-        toast({
-          title: "เกิดข้อผิดพลาด",
-          description: error.message,
-          variant: "destructive",
-        });
-        return null;
-      } finally {
-        setIsLoading(false);
-      }
-    },
-    [toast]
-  );
-
-  return {
-    room,
-    players,
-    currentPlayerId,
-    isLoading,
-    createRoom,
-    joinRoom,
-    startGame,
-    drawCard,
-    reshuffleDeck,
-    leaveRoom,
-    quickStart,
-  };
+  return { room, players, currentPlayerId, isLoading, createRoom, joinRoom, startGame, drawCard, reshuffleDeck, leaveRoom, quickStart };
 }

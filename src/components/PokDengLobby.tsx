@@ -45,7 +45,7 @@ export function PokDengLobby({
     }
   }, [authDisplayName]);
 
-  // Load floating names from Supabase
+  // Load floating names from database
   useEffect(() => {
     const loadNames = async () => {
       const names = await getFloatingNamesFromDB();

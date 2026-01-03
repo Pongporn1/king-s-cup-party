@@ -1,0 +1,37 @@
+# Render Configuration for Backend
+services:
+  - type: web
+    name: kingscup-backend
+    env: node
+    buildCommand: npm install
+    startCommand: npm run server
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3001
+      - key: MYSQL_HOST
+        fromDatabase:
+          name: kingscup-mysql
+          property: host
+      - key: MYSQL_PORT
+        fromDatabase:
+          name: kingscup-mysql
+          property: port
+      - key: MYSQL_USER
+        fromDatabase:
+          name: kingscup-mysql
+          property: user
+      - key: MYSQL_PASSWORD
+        fromDatabase:
+          name: kingscup-mysql
+          property: password
+      - key: MYSQL_DATABASE
+        fromDatabase:
+          name: kingscup-mysql
+          property: database
+
+databases:
+  - name: kingscup-mysql
+    databaseName: kingscup
+    user: kingscup

@@ -47,11 +47,12 @@ import {
 
 type GameMode =
   | "select"
-  | "doraemon"
+  | "kingscup"
   | "pokdeng"
   | "undercover"
   | "paranoia"
-  | "5-sec";
+  | "5-sec"
+  | "doraemon";
 
 const Index = () => {
   const { user, displayName: authDisplayName } = useAuth();
@@ -73,18 +74,9 @@ const Index = () => {
   );
   const [isAdminUnlocked, setIsAdminUnlocked] = useState(false);
 
-  // Harder admin gate: must be logged-in user whose uid is allowlisted via env
-  const adminUids = useMemo(() => {
-    const raw = import.meta.env.VITE_ADMIN_UIDS as string | undefined;
-    return raw
-      ? raw
-          .split(",")
-          .map((v) => v.trim())
-          .filter(Boolean)
-      : [];
-  }, []);
-  const adminCode = import.meta.env.VITE_ADMIN_CODE as string | undefined;
-  const isAllowlistedAdmin = !!user && adminUids.includes(user.uid);
+  // Admin gate: must be logged-in user with displayName "bonne"
+  const isHeekbonne = !!user && authDisplayName === "bonne";
+  const canShowAdminButton = isHeekbonne;
 
   // King's Cup game hook
   const {
@@ -203,11 +195,11 @@ const Index = () => {
 
   const currentRoomInfo = getCurrentRoomInfo();
 
-  // Games array - Define at component level so it's accessible everywhere
-  const games = useMemo(() => {
+  // Games array - compute each render so translations stay fresh and keys stay unique
+  const games = (() => {
     const baseGames = [
       {
-        id: "doraemon",
+        id: "kingscup",
         emoji: "🎴",
         name: t("kingsCup"),
         desc: t("kingsCupDesc"),
@@ -257,7 +249,7 @@ const Index = () => {
       },
     ];
 
-    return baseGames.map((game) => {
+    const mergedGames = baseGames.map((game) => {
       const profile = gameProfiles[game.id];
       const iconUrl = gameIcons[game.id];
 
@@ -269,7 +261,20 @@ const Index = () => {
         iconUrl,
       };
     });
-  }, [gameProfiles, gameIcons]);
+
+    // Deduplicate by id to avoid key collisions if data is accidentally duplicated upstream
+    const seen = new Set<string>();
+    const deduplicated = mergedGames.filter((game) => {
+      if (seen.has(game.id)) {
+        console.warn(`⚠️ Duplicate game ID detected: ${game.id}`);
+        return false;
+      }
+      seen.add(game.id);
+      return true;
+    });
+
+    return deduplicated;
+  })();
 
   // Navigation functions
   const nextGame = useCallback(() => {
@@ -316,7 +321,7 @@ const Index = () => {
         // Attempt to rejoin based on game type, passing saved playerId for accurate session recovery
         let success: unknown = false;
         switch (gameType) {
-          case "doraemon":
+          case "kingscup":
             success = await joinRoom(roomCode, playerName, playerId);
             break;
           case "pokdeng":
@@ -358,7 +363,7 @@ const Index = () => {
     async (hostName: string, gameType: GameMode) => {
       let result;
       switch (gameType) {
-        case "doraemon":
+        case "kingscup":
           result = await createRoom(hostName);
           break;
         case "pokdeng":
@@ -409,7 +414,7 @@ const Index = () => {
     async (code: string, playerName: string, gameType: GameMode) => {
       let result: unknown = null;
       switch (gameType) {
-        case "doraemon":
+        case "kingscup":
           result = await joinRoom(code, playerName);
           break;
         case "pokdeng":
@@ -463,15 +468,15 @@ const Index = () => {
 
       // Map game type to our game mode
       const gameTypeMap: Record<string, GameMode> = {
-        kingscup: "doraemon",
-        doraemon: "doraemon",
+        kingscup: "kingscup",
+        doraemon: "kingscup",
         pokdeng: "pokdeng",
         undercover: "undercover",
         paranoia: "paranoia",
         "5-sec": "5-sec",
       };
 
-      const targetGameMode = gameTypeMap[gameType] || "doraemon";
+      const targetGameMode = gameTypeMap[gameType] || "kingscup";
       setGameMode(targetGameMode);
 
       // Join the room
@@ -487,7 +492,7 @@ const Index = () => {
     (gameType: GameMode) => {
       clearSession();
       switch (gameType) {
-        case "doraemon":
+        case "kingscup":
           leaveRoom();
           break;
         case "pokdeng":
@@ -545,11 +550,19 @@ const Index = () => {
 
   // Restore admin unlock from previous session (per-uid)
   useEffect(() => {
-    const stored = localStorage.getItem("admin_unlock_code");
+    const stored = user?.uid ? localStorage.getItem("admin_unlock_code") : null;
+
     if (stored && user?.uid && stored === "1" + user.uid) {
       setIsAdminUnlocked(true);
+      return;
     }
-  }, [user?.uid]);
+
+    // Auto-unlock for bonne to skip the prompt
+    if (isHeekbonne && user?.uid) {
+      localStorage.setItem("admin_unlock_code", "1" + user.uid);
+      setIsAdminUnlocked(true);
+    }
+  }, [user?.uid, authDisplayName, isHeekbonne]);
 
   // Keyboard Navigation (Arrow keys like Nintendo Switch)
   useEffect(() => {
@@ -593,7 +606,7 @@ const Index = () => {
         {/* Main Content with left padding for sidebar */}
         <div className="flex-1 pl-20">
           {/* Header Bar */}
-          <div className="relative z-[60] flex items-center justify-between px-6 py-4">
+          <div className="fixed top-0 left-20 right-0 z-[70] flex items-center justify-between px-6 py-3">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-full bg-red-600 flex items-center justify-center font-bold text-lg shadow-lg">
                 🎮
@@ -619,11 +632,10 @@ const Index = () => {
             </div>
           </div>
 
-          {/* Hero Section uses selected game profile + cover */}
+          {/* Hero Section uses selected game profile (no cover) */}
           <HeroSection
             title={games[selectedGameIndex].name}
             description={games[selectedGameIndex].desc}
-            coverUrl={undefined}
             emoji={games[selectedGameIndex].emoji}
             iconUrl={games[selectedGameIndex].iconUrl}
             gradient={games[selectedGameIndex].gradient}
@@ -636,7 +648,7 @@ const Index = () => {
           >
             {/* Large Background Image */}
             <motion.div
-              key={games[selectedGameIndex].id}
+              key={`bg-${games[selectedGameIndex].id}`}
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ duration: 0.5 }}
@@ -657,34 +669,36 @@ const Index = () => {
             <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-transparent to-transparent" />
 
             {/* Game Icons Row (Top) */}
-            <div className="relative z-20 px-8 pt-24">
-              <div className="flex items-center gap-4 overflow-x-auto scrollbar-hide pb-4">
+            <div className="relative z-20 px-8 pt-28 pb-8 overflow-visible">
+              <div className="flex items-center gap-6 overflow-x-auto overflow-y-visible scrollbar-hide py-8 px-4">
                 {games.map((game, index) => {
                   const isActive = index === selectedGameIndex;
                   return (
                     <motion.button
-                      key={`${game.id}-${index}`}
+                      key={`game-${game.id}-${index}`}
                       onClick={() => setSelectedGameIndex(index)}
                       className="flex-shrink-0 relative"
-                      whileHover={{ scale: 1.05 }}
+                      whileHover={{ scale: 1.08 }}
                       whileTap={{ scale: 0.95 }}
+                      animate={
+                        isActive ? { scale: 1.2, y: 0 } : { scale: 1, y: 0 }
+                      }
+                      transition={{
+                        type: "spring",
+                        stiffness: 300,
+                        damping: 25,
+                      }}
                     >
                       <div
-                        className={`w-32 h-32 rounded-2xl overflow-hidden transition-all ${
+                        className={`w-28 h-28 rounded-2xl overflow-hidden transition-all duration-300 ${
                           isActive
-                            ? "ring-4 ring-white shadow-2xl scale-110"
-                            : "ring-2 ring-white/20 opacity-60"
+                            ? "ring-4 ring-white shadow-[0_0_30px_rgba(255,255,255,0.6)] brightness-110"
+                            : "ring-2 ring-white/20 opacity-60 hover:opacity-90"
                         }`}
                       >
                         {game.iconUrl ? (
                           <img
                             src={game.iconUrl}
-                            alt={game.name}
-                            className="w-full h-full object-cover"
-                          />
-                        ) : gameCovers[game.id] ? (
-                          <img
-                            src={gameCovers[game.id]}
                             alt={game.name}
                             className="w-full h-full object-cover"
                           />
@@ -699,7 +713,9 @@ const Index = () => {
                       {isActive && (
                         <motion.div
                           layoutId="gameIndicator"
-                          className="absolute -bottom-2 left-0 right-0 h-1 bg-white rounded-full"
+                          initial={{ opacity: 0, scale: 0.5 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          className="absolute -bottom-3 left-0 right-0 h-1.5 bg-gradient-to-r from-transparent via-white to-transparent rounded-full shadow-lg"
                         />
                       )}
                     </motion.button>
@@ -710,7 +726,7 @@ const Index = () => {
 
             {/* Game Info (Bottom Left) */}
             <motion.div
-              key={games[selectedGameIndex].id}
+              key={`info-${games[selectedGameIndex].id}`}
               initial={{ opacity: 0, x: -50 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.5 }}
@@ -753,11 +769,16 @@ const Index = () => {
           </div>
 
           {/* Admin Button (floating) - requires allowlisted uid + env code */}
-          {isAllowlistedAdmin && (
+          {canShowAdminButton && (
             <motion.button
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.95 }}
               onClick={() => {
+                if (isHeekbonne) {
+                  setShowAdminPanel(true);
+                  return;
+                }
+
                 if (!adminCode) {
                   alert("ยังไม่ได้ตั้งค่า VITE_ADMIN_CODE ใน .env");
                   return;
@@ -766,7 +787,8 @@ const Index = () => {
                 if (!isAdminUnlocked) {
                   const code = window.prompt("ใส่รหัสแอดมิน");
                   if (code === adminCode) {
-                    localStorage.setItem("admin_unlock_code", "1" + user?.uid);
+                    const cacheKey = user?.uid ? "1" + user.uid : "anon";
+                    localStorage.setItem("admin_unlock_code", cacheKey);
                     setIsAdminUnlocked(true);
                     setShowAdminPanel(true);
                   }
@@ -974,10 +996,10 @@ const Index = () => {
     return (
       <Lobby
         onCreateRoom={async (name) => {
-          return handleCreateRoom(name, "doraemon");
+          return handleCreateRoom(name, "kingscup");
         }}
         onJoinRoom={async (code, name) => {
-          return handleJoinRoom(code, name, "doraemon");
+          return handleJoinRoom(code, name, "kingscup");
         }}
         onQuickStart={async (name) => {
           const result = await quickStart(name);
@@ -986,7 +1008,7 @@ const Index = () => {
             saveSession({
               playerName: name,
               roomCode,
-              gameType: "doraemon",
+              gameType: "kingscup",
             });
           }
           return result;
@@ -1006,7 +1028,7 @@ const Index = () => {
       onStartGame={startGame}
       onDrawCard={drawCard}
       onReshuffle={reshuffleDeck}
-      onLeave={() => handleLeaveRoom("doraemon")}
+      onLeave={() => handleLeaveRoom("kingscup")}
     />
   );
 };

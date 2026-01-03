@@ -49,7 +49,7 @@ export function Lobby({
     }
   }, [authDisplayName]);
 
-  // Load floating names from Supabase on mount and when admin panel closes
+  // Load floating names from database on mount and when admin panel closes
   useEffect(() => {
     const loadNames = async () => {
       const names = await getFloatingNamesFromDB();

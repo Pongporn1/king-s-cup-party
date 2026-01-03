@@ -1,5 +1,6 @@
+// useConnectionStatus - Uses Socket.IO instead of Supabase Realtime
 import { useState, useEffect, useCallback, useRef } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import socketClient from "@/lib/socketClient";
 
 export type ConnectionStatus = "connected" | "disconnected" | "reconnecting";
 
@@ -20,10 +21,7 @@ export function useConnectionStatus(): UseConnectionStatusReturn {
 
   // Request Wake Lock to prevent screen from sleeping
   const requestWakeLock = useCallback(async () => {
-    // Only request wake lock when page is visible
-    if (document.visibilityState !== "visible") {
-      return;
-    }
+    if (document.visibilityState !== "visible") return;
     if ("wakeLock" in navigator && !wakeLockRef.current) {
       try {
         wakeLockRef.current = await navigator.wakeLock.request("screen");
@@ -33,7 +31,6 @@ export function useConnectionStatus(): UseConnectionStatusReturn {
           wakeLockRef.current = null;
         });
       } catch (err) {
-        // Silently fail - wake lock is not critical
         if ((err as Error).name !== "NotAllowedError") {
           console.log("Wake Lock request failed:", err);
         }
@@ -57,24 +54,23 @@ export function useConnectionStatus(): UseConnectionStatusReturn {
       return;
     }
 
-    const delay = Math.min(
-      1000 * Math.pow(2, reconnectAttempts.current),
-      30000
-    );
-    console.log(
-      `Reconnecting in ${delay}ms (attempt ${reconnectAttempts.current + 1})`
-    );
+    const delay = Math.min(1000 * Math.pow(2, reconnectAttempts.current), 30000);
+    console.log(`Reconnecting in ${delay}ms (attempt ${reconnectAttempts.current + 1})`);
 
     setStatus("reconnecting");
 
-    setTimeout(async () => {
+    setTimeout(() => {
       try {
-        // Re-establish Supabase realtime connection
-        await supabase.realtime.connect();
-        setStatus("connected");
-        setLastConnectedAt(new Date());
-        reconnectAttempts.current = 0;
-        console.log("Reconnected successfully");
+        socketClient.connect();
+        if (socketClient.isConnected()) {
+          setStatus("connected");
+          setLastConnectedAt(new Date());
+          reconnectAttempts.current = 0;
+          console.log("Reconnected successfully");
+        } else {
+          reconnectAttempts.current++;
+          reconnect();
+        }
       } catch (error) {
         console.error("Reconnection failed:", error);
         reconnectAttempts.current++;
@@ -106,15 +102,12 @@ export function useConnectionStatus(): UseConnectionStatusReturn {
     };
   }, [reconnect]);
 
-  // Handle visibility change (tab/app switching, screen lock)
+  // Handle visibility change
   useEffect(() => {
     const handleVisibilityChange = async () => {
       if (document.visibilityState === "visible") {
         console.log("Page became visible, checking connection...");
-        // Re-acquire wake lock when page becomes visible
         await requestWakeLock();
-
-        // Check if connection is still active
         if (!isOnline || status === "disconnected") {
           reconnect();
         }
@@ -125,8 +118,6 @@ export function useConnectionStatus(): UseConnectionStatusReturn {
     };
 
     document.addEventListener("visibilitychange", handleVisibilityChange);
-
-    // Request wake lock on mount
     requestWakeLock();
 
     return () => {
@@ -135,27 +126,34 @@ export function useConnectionStatus(): UseConnectionStatusReturn {
     };
   }, [isOnline, status, reconnect, requestWakeLock, releaseWakeLock]);
 
-  // Monitor Supabase realtime connection status
+  // Monitor Socket.IO connection status
   useEffect(() => {
-    const channel = supabase.channel("connection-monitor");
+    const socket = socketClient.connect();
 
-    channel.on("system", { event: "*" }, (payload) => {
-      console.log("Supabase system event:", payload);
-    });
+    const handleConnect = () => {
+      console.log("Socket.IO connected");
+      setStatus("connected");
+      setLastConnectedAt(new Date());
+      reconnectAttempts.current = 0;
+    };
 
-    channel.subscribe((status) => {
-      console.log("Supabase channel status:", status);
-      if (status === "SUBSCRIBED") {
-        setStatus("connected");
-        setLastConnectedAt(new Date());
-        reconnectAttempts.current = 0;
-      } else if (status === "CLOSED" || status === "CHANNEL_ERROR") {
-        setStatus("disconnected");
-      }
-    });
+    const handleDisconnect = () => {
+      console.log("Socket.IO disconnected");
+      setStatus("disconnected");
+    };
+
+    socket.on("connect", handleConnect);
+    socket.on("disconnect", handleDisconnect);
+
+    // Check initial state
+    if (socket.connected) {
+      setStatus("connected");
+      setLastConnectedAt(new Date());
+    }
 
     return () => {
-      supabase.removeChannel(channel);
+      socket.off("connect", handleConnect);
+      socket.off("disconnect", handleDisconnect);
     };
   }, []);
 
