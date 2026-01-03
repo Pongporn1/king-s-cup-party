@@ -779,23 +779,10 @@ const Index = () => {
                   return;
                 }
 
-                if (!adminCode) {
-                  alert("ยังไม่ได้ตั้งค่า VITE_ADMIN_CODE ใน .env");
-                  return;
-                }
-
-                if (!isAdminUnlocked) {
-                  const code = window.prompt("ใส่รหัสแอดมิน");
-                  if (code === adminCode) {
-                    const cacheKey = user?.uid ? "1" + user.uid : "anon";
-                    localStorage.setItem("admin_unlock_code", cacheKey);
-                    setIsAdminUnlocked(true);
-                    setShowAdminPanel(true);
-                  }
-                  return;
-                }
-
-                setShowAdminPanel(true);
+                // Only authorized users can access admin panel
+                alert(
+                  "❌ คุณไม่มีสิทธิ์เข้าถึง Admin Panel\n\nกรุณาเปลี่ยนชื่อเป็น 'bonne' เพื่อเข้าใช้งาน"
+                );
               }}
               className="fixed bottom-6 right-6 z-50 p-4 rounded-full bg-purple-600 hover:bg-purple-700 shadow-lg shadow-purple-500/30"
             >
