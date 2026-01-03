@@ -249,56 +249,76 @@ export function Sidebar({ onNavigate, currentSection = "home" }: SidebarProps) {
             </span>
           </motion.button>
 
-          {navItems.map((item) => {
-            const Icon = item.icon;
-            const isActive = activeSection === item.id;
+          {navItems
+            .filter((item) => item.id !== "profile") // Remove profile from navItems
+            .map((item) => {
+              const Icon = item.icon;
+              const isActive = activeSection === item.id;
 
-            return (
-              <motion.button
-                key={item.id}
-                onClick={() => handleNavClick(item.id)}
-                className={`flex flex-col items-center gap-1 px-4 py-2 rounded-xl transition-all ${
-                  isActive
-                    ? "bg-gradient-to-br from-cyan-500 to-blue-600 shadow-lg"
-                    : "bg-transparent"
-                }`}
-                whileTap={{ scale: 0.95 }}
-              >
-                <Icon
-                  className={`w-5 h-5 ${
-                    isActive ? "text-white" : "text-zinc-400"
+              return (
+                <motion.button
+                  key={item.id}
+                  onClick={() => handleNavClick(item.id)}
+                  className={`flex flex-col items-center gap-1 px-4 py-2 rounded-xl transition-all ${
+                    isActive
+                      ? "bg-gradient-to-br from-cyan-500 to-blue-600 shadow-lg"
+                      : "bg-transparent"
                   }`}
-                />
-                <span
-                  className={`text-xs ${
-                    isActive ? "text-white" : "text-zinc-400"
-                  }`}
+                  whileTap={{ scale: 0.95 }}
                 >
-                  {item.label}
-                </span>
-              </motion.button>
-            );
-          })}
+                  <Icon
+                    className={`w-5 h-5 ${
+                      isActive ? "text-white" : "text-zinc-400"
+                    }`}
+                  />
+                  <span
+                    className={`text-xs ${
+                      isActive ? "text-white" : "text-zinc-400"
+                    }`}
+                  >
+                    {item.label}
+                  </span>
+                </motion.button>
+              );
+            })}
 
-          {/* User/Login Button */}
-          {userId ? (
-            <motion.button
-              onClick={() => setShowProfile(true)}
-              className="flex flex-col items-center gap-1 px-4 py-2 rounded-xl bg-transparent"
-              whileTap={{ scale: 0.95 }}
-            >
-              <div className="w-6 h-6 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white text-xs font-bold">
-                {displayName?.charAt(0).toUpperCase() || "?"}
-              </div>
-              <span className="text-xs text-zinc-400">
-                {displayName?.substring(0, 6) || "User"}
-              </span>
-            </motion.button>
-          ) : (
-            <motion.div whileTap={{ scale: 0.95 }}>
-              <LoginButton />
-            </motion.div>
-          )}
+          {/* Profile Button - Shows Login when not authenticated */}
+          <motion.button
+            onClick={() => {
+              if (userId) {
+                setShowProfile(true);
+                setActiveSection("profile");
+              } else {
+                // Trigger LoginButton click
+                const loginBtn = document.querySelector(
+                  "[data-login-button]"
+                ) as HTMLElement;
+                if (loginBtn) loginBtn.click();
+              }
+            }}
+            className={`flex flex-col items-center gap-1 px-3 py-2 rounded-xl transition-all ${
+              activeSection === "profile" && userId
+                ? "bg-gradient-to-br from-cyan-500 to-blue-600 shadow-lg"
+                : "bg-transparent"
+            }`}
+            whileTap={{ scale: 0.95 }}
+          >
+            {userId ? (
+              <>
+                <div className="w-5 h-5 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white text-[10px] font-bold">
+                  {displayName?.charAt(0).toUpperCase() || "?"}
+                </div>
+                <span className="text-xs text-zinc-400">
+                  {displayName?.substring(0, 6) || "Profile"}
+                </span>
+              </>
+            ) : (
+              <>
+                <User className="w-5 h-5 text-zinc-400" />
+                <span className="text-xs text-zinc-400">เข้าระบบ</span>
+              </>
+            )}
+          </motion.button>
         </div>
       </motion.div>
     </>

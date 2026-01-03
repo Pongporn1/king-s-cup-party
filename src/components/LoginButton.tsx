@@ -70,6 +70,7 @@ export const LoginButton: React.FC<LoginButtonProps> = ({
           disabled={isLoggingIn}
           size="sm"
           className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white"
+          data-login-button="true"
         >
           {isLoggingIn ? (
             <Loader2 className="animate-spin mr-1" size={16} />

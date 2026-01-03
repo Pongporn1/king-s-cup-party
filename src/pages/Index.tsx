@@ -603,6 +603,16 @@ const Index = () => {
         {/* Sidebar Navigation */}
         <Sidebar />
 
+        {/* Hidden LoginButton for mobile - triggered by Profile button */}
+        <div className="hidden">
+          <LoginButton
+            currentRoomCode={currentRoomInfo?.code}
+            currentGameType={currentRoomInfo?.type}
+            currentGameName={currentRoomInfo?.name}
+            onJoinRoom={handleJoinFromInvite}
+          />
+        </div>
+
         {/* Main Content with padding for sidebar (desktop) and bottom nav (mobile) */}
         <div className="flex-1 md:pl-20 pb-20 md:pb-0">
           {/* Header Bar */}
