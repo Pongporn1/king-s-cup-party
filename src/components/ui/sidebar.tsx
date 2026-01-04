@@ -31,7 +31,7 @@ type SidebarContext = {
 
 const SidebarContext = React.createContext<SidebarContext | null>(null);
 
-function useSidebar() {
+function UseSidebar() {
   const context = React.useContext(SidebarContext);
   if (!context) {
     throw new Error("useSidebar must be used within a SidebarProvider.");
@@ -136,7 +136,7 @@ const Sidebar = React.forwardRef<
     collapsible?: "offcanvas" | "icon" | "none";
   }
 >(({ side = "left", variant = "sidebar", collapsible = "offcanvas", className, children, ...props }, ref) => {
-  const { isMobile, state, openMobile, setOpenMobile } = useSidebar();
+  const { isMobile, state, openMobile, setOpenMobile } = UseSidebar();
 
   if (collapsible === "none") {
     return (
@@ -218,7 +218,7 @@ Sidebar.displayName = "Sidebar";
 
 const SidebarTrigger = React.forwardRef<React.ElementRef<typeof Button>, React.ComponentProps<typeof Button>>(
   ({ className, onClick, ...props }, ref) => {
-    const { toggleSidebar } = useSidebar();
+    const { toggleSidebar } = UseSidebar();
 
     return (
       <Button
@@ -243,7 +243,7 @@ SidebarTrigger.displayName = "SidebarTrigger";
 
 const SidebarRail = React.forwardRef<HTMLButtonElement, React.ComponentProps<"button">>(
   ({ className, ...props }, ref) => {
-    const { toggleSidebar } = useSidebar();
+    const { toggleSidebar } = UseSidebar();
 
     return (
       <button
@@ -442,7 +442,7 @@ const SidebarMenuButton = React.forwardRef<
   } & VariantProps<typeof sidebarMenuButtonVariants>
 >(({ asChild = false, isActive = false, variant = "default", size = "default", tooltip, className, ...props }, ref) => {
   const Comp = asChild ? Slot : "button";
-  const { isMobile, state } = useSidebar();
+  const { isMobile, state } = UseSidebar();
 
   const button = (
     <Comp
@@ -633,5 +633,5 @@ export {
   SidebarRail,
   SidebarSeparator,
   SidebarTrigger,
-  useSidebar,
+  UseSidebar,
 };

@@ -10,6 +10,7 @@ interface HeroSectionProps {
   iconUrl?: string;
   emoji?: string;
   gradient?: string;
+  onStartPlaying?: () => void;
 }
 
 export function HeroSection({
@@ -19,6 +20,7 @@ export function HeroSection({
   iconUrl,
   emoji,
   gradient = "from-cyan-500 to-blue-600",
+  onStartPlaying,
 }: HeroSectionProps) {
   const [theme, setTheme] = useState<Theme>(getCurrentTheme());
 
@@ -63,7 +65,7 @@ export function HeroSection({
       <div className="absolute inset-0 bg-gradient-to-b from-transparent via-black/50 to-black" />
 
       {/* Content - centered with less bottom offset */}
-      <div className="relative z-10 flex flex-col items-center justify-center px-4 md:px-8 text-center mb-4 md:mb-0">
+      <div className="relative z-10 flex flex-col items-center justify-center px-4 md:px-8 text-center mb-4 md:mb-0 w-full">
         {/* Logo/Title */}
         <motion.div
           initial={{ y: -50, opacity: 0 }}
@@ -100,10 +102,12 @@ export function HeroSection({
           initial={{ y: 30, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ duration: 0.8, delay: 0.4 }}
-          className="text-center mb-6 md:mb-12"
+          // แก้ไข 1: เติม w-full ตรงนี้เพื่อให้ container กว้างเต็มจอ ข้อความข้างในจะได้จัดกลางเทียบกับจอ ไม่ใช่เทียบกับตัวเอง
+          className="text-center mb-6 md:mb-12 w-full flex flex-col items-center"
         >
           <h2
-            className="text-2xl md:text-4xl font-bold mb-2 md:mb-4"
+            // แก้ไข 2: w-full และ text-center เพื่อความชัวร์
+            className="text-2xl md:text-4xl font-bold mb-2 md:mb-4 text-center w-full"
             style={{
               background: theme.gradient,
               WebkitBackgroundClip: "text",
@@ -114,7 +118,7 @@ export function HeroSection({
             ULTIMATE PARTY EXPERIENCE
           </h2>
           <p
-            className="text-base md:text-xl max-w-2xl"
+            className="text-base md:text-xl max-w-2xl text-center mx-auto"
             style={{ color: theme.colors.textSecondary }}
           >
             {description}
@@ -128,19 +132,22 @@ export function HeroSection({
           transition={{ duration: 0.8, delay: 0.6 }}
           className="flex gap-8 flex-wrap justify-center"
         >
-          {[].map((feature, index) => (
-            <motion.div
-              key={index}
-              className="flex items-center gap-3 px-6 py-3 bg-white/10 backdrop-blur-md rounded-full border border-white/20"
-              whileHover={{
-                scale: 1.05,
-                backgroundColor: "rgba(255,255,255,0.15)",
-              }}
-            >
-              <span className="text-2xl">{feature.icon}</span>
-              <span className="text-white font-medium">{feature.text}</span>
-            </motion.div>
-          ))}
+          {/* Example features array, replace with your actual data */}
+          {([] as { icon: React.ReactNode; text: string }[]).map(
+            (feature, index) => (
+              <motion.div
+                key={index}
+                className="flex items-center gap-3 px-6 py-3 bg-white/10 backdrop-blur-md rounded-full border border-white/20"
+                whileHover={{
+                  scale: 1.05,
+                  backgroundColor: "rgba(255,255,255,0.15)",
+                }}
+              >
+                <span className="text-2xl">{feature.icon}</span>
+                <span className="text-white font-medium">{feature.text}</span>
+              </motion.div>
+            )
+          )}
         </motion.div>
 
         {/* CTA Button */}
@@ -157,33 +164,18 @@ export function HeroSection({
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
           onClick={() => {
-            document
-              .getElementById("games-section")
-              ?.scrollIntoView({ behavior: "smooth" });
+            if (onStartPlaying) {
+              onStartPlaying();
+            } else {
+              document
+                .getElementById("games-section")
+                ?.scrollIntoView({ behavior: "smooth" });
+            }
           }}
         >
           <Sparkles className="w-6 h-6" />
           Start Playing
         </motion.button>
-
-        {/* Scroll Indicator */}
-        <motion.div
-          className="absolute bottom-8 left-1/2 transform -translate-x-1/2"
-          animate={{ y: [0, 10, 0] }}
-          transition={{ duration: 1.5, repeat: Infinity }}
-        >
-          <div
-            className="w-6 h-10 border-2 rounded-full flex justify-center pt-2"
-            style={{ borderColor: `${theme.colors.text}30` }}
-          >
-            <motion.div
-              className="w-1.5 h-1.5 rounded-full"
-              style={{ backgroundColor: theme.colors.text }}
-              animate={{ y: [0, 12, 0] }}
-              transition={{ duration: 1.5, repeat: Infinity }}
-            />
-          </div>
-        </motion.div>
       </div>
     </div>
   );
