@@ -262,18 +262,14 @@ app.get("/api/rooms/:code", async (req, res) => {
 
 app.post("/api/rooms", async (req, res) => {
   try {
-    const {
-      code,
-      host_name,
-      game_type,
-      deck,
-      current_card,
-      cards_remaining,
-    } = req.body;
-    
+    const { code, host_name, game_type, deck, current_card, cards_remaining } =
+      req.body;
+
     // Generate UUID for room id
-    const roomId = `${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
-    
+    const roomId = `${Date.now()}_${Math.random()
+      .toString(36)
+      .substring(2, 15)}`;
+
     await pool.query(
       `INSERT INTO rooms (id, code, host_name, game_type, deck, current_card, cards_remaining, is_active, game_started, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, true, false, NOW())`,
       [
@@ -359,22 +355,28 @@ app.get("/api/rooms/:roomId/players", async (req, res) => {
 
 app.post("/api/players", async (req, res) => {
   try {
-    const { id, room_id, name, is_host, avatar } = req.body;
+    const { room_id, name, is_host, avatar } = req.body;
+
+    // Generate UUID for player id
+    const playerId = `${Date.now()}_${Math.random()
+      .toString(36)
+      .substring(2, 15)}`;
+
     await pool.query(
       `INSERT INTO players (id, room_id, name, is_host, is_active, avatar, joined_at) VALUES (?, ?, ?, ?, true, ?, NOW())`,
-      [id, room_id, name, is_host || false, avatar || 1]
+      [playerId, room_id, name, is_host || false, avatar || 1]
     );
     const [rooms] = await pool.query("SELECT code FROM rooms WHERE id = ?", [
       room_id,
     ]);
     if ((rooms as any[])[0])
       io.to(`room:${(rooms as any[])[0].code}`).emit("player-joined", {
-        id,
+        id: playerId,
         name,
         is_host,
         avatar,
       });
-    res.json({ success: true, id });
+    res.json({ success: true, id: playerId });
   } catch (error) {
     res.status(500).json({ error: (error as Error).message });
   }
