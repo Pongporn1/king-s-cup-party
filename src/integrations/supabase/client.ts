@@ -97,34 +97,127 @@ function createMockClient() {
         select: () => ({
           single: async () => {
             try {
-              const id = row.id || crypto.randomUUID();
-              const res = await fetch(
-                `${API_URL}/api/${table === "rooms" ? "rooms" : "players"}`,
-                {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({ ...row, id }),
-                }
-              );
-              if (!res.ok)
-                return { data: null, error: new Error("Insert failed") };
-              return { data: { ...row, id }, error: null };
+              const endpoint = `${API_URL}/api/${toApiEndpoint(table)}`;
+              const res = await fetch(endpoint, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(row),
+              });
+              if (!res.ok) {
+                const errorText = await res.text();
+                return {
+                  data: null,
+                  error: new Error(errorText || "Insert failed"),
+                };
+              }
+              const data = await res.json();
+              return { data, error: null };
             } catch (e) {
               return { data: null, error: e };
             }
           },
+          async then(resolve: any) {
+            try {
+              const endpoint = `${API_URL}/api/${toApiEndpoint(table)}`;
+              const isArray = Array.isArray(row);
+
+              if (isArray) {
+                // Insert multiple rows
+                const results = [];
+                for (const item of row) {
+                  const res = await fetch(endpoint, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(item),
+                  });
+                  if (res.ok) {
+                    results.push(await res.json());
+                  }
+                }
+                resolve({ data: results, error: null });
+              } else {
+                // Insert single row
+                const res = await fetch(endpoint, {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify(row),
+                });
+                if (!res.ok) {
+                  const errorText = await res.text();
+                  resolve({
+                    data: null,
+                    error: new Error(errorText || "Insert failed"),
+                  });
+                  return;
+                }
+                const data = await res.json();
+                resolve({ data: [data], error: null });
+              }
+            } catch (e) {
+              resolve({ data: null, error: e });
+            }
+          },
         }),
+        async then(resolve: any) {
+          try {
+            const endpoint = `${API_URL}/api/${toApiEndpoint(table)}`;
+            const isArray = Array.isArray(row);
+
+            if (isArray) {
+              // Insert multiple rows
+              const results = [];
+              for (const item of row) {
+                const res = await fetch(endpoint, {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify(item),
+                });
+                if (res.ok) {
+                  results.push(await res.json());
+                }
+              }
+              resolve({ data: results, error: null });
+            } else {
+              // Insert single row
+              const res = await fetch(endpoint, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(row),
+              });
+              if (!res.ok) {
+                const errorText = await res.text();
+                resolve({
+                  data: null,
+                  error: new Error(errorText || "Insert failed"),
+                });
+                return;
+              }
+              const data = await res.json();
+              resolve({ data, error: null });
+            }
+          } catch (e) {
+            resolve({ data: null, error: e });
+          }
+        },
       }),
       update: (data: any) => ({
         eq: (col: string, val: any) => ({
           eq: (col2: string, val2: any) => ({
             async then(resolve: any) {
               try {
-                await fetch(`${API_URL}/api/${toApiEndpoint(table)}/${val}`, {
+                const endpoint = `${API_URL}/api/${toApiEndpoint(
+                  table
+                )}/${val}`;
+                const res = await fetch(endpoint, {
                   method: "PUT",
                   headers: { "Content-Type": "application/json" },
                   body: JSON.stringify(data),
                 });
+                if (!res.ok) {
+                  const errorText = await res.text();
+                  resolve({ error: new Error(errorText || "Update failed") });
+                  return;
+                }
                 resolve({ error: null });
               } catch (e) {
                 resolve({ error: e });
@@ -133,11 +226,20 @@ function createMockClient() {
           }),
           async then(resolve: any) {
             try {
-              await fetch(`${API_URL}/api/${toApiEndpoint(table)}/${val}`, {
+              const endpoint = `${API_URL}/api/${toApiEndpoint(table)}/${val}`;
+              const res = await fetch(endpoint, {
                 method: "PUT",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(data),
               });
+              if (!res.ok) {
+                const errorText = await res.text();
+                resolve({
+                  error: new Error(errorText || "Update failed"),
+                  data: null,
+                });
+                return;
+              }
               resolve({ error: null, data: null });
             } catch (e) {
               resolve({ error: e });
@@ -149,9 +251,15 @@ function createMockClient() {
         eq: (col: string, val: any) => ({
           async then(resolve: any) {
             try {
-              await fetch(`${API_URL}/api/${toApiEndpoint(table)}/${val}`, {
+              const endpoint = `${API_URL}/api/${toApiEndpoint(table)}/${val}`;
+              const res = await fetch(endpoint, {
                 method: "DELETE",
               });
+              if (!res.ok) {
+                const errorText = await res.text();
+                resolve({ error: new Error(errorText || "Delete failed") });
+                return;
+              }
               resolve({ error: null });
             } catch (e) {
               resolve({ error: e });
@@ -162,7 +270,10 @@ function createMockClient() {
           async then(resolve: any) {
             try {
               for (const val of vals) {
-                await fetch(`${API_URL}/api/${toApiEndpoint(table)}/${val}`, {
+                const endpoint = `${API_URL}/api/${toApiEndpoint(
+                  table
+                )}/${val}`;
+                await fetch(endpoint, {
                   method: "DELETE",
                 });
               }

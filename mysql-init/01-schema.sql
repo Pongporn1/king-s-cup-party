@@ -1,5 +1,9 @@
 -- King's Cup Party Database Schema for MySQL
 
+-- Set character set for the database
+SET NAMES utf8mb4;
+SET CHARACTER SET utf8mb4;
+
 -- Games table for storing game icons, covers, and profiles
 CREATE TABLE IF NOT EXISTS games (
   id VARCHAR(50) PRIMARY KEY,

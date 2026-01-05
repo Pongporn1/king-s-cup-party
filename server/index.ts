@@ -33,7 +33,13 @@ app.use(
 );
 app.use(express.json({ limit: "50mb" }));
 
-// MySQL connection pool
+// Set UTF-8 encoding for all JSON responses
+app.use((req, res, next) => {
+  res.setHeader("Content-Type", "application/json; charset=utf-8");
+  next();
+});
+
+// MySQL connection pool with full UTF-8 support
 const pool = mysql.createPool({
   host: process.env.MYSQL_HOST || "localhost",
   port: Number(process.env.MYSQL_PORT) || 3306,
@@ -43,6 +49,16 @@ const pool = mysql.createPool({
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0,
+  charset: "utf8mb4",
+  collation: "utf8mb4_unicode_ci",
+  timezone: "+00:00",
+});
+
+// Set UTF-8 for all connections
+pool.on("connection", (connection) => {
+  connection.query("SET NAMES utf8mb4");
+  connection.query("SET CHARACTER SET utf8mb4");
+  connection.query("SET character_set_connection=utf8mb4");
 });
 
 // Socket.IO - Realtime Events
@@ -440,8 +456,88 @@ app.delete("/api/players/:id", async (req, res) => {
 // Paranoia/5-sec questions
 app.get("/api/paranoia-questions", async (_, res) => {
   try {
-    const [rows] = await pool.query("SELECT * FROM paranoia_questions");
-    res.json(rows);
+    const connection = await pool.getConnection();
+    try {
+      await connection.query("SET NAMES utf8mb4");
+      const [rows] = await connection.query(
+        "SELECT * FROM paranoia_questions ORDER BY created_at DESC"
+      );
+      res.json(rows);
+    } finally {
+      connection.release();
+    }
+  } catch (error) {
+    res.status(500).json({ error: (error as Error).message });
+  }
+});
+
+app.post("/api/paranoia-questions", async (req, res) => {
+  try {
+    const { question, is_default = false, created_by } = req.body;
+    if (!question) {
+      return res.status(400).json({ error: "Question is required" });
+    }
+    const connection = await pool.getConnection();
+    try {
+      await connection.query("SET NAMES utf8mb4");
+      const [result] = await connection.query(
+        "INSERT INTO paranoia_questions (question, is_default, created_by) VALUES (?, ?, ?)",
+        [question, is_default, created_by || null]
+      );
+      const insertId = (result as any).insertId;
+      const [rows] = await connection.query(
+        "SELECT * FROM paranoia_questions WHERE id = ?",
+        [insertId]
+      );
+      res.json((rows as any[])[0]);
+    } finally {
+      connection.release();
+    }
+  } catch (error) {
+    res.status(500).json({ error: (error as Error).message });
+  }
+});
+
+app.put("/api/paranoia-questions/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { question } = req.body;
+    if (!question) {
+      return res.status(400).json({ error: "Question is required" });
+    }
+    const connection = await pool.getConnection();
+    try {
+      await connection.query("SET NAMES utf8mb4");
+      await connection.query(
+        "UPDATE paranoia_questions SET question = ? WHERE id = ?",
+        [question, id]
+      );
+      const [rows] = await connection.query(
+        "SELECT * FROM paranoia_questions WHERE id = ?",
+        [id]
+      );
+      res.json((rows as any[])[0]);
+    } finally {
+      connection.release();
+    }
+  } catch (error) {
+    res.status(500).json({ error: (error as Error).message });
+  }
+});
+
+app.delete("/api/paranoia-questions/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const connection = await pool.getConnection();
+    try {
+      await connection.query("SET NAMES utf8mb4");
+      await connection.query("DELETE FROM paranoia_questions WHERE id = ?", [
+        id,
+      ]);
+      res.json({ success: true });
+    } finally {
+      connection.release();
+    }
   } catch (error) {
     res.status(500).json({ error: (error as Error).message });
   }
@@ -449,8 +545,93 @@ app.get("/api/paranoia-questions", async (_, res) => {
 
 app.get("/api/five-sec-questions", async (_, res) => {
   try {
-    const [rows] = await pool.query("SELECT * FROM five_sec_questions");
-    res.json(rows);
+    const connection = await pool.getConnection();
+    try {
+      await connection.query("SET NAMES utf8mb4");
+      const [rows] = await connection.query(
+        "SELECT * FROM five_sec_questions ORDER BY created_at DESC"
+      );
+      res.json(rows);
+    } finally {
+      connection.release();
+    }
+  } catch (error) {
+    res.status(500).json({ error: (error as Error).message });
+  }
+});
+
+app.post("/api/five-sec-questions", async (req, res) => {
+  try {
+    const {
+      topic,
+      answer_count = 3,
+      is_default = false,
+      created_by,
+    } = req.body;
+    if (!topic) {
+      return res.status(400).json({ error: "Topic is required" });
+    }
+    const connection = await pool.getConnection();
+    try {
+      await connection.query("SET NAMES utf8mb4");
+      const [result] = await connection.query(
+        "INSERT INTO five_sec_questions (topic, answer_count, is_default, created_by) VALUES (?, ?, ?, ?)",
+        [topic, answer_count, is_default, created_by || null]
+      );
+      const insertId = (result as any).insertId;
+      const [rows] = await connection.query(
+        "SELECT * FROM five_sec_questions WHERE id = ?",
+        [insertId]
+      );
+      res.json((rows as any[])[0]);
+    } finally {
+      connection.release();
+    }
+  } catch (error) {
+    res.status(500).json({ error: (error as Error).message });
+  }
+});
+
+app.put("/api/five-sec-questions/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { topic, answer_count } = req.body;
+    if (!topic) {
+      return res.status(400).json({ error: "Topic is required" });
+    }
+    const connection = await pool.getConnection();
+    try {
+      await connection.query("SET NAMES utf8mb4");
+      await connection.query(
+        "UPDATE five_sec_questions SET topic = ?, answer_count = ? WHERE id = ?",
+        [topic, answer_count || 3, id]
+      );
+      const [rows] = await connection.query(
+        "SELECT * FROM five_sec_questions WHERE id = ?",
+        [id]
+      );
+      res.json((rows as any[])[0]);
+    } finally {
+      connection.release();
+    }
+  } catch (error) {
+    res.status(500).json({ error: (error as Error).message });
+  }
+});
+
+app.delete("/api/five-sec-questions/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const connection = await pool.getConnection();
+    try {
+      await connection.query("SET NAMES utf8mb4");
+      await connection.query("DELETE FROM five_sec_questions WHERE id = ?", [
+        id,
+      ]);
+      res.json({ success: true });
+    } finally {
+      connection.release();
+    }
   } catch (error) {
     res.status(500).json({ error: (error as Error).message });
   }

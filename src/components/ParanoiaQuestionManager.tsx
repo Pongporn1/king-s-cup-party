@@ -12,9 +12,8 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Pencil, Trash2, Plus, Sparkles } from "lucide-react";
+import { Pencil, Trash2, Plus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { generateParanoiaQuestions } from "@/lib/aiService";
 
 interface ParanoiaQuestion {
   id: number;
@@ -30,7 +29,6 @@ export function ParanoiaQuestionManager() {
     useState<ParanoiaQuestion | null>(null);
   const [newQuestion, setNewQuestion] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
-  const [isGenerating, setIsGenerating] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -98,16 +96,27 @@ export function ParanoiaQuestionManager() {
       localStorage.setItem("anonymousUserId", userId);
     }
 
-    const { error } = await supabase.from("paranoia_questions").insert({
+    console.log("Adding question:", {
       question: newQuestion.trim(),
-      is_default: false,
-      created_by: userId,
+      userId,
     });
+
+    const { data, error } = await supabase
+      .from("paranoia_questions")
+      .insert({
+        question: newQuestion.trim(),
+        is_default: false,
+        created_by: userId,
+      })
+      .select();
+
+    console.log("Insert result:", { data, error });
 
     if (error) {
       console.error("Error adding question:", error);
       toast({
         title: "❌ เพิ่มคำถามไม่สำเร็จ",
+        description: error.message,
         variant: "destructive",
       });
       return;
@@ -176,37 +185,6 @@ export function ParanoiaQuestionManager() {
     loadQuestions();
   };
 
-  const handleGenerateAI = async () => {
-    setIsGenerating(true);
-    try {
-      const aiQuestions = await generateParanoiaQuestions(5);
-
-      // Insert all generated questions
-      const { error } = await supabase.from("paranoia_questions").insert(
-        aiQuestions.map((q) => ({
-          question: q,
-          is_default: false,
-        }))
-      );
-
-      if (error) throw error;
-
-      toast({
-        title: "✨ สร้างคำถาม 5 คำด้วย AI สำเร็จ!",
-        description: "คำถามใหม่ถูกเพิ่มเข้าไปแล้ว",
-      });
-      loadQuestions();
-    } catch (error) {
-      console.error("Error generating AI questions:", error);
-      toast({
-        title: "❌ สร้างคำถามไม่สำเร็จ",
-        variant: "destructive",
-      });
-    } finally {
-      setIsGenerating(false);
-    }
-  };
-
   const filteredQuestions = questions.filter((q) =>
     q.question.toLowerCase().includes(searchQuery.toLowerCase())
   );
@@ -228,18 +206,6 @@ export function ParanoiaQuestionManager() {
         </DialogHeader>
 
         <div className="space-y-4">
-          {/* AI Generate Button */}
-          <Button
-            onClick={handleGenerateAI}
-            disabled={isGenerating}
-            className="w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
-          >
-            <Sparkles className="w-4 h-4 mr-2" />
-            {isGenerating
-              ? "กำลังสร้างด้วย AI..."
-              : "✨ สร้างด้วย AI (5 คำถาม)"}
-          </Button>
-
           {/* Add/Edit Form */}
           <div className="space-y-2">
             <Label htmlFor="question">

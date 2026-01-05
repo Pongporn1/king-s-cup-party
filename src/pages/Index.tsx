@@ -308,8 +308,8 @@ const Index = () => {
   // Session Recovery Effect - Attempt to rejoin room on page load
   useEffect(() => {
     const attemptRecovery = async () => {
+      // Check if we have valid session data
       if (
-        !hasSession ||
         !sessionData.roomCode ||
         !sessionData.gameType ||
         !sessionData.playerName
@@ -329,7 +329,7 @@ const Index = () => {
 
         // Set game mode first
         if (
-          gameType === "doraemon" ||
+          gameType === "kingscup" ||
           gameType === "pokdeng" ||
           gameType === "undercover" ||
           gameType === "paranoia" ||
@@ -337,6 +337,9 @@ const Index = () => {
         ) {
           setGameMode(gameType);
         }
+
+        // Wait a bit for game mode to be set
+        await new Promise((resolve) => setTimeout(resolve, 100));
 
         // Attempt to rejoin based on game type, passing saved playerId for accurate session recovery
         let success: unknown = false;
@@ -374,9 +377,23 @@ const Index = () => {
       }
     };
 
-    attemptRecovery();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hasSession]); // Only run once when hasSession is determined
+    // Run recovery when hasSession changes to true (session loaded)
+    if (hasSession) {
+      attemptRecovery();
+    } else {
+      setIsRecoveringSession(false);
+    }
+  }, [
+    hasSession,
+    sessionData,
+    authDisplayName,
+    clearSession,
+    joinRoom,
+    pokDengJoinRoom,
+    undercoverJoinRoom,
+    paranoiaJoinRoom,
+    fiveSecJoinRoom,
+  ]);
 
   // Wrapper functions to save session when creating/joining rooms
   const handleCreateRoom = useCallback(
