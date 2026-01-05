@@ -160,14 +160,24 @@ export const FriendSystem: React.FC<FriendSystemProps> = ({
   };
 
   const handleAcceptInvite = async (invite: (typeof gameInvites)[0]) => {
+    console.log("🎉 Accepting invite:", invite);
     await dismissGameInvite(invite.id);
+
     if (onJoinRoom) {
+      console.log("✅ onJoinRoom exists, calling it...");
       toast.success(`กำลังเข้าห้อง ${invite.roomCode}...`);
       // Close modal first so user can see the lobby
       onClose();
       // Then join the room
-      await onJoinRoom(invite.roomCode, invite.gameType);
+      try {
+        await onJoinRoom(invite.roomCode, invite.gameType);
+        console.log("🎮 Successfully joined room");
+      } catch (error) {
+        console.error("❌ Error joining room:", error);
+        toast.error("ไม่สามารถเข้าห้องได้");
+      }
     } else {
+      console.log("⚠️ No onJoinRoom handler provided");
       // Copy room code if no join handler
       navigator.clipboard.writeText(invite.roomCode);
       toast.success(`คัดลอกรหัสห้อง ${invite.roomCode} แล้ว!`);

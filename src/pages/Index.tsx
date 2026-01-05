@@ -497,11 +497,15 @@ const Index = () => {
   // Handle joining room from friend invite
   const handleJoinFromInvite = useCallback(
     async (roomCode: string, gameType: string) => {
+      console.log("🎮 handleJoinFromInvite called:", { roomCode, gameType });
+
       // Use Firebase displayName first, fallback to localStorage
       const savedName =
         authDisplayName ||
         localStorage.getItem("playerName") ||
         `Player_${Math.random().toString(36).slice(2, 6)}`;
+
+      console.log("👤 Player name:", savedName);
 
       // Map game type to our game mode
       const gameTypeMap: Record<string, GameMode> = {
@@ -514,18 +518,23 @@ const Index = () => {
       };
 
       const targetGameMode = gameTypeMap[gameType] || "kingscup";
+      console.log("🎯 Target game mode:", targetGameMode);
 
       // Join the room first, then switch game mode
       const success = await handleJoinRoom(roomCode, savedName, targetGameMode);
+      console.log("✅ Join result:", success);
 
       if (success) {
         // Only switch to game mode after successful join
         setGameMode(targetGameMode);
+        console.log("🚀 Game mode switched to:", targetGameMode);
+      } else {
+        console.log("❌ Failed to join room");
       }
 
       return success;
     },
-    [handleJoinRoom, authDisplayName]
+    [handleJoinRoom, authDisplayName, setGameMode]
   );
 
   const handleLeaveRoom = useCallback(
