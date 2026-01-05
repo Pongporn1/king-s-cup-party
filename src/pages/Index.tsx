@@ -514,13 +514,16 @@ const Index = () => {
       };
 
       const targetGameMode = gameTypeMap[gameType] || "kingscup";
-      setGameMode(targetGameMode);
 
-      // Join the room
+      // Join the room first, then switch game mode
       const success = await handleJoinRoom(roomCode, savedName, targetGameMode);
-      if (!success) {
-        setGameMode("select");
+
+      if (success) {
+        // Only switch to game mode after successful join
+        setGameMode(targetGameMode);
       }
+
+      return success;
     },
     [handleJoinRoom, authDisplayName]
   );

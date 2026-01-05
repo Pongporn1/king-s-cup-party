@@ -162,9 +162,11 @@ export const FriendSystem: React.FC<FriendSystemProps> = ({
   const handleAcceptInvite = async (invite: (typeof gameInvites)[0]) => {
     await dismissGameInvite(invite.id);
     if (onJoinRoom) {
-      onJoinRoom(invite.roomCode, invite.gameType);
-      onClose();
       toast.success(`กำลังเข้าห้อง ${invite.roomCode}...`);
+      // Close modal first so user can see the lobby
+      onClose();
+      // Then join the room
+      await onJoinRoom(invite.roomCode, invite.gameType);
     } else {
       // Copy room code if no join handler
       navigator.clipboard.writeText(invite.roomCode);
