@@ -1254,7 +1254,7 @@ const Index = () => {
 
             {/* Games View */}
             {currentTab === "games" && (
-              <div className="relative h-full flex flex-col">
+              <div className="absolute inset-0 flex flex-col">
                 {/* Large Background Image */}
                 <motion.div
                   key={`bg-${games[selectedGameIndex].id}`}
