@@ -263,7 +263,6 @@ app.get("/api/rooms/:code", async (req, res) => {
 app.post("/api/rooms", async (req, res) => {
   try {
     const {
-      id,
       code,
       host_name,
       game_type,
@@ -271,10 +270,14 @@ app.post("/api/rooms", async (req, res) => {
       current_card,
       cards_remaining,
     } = req.body;
+    
+    // Generate UUID for room id
+    const roomId = `${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
+    
     await pool.query(
       `INSERT INTO rooms (id, code, host_name, game_type, deck, current_card, cards_remaining, is_active, game_started, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, true, false, NOW())`,
       [
-        id,
+        roomId,
         code,
         host_name,
         game_type || "kingscup",
@@ -283,7 +286,7 @@ app.post("/api/rooms", async (req, res) => {
         cards_remaining || 52,
       ]
     );
-    res.json({ success: true, id, code });
+    res.json({ success: true, id: roomId, code });
   } catch (error) {
     res.status(500).json({ error: (error as Error).message });
   }
