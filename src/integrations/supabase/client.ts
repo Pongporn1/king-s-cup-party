@@ -372,21 +372,33 @@ function createMockClient() {
           if (roomCode) {
             socketClient.joinRoom(roomCode);
             socketClient.on("room-changed", (data: any) => {
+              console.log("🔔 Socket received: room-changed", data);
               callbacks.forEach(({ callback }) =>
                 callback({ eventType: "UPDATE", new: data })
               );
             });
             socketClient.on("player-joined", (data: any) => {
+              console.log("🔔 Socket received: player-joined", {
+                hasData: !!data,
+                id: data?.id || "MISSING",
+                name: data?.name || "MISSING",
+                is_host: data?.is_host,
+                avatar: data?.avatar,
+                rawData: data,
+                stringified: JSON.stringify(data),
+              });
               callbacks.forEach(({ callback }) =>
                 callback({ eventType: "INSERT", new: data })
               );
             });
             socketClient.on("player-left", (data: any) => {
+              console.log("🔔 Socket received: player-left", data);
               callbacks.forEach(({ callback }) =>
                 callback({ eventType: "DELETE", old: { id: data.playerId } })
               );
             });
             socketClient.on("player-changed", (data: any) => {
+              console.log("🔔 Socket received: player-changed", data);
               callbacks.forEach(({ callback }) =>
                 callback({ eventType: "UPDATE", new: data })
               );

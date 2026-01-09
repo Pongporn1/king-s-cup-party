@@ -375,7 +375,15 @@ app.get("/api/rooms/:roomId/players", async (req, res) => {
       "SELECT * FROM players WHERE room_id = ? AND is_active = true",
       [req.params.roomId]
     );
-    res.json(rows);
+    // ✅ Convert is_host from MySQL (0/1) to boolean
+    const players = (rows as any[]).map((p) => ({
+      ...p,
+      is_host: Boolean(p.is_host),
+      is_active: Boolean(p.is_active),
+      is_alive: p.is_alive !== undefined ? Boolean(p.is_alive) : undefined,
+      has_voted: p.has_voted !== undefined ? Boolean(p.has_voted) : undefined,
+    }));
+    res.json(players);
   } catch (error) {
     res.status(500).json({ error: (error as Error).message });
   }
@@ -400,7 +408,15 @@ app.get("/api/rooms/:id/players", async (req, res) => {
       "SELECT * FROM players WHERE room_id = ? AND is_active = true ORDER BY joined_at ASC",
       [req.params.id]
     );
-    res.json(rows);
+    // ✅ Convert is_host from MySQL (0/1) to boolean
+    const players = (rows as any[]).map((p) => ({
+      ...p,
+      is_host: Boolean(p.is_host),
+      is_active: Boolean(p.is_active),
+      is_alive: p.is_alive !== undefined ? Boolean(p.is_alive) : undefined,
+      has_voted: p.has_voted !== undefined ? Boolean(p.has_voted) : undefined,
+    }));
+    res.json(players);
   } catch (error) {
     res.status(500).json({ error: (error as Error).message });
   }
@@ -417,7 +433,17 @@ app.get("/api/players/:id", async (req, res) => {
     if (!player) {
       return res.status(404).json({ error: "Player not found" });
     }
-    res.json(player);
+    // ✅ Convert is_host from MySQL (0/1) to boolean
+    const playerWithBoolean = {
+      ...player,
+      is_host: Boolean(player.is_host),
+      is_active: Boolean(player.is_active),
+      is_alive:
+        player.is_alive !== undefined ? Boolean(player.is_alive) : undefined,
+      has_voted:
+        player.has_voted !== undefined ? Boolean(player.has_voted) : undefined,
+    };
+    res.json(playerWithBoolean);
   } catch (error) {
     res.status(500).json({ error: (error as Error).message });
   }
@@ -432,21 +458,66 @@ app.post("/api/players", async (req, res) => {
       .toString(36)
       .substring(2, 15)}`;
 
+    // ✅ Insert player and get the actual is_host value stored
     await pool.query(
       `INSERT INTO players (id, room_id, name, is_host, is_active, avatar, joined_at) VALUES (?, ?, ?, ?, true, ?, NOW())`,
       [playerId, room_id, name, is_host || false, avatar || 1]
     );
+
+    // ✅ Query back the player data to ensure we have the correct is_host value
+    const [players] = await pool.query(
+      "SELECT id, name, is_host, avatar FROM players WHERE id = ?",
+      [playerId]
+    );
+    const playerData = (players as any[])[0];
+
+    // Validate player data from DB
+    if (!playerData || !playerData.id || !playerData.name) {
+      console.error("❌ Invalid player data from DB:", {
+        playerId,
+        playerData,
+        hasData: !!playerData,
+      });
+      return res.status(500).json({ error: "Failed to retrieve player data" });
+    }
+
+    // ✅ Convert MySQL boolean (0/1) to JavaScript boolean
+    const isHostBoolean = Boolean(playerData.is_host);
+
+    console.log("🔧 POST /api/players - Created player:", {
+      playerId,
+      name: playerData.name,
+      is_host_requested: is_host,
+      is_host_from_db: playerData.is_host,
+      is_host_boolean: isHostBoolean,
+      avatar: playerData.avatar,
+    });
+
     const [rooms] = await pool.query("SELECT code FROM rooms WHERE id = ?", [
       room_id,
     ]);
-    if ((rooms as any[])[0])
-      io.to(`room:${(rooms as any[])[0].code}`).emit("player-joined", {
-        id: playerId,
-        name,
-        is_host,
-        avatar,
-      });
-    res.json({ success: true, id: playerId });
+
+    if ((rooms as any[])[0]) {
+      const emitData = {
+        id: playerData.id,
+        name: playerData.name,
+        is_host: isHostBoolean,
+        avatar: playerData.avatar,
+      };
+
+      // Validate before emit
+      if (!emitData.id || !emitData.name) {
+        console.error("❌ Invalid player data before Socket emit:", emitData);
+      } else {
+        console.log("📡 Emitting player-joined:", emitData);
+        io.to(`room:${(rooms as any[])[0].code}`).emit(
+          "player-joined",
+          emitData
+        );
+      }
+    }
+
+    res.json({ success: true, id: playerId, is_host: isHostBoolean });
   } catch (error) {
     res.status(500).json({ error: (error as Error).message });
   }

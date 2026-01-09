@@ -83,4 +83,5 @@ export interface CreatePlayerParams {
 export interface CreatePlayerResponse {
   success: boolean;
   id: string;
+  is_host?: boolean; // ✅ เพิ่ม is_host ใน response
 }

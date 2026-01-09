@@ -7,9 +7,11 @@ import { generateRoomCode } from "@/lib/cardRules";
 
 /**
  * Generate a unique player ID
+ * Uses timestamp + random string for compatibility
  */
 export function generatePlayerId(): string {
-  return crypto.randomUUID();
+  // Use timestamp + random string instead of crypto.randomUUID for better compatibility
+  return `${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
 }
 
 /**

@@ -2,7 +2,6 @@ import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useGameRoom } from "@/hooks/useGameRoom";
 import { usePokDengRoom } from "@/hooks/usePokDengRoom";
-import { useUndercoverRoom } from "@/hooks/useUndercoverRoom";
 import { useParanoiaGame } from "@/hooks/useParanoiaGame";
 import { useFiveSecGame } from "@/hooks/useFiveSecGame";
 import { useSessionRecovery } from "@/hooks/useSessionRecovery";
@@ -10,8 +9,6 @@ import { Lobby } from "@/components/Lobby";
 import { GameRoom } from "@/components/GameRoom";
 import { PokDengLobby } from "@/components/PokDengLobby";
 import { PokDengGameRoomMultiplayer } from "@/components/PokDengGameRoomMultiplayer";
-import { UndercoverLobby } from "@/components/UndercoverLobby";
-import { UndercoverGameRoom } from "@/components/UndercoverGameRoom";
 import { ParanoiaLobby } from "@/components/ParanoiaLobby";
 import { ParanoiaGameRoom } from "@/components/ParanoiaGameRoom";
 import { FiveSecLobby } from "@/components/FiveSecLobby";
@@ -55,7 +52,6 @@ type GameMode =
   | "select"
   | "kingscup"
   | "pokdeng"
-  | "undercover"
   | "paranoia"
   | "5-sec"
   | "doraemon";
@@ -133,25 +129,6 @@ const Index = () => {
     setDealer: pokDengSetDealer,
   } = usePokDengRoom();
 
-  // Undercover game hook
-  const {
-    room: undercoverRoom,
-    players: undercoverPlayers,
-    currentPlayerId: undercoverCurrentPlayerId,
-    isLoading: undercoverIsLoading,
-    categories: undercoverCategories,
-    createRoom: undercoverCreateRoom,
-    joinRoom: undercoverJoinRoom,
-    startGame: undercoverStartGame,
-    startDescribePhase: undercoverStartDescribePhase,
-    nextTurn: undercoverNextTurn,
-    startVoting: undercoverStartVoting,
-    votePlayer: undercoverVotePlayer,
-    checkResultAndContinue: undercoverCheckResultAndContinue,
-    restartGame: undercoverRestartGame,
-    leaveRoom: undercoverLeaveRoom,
-  } = useUndercoverRoom();
-
   // Paranoia game hook
   const {
     room: paranoiaRoom,
@@ -200,12 +177,6 @@ const Index = () => {
     if (room) return { code: room.code, type: "kingscup", name: t("kingsCup") };
     if (pokDengRoom)
       return { code: pokDengRoom.code, type: "pokdeng", name: t("pokDeng") };
-    if (undercoverRoom)
-      return {
-        code: undercoverRoom.code,
-        type: "undercover",
-        name: t("undercoverTitle"),
-      };
     if (paranoiaRoom)
       return { code: paranoiaRoom.code, type: "paranoia", name: "Paranoia" };
     if (fiveSecRoom)
@@ -241,6 +212,7 @@ const Index = () => {
         desc: t("undercoverDesc"),
         gradient: "from-purple-600 to-indigo-600",
         bgColor: "#9333ea",
+        externalLink: "https://your-undercover-game-url.vercel.app", // 👈 TODO: Update this URL after deployment
       },
       {
         id: "paranoia",
@@ -331,7 +303,6 @@ const Index = () => {
         if (
           gameType === "kingscup" ||
           gameType === "pokdeng" ||
-          gameType === "undercover" ||
           gameType === "paranoia" ||
           gameType === "5-sec"
         ) {
@@ -349,9 +320,6 @@ const Index = () => {
             break;
           case "pokdeng":
             success = await pokDengJoinRoom(roomCode, playerName, playerId);
-            break;
-          case "undercover":
-            success = await undercoverJoinRoom(roomCode, playerName, playerId);
             break;
           case "paranoia":
             success = await paranoiaJoinRoom(roomCode, playerName, playerId);
@@ -390,7 +358,6 @@ const Index = () => {
     clearSession,
     joinRoom,
     pokDengJoinRoom,
-    undercoverJoinRoom,
     paranoiaJoinRoom,
     fiveSecJoinRoom,
   ]);
@@ -405,9 +372,6 @@ const Index = () => {
           break;
         case "pokdeng":
           result = await pokDengCreateRoom(hostName);
-          break;
-        case "undercover":
-          result = await undercoverCreateRoom(hostName);
           break;
         case "paranoia":
           result = await paranoiaCreateRoom(hostName);
@@ -440,7 +404,6 @@ const Index = () => {
     [
       createRoom,
       pokDengCreateRoom,
-      undercoverCreateRoom,
       paranoiaCreateRoom,
       fiveSecCreateRoom,
       saveSession,
@@ -456,9 +419,6 @@ const Index = () => {
           break;
         case "pokdeng":
           result = await pokDengJoinRoom(code, playerName);
-          break;
-        case "undercover":
-          result = await undercoverJoinRoom(code, playerName);
           break;
         case "paranoia":
           result = await paranoiaJoinRoom(code, playerName);
@@ -484,14 +444,7 @@ const Index = () => {
       }
       return !!result;
     },
-    [
-      joinRoom,
-      pokDengJoinRoom,
-      undercoverJoinRoom,
-      paranoiaJoinRoom,
-      fiveSecJoinRoom,
-      saveSession,
-    ]
+    [joinRoom, pokDengJoinRoom, paranoiaJoinRoom, fiveSecJoinRoom, saveSession]
   );
 
   // Handle joining room from friend invite
@@ -512,7 +465,6 @@ const Index = () => {
         kingscup: "kingscup",
         doraemon: "kingscup",
         pokdeng: "pokdeng",
-        undercover: "undercover",
         paranoia: "paranoia",
         "5-sec": "5-sec",
       };
@@ -547,9 +499,6 @@ const Index = () => {
         case "pokdeng":
           pokDengLeaveRoom();
           break;
-        case "undercover":
-          undercoverLeaveRoom();
-          break;
         case "paranoia":
           paranoiaLeaveRoom();
           break;
@@ -563,7 +512,6 @@ const Index = () => {
       clearSession,
       leaveRoom,
       pokDengLeaveRoom,
-      undercoverLeaveRoom,
       paranoiaLeaveRoom,
       fiveSecLeaveRoom,
     ]
@@ -1709,43 +1657,6 @@ const Index = () => {
           handleLeaveRoom("pokdeng");
         }}
         onSetDealer={pokDengSetDealer}
-      />
-    );
-  }
-
-  // Undercover
-  if (gameMode === "undercover") {
-    // ยังไม่ได้เข้าห้อง - แสดง Lobby
-    if (!undercoverRoom) {
-      return (
-        <UndercoverLobby
-          onCreateRoom={async (name) => {
-            return handleCreateRoom(name, "undercover");
-          }}
-          onJoinRoom={async (code, name) => {
-            return handleJoinRoom(code, name, "undercover");
-          }}
-          onBack={() => setGameMode("select")}
-          isLoading={undercoverIsLoading}
-        />
-      );
-    }
-
-    // เข้าห้องแล้ว - แสดง Game Room
-    const isHost =
-      undercoverPlayers.find((p) => p.id === undercoverCurrentPlayerId)
-        ?.is_host || false;
-
-    return (
-      <UndercoverGameRoom
-        room={undercoverRoom}
-        players={undercoverPlayers}
-        currentPlayerId={undercoverCurrentPlayerId}
-        isHost={isHost}
-        categories={undercoverCategories}
-        onStartGame={undercoverStartGame}
-        onRestartGame={undercoverRestartGame}
-        onLeave={() => handleLeaveRoom("undercover")}
       />
     );
   }
