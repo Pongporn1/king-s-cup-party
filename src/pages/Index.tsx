@@ -1,18 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useGameRoom } from "@/hooks/useGameRoom";
-import { usePokDengRoom } from "@/hooks/usePokDengRoom";
-import { useParanoiaGame } from "@/hooks/useParanoiaGame";
-import { useFiveSecGame } from "@/hooks/useFiveSecGame";
-import { useSessionRecovery } from "@/hooks/useSessionRecovery";
-import { Lobby } from "@/components/Lobby";
-import { GameRoom } from "@/components/GameRoom";
-import { PokDengLobby } from "@/components/PokDengLobby";
-import { PokDengGameRoomMultiplayer } from "@/components/PokDengGameRoomMultiplayer";
-import { ParanoiaLobby } from "@/components/ParanoiaLobby";
-import { ParanoiaGameRoom } from "@/components/ParanoiaGameRoom";
-import { FiveSecLobby } from "@/components/FiveSecLobby";
-import { FiveSecGameRoom } from "@/components/FiveSecGameRoom";
 import { Button } from "@/components/ui/button";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import ThemeSwitcher from "@/components/ThemeSwitcher";
@@ -31,7 +18,6 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Sidebar } from "@/components/Sidebar";
 import { HeroSection } from "@/components/HeroSection";
 import { GameCard } from "@/components/GameCard";
-import { FriendSystem } from "@/components/FriendSystem";
 import {
   Play,
   ChevronLeft,
@@ -48,20 +34,13 @@ import {
   LogOut,
 } from "lucide-react";
 
-type GameMode =
-  | "select"
-  | "kingscup"
-  | "pokdeng"
-  | "paranoia"
-  | "5-sec"
-  | "doraemon";
+// All games are now external links
+type GameMode = "select";
 
 const Index = () => {
   const { user, displayName: authDisplayName } = useAuth();
   const [gameMode, setGameMode] = useState<GameMode>("select");
   const [floatingNames, setFloatingNames] = useState<string[]>([]);
-  const [isPokDengLiveMode, setIsPokDengLiveMode] = useState(false);
-  const [isRecoveringSession, setIsRecoveringSession] = useState(true);
 
   // Navigation state for mobile app single view
   const [currentTab, setCurrentTab] = useState<
@@ -77,10 +56,6 @@ const Index = () => {
   const [isDiving, setIsDiving] = useState(false);
   const [diveComplete, setDiveComplete] = useState(false);
 
-  // Session Recovery
-  const { sessionData, hasSession, saveSession, clearSession } =
-    useSessionRecovery();
-
   // Admin Panel State
   const [showAdminPanel, setShowAdminPanel] = useState(false);
   const [gameCovers, setGameCovers] = useState<Record<string, string>>({});
@@ -94,97 +69,10 @@ const Index = () => {
   const isHeekbonne = !!user && authDisplayName === "bonne";
   const canShowAdminButton = isHeekbonne;
 
-  // King's Cup game hook
-  const {
-    room,
-    players,
-    currentPlayerId,
-    isLoading,
-    createRoom,
-    joinRoom,
-    startGame,
-    drawCard,
-    reshuffleDeck,
-    leaveRoom,
-    quickStart,
-  } = useGameRoom();
-
-  // Pok Deng game hook
-  const {
-    room: pokDengRoom,
-    players: pokDengPlayers,
-    currentPlayerId: pokDengCurrentPlayerId,
-    isLoading: pokDengIsLoading,
-    createRoom: pokDengCreateRoom,
-    joinRoom: pokDengJoinRoom,
-    startGame: pokDengStartGame,
-    drawCard: pokDengDrawCard,
-    standCard: pokDengStandCard,
-    dealerDraw: pokDengDealerDraw,
-    dealerStand: pokDengDealerStand,
-    showdown: pokDengShowdown,
-    nextRound: pokDengNextRound,
-    leaveRoom: pokDengLeaveRoom,
-    quickStart: pokDengQuickStart,
-    setDealer: pokDengSetDealer,
-  } = usePokDengRoom();
-
-  // Paranoia game hook
-  const {
-    room: paranoiaRoom,
-    players: paranoiaPlayers,
-    currentPlayerId: paranoiaCurrentPlayerId,
-    isLoading: paranoiaIsLoading,
-    questions: paranoiaQuestions,
-    createRoom: paranoiaCreateRoom,
-    joinRoom: paranoiaJoinRoom,
-    startGame: paranoiaStartGame,
-    startRound: paranoiaStartRound,
-    selectVictim: paranoiaSelectVictim,
-    revealQuestion: paranoiaRevealQuestion,
-    skipQuestion: paranoiaSkipQuestion,
-    leaveRoom: paranoiaLeaveRoom,
-  } = useParanoiaGame();
-
-  // 5 Second Rule game hook
-  const {
-    room: fiveSecRoom,
-    players: fiveSecPlayers,
-    currentPlayerId: fiveSecCurrentPlayerId,
-    isLoading: fiveSecIsLoading,
-    createRoom: fiveSecCreateRoom,
-    joinRoom: fiveSecJoinRoom,
-    startGame: fiveSecStartGame,
-    startRound: fiveSecStartRound,
-    finishAnswering: fiveSecFinishAnswering,
-    vote: fiveSecVote,
-    leaveRoom: fiveSecLeaveRoom,
-  } = useFiveSecGame();
-
-  const currentPlayer = players.find((p) => p.id === currentPlayerId);
-  const isHost = currentPlayer?.is_host ?? false;
-
-  const pokDengCurrentPlayer = pokDengPlayers.find(
-    (p) => p.id === pokDengCurrentPlayerId
-  );
-  const isPokDengHost = pokDengCurrentPlayer?.is_host ?? false;
+  // All game hooks removed - games are now external links
 
   // หน้าเลือกเกม - Nintendo Switch Style with Framer Motion
   const [selectedGameIndex, setSelectedGameIndex] = useState(0);
-
-  // Get current room info for friend invites
-  const getCurrentRoomInfo = () => {
-    if (room) return { code: room.code, type: "kingscup", name: t("kingsCup") };
-    if (pokDengRoom)
-      return { code: pokDengRoom.code, type: "pokdeng", name: t("pokDeng") };
-    if (paranoiaRoom)
-      return { code: paranoiaRoom.code, type: "paranoia", name: "Paranoia" };
-    if (fiveSecRoom)
-      return { code: fiveSecRoom.code, type: "5-sec", name: "5 Second Rule" };
-    return null;
-  };
-
-  const currentRoomInfo = getCurrentRoomInfo();
 
   // Games array - compute each render so translations stay fresh and keys stay unique
   const games = (() => {
@@ -196,6 +84,7 @@ const Index = () => {
         desc: t("kingsCupDesc"),
         gradient: "from-red-500 to-orange-500",
         bgColor: "#ef4444",
+        externalLink: "https://your-kingscup-url.vercel.app", // 👈 TODO: Deploy and update
       },
       {
         id: "pokdeng",
@@ -204,6 +93,7 @@ const Index = () => {
         desc: t("pokDengDesc"),
         gradient: "from-emerald-500 to-green-600",
         bgColor: "#10b981",
+        externalLink: "https://your-pokdeng-url.vercel.app", // 👈 TODO: Deploy and update
       },
       {
         id: "undercover",
@@ -212,7 +102,7 @@ const Index = () => {
         desc: t("undercoverDesc"),
         gradient: "from-purple-600 to-indigo-600",
         bgColor: "#9333ea",
-        externalLink: "https://your-undercover-game-url.vercel.app", // 👈 TODO: Update this URL after deployment
+        externalLink: "https://your-undercover-url.vercel.app", // 👈 TODO: Deploy and update
       },
       {
         id: "paranoia",
@@ -221,6 +111,7 @@ const Index = () => {
         desc: "ถามคำถามลับๆ - สายมึน",
         gradient: "from-pink-500 to-rose-600",
         bgColor: "#ec4899",
+        externalLink: "https://your-paranoia-url.vercel.app", // 👈 TODO: Deploy and update
       },
       {
         id: "5-sec",
@@ -229,6 +120,7 @@ const Index = () => {
         desc: "ตอบคำถาม 5 วินาที - สายเร็ว",
         gradient: "from-yellow-400 to-orange-500",
         bgColor: "#f59e0b",
+        externalLink: "https://your-5sec-url.vercel.app", // 👈 TODO: Deploy and update
       },
       {
         id: "texas-holdem",
@@ -277,245 +169,7 @@ const Index = () => {
     setSelectedGameIndex((prev) => (prev - 1 + games.length) % games.length);
   }, [games.length]);
 
-  // Session Recovery Effect - Attempt to rejoin room on page load
-  useEffect(() => {
-    const attemptRecovery = async () => {
-      // Check if we have valid session data
-      if (
-        !sessionData.roomCode ||
-        !sessionData.gameType ||
-        !sessionData.playerName
-      ) {
-        setIsRecoveringSession(false);
-        return;
-      }
-
-      console.log("Attempting session recovery:", sessionData);
-
-      try {
-        const gameType = sessionData.gameType;
-        const roomCode = sessionData.roomCode;
-        // Use Firebase displayName first, then fallback to session name
-        const playerName = authDisplayName || sessionData.playerName;
-        const playerId = sessionData.playerId;
-
-        // Set game mode first
-        if (
-          gameType === "kingscup" ||
-          gameType === "pokdeng" ||
-          gameType === "paranoia" ||
-          gameType === "5-sec"
-        ) {
-          setGameMode(gameType);
-        }
-
-        // Wait a bit for game mode to be set
-        await new Promise((resolve) => setTimeout(resolve, 100));
-
-        // Attempt to rejoin based on game type, passing saved playerId for accurate session recovery
-        let success: unknown = false;
-        switch (gameType) {
-          case "kingscup":
-            success = await joinRoom(roomCode, playerName, playerId);
-            break;
-          case "pokdeng":
-            success = await pokDengJoinRoom(roomCode, playerName, playerId);
-            break;
-          case "paranoia":
-            success = await paranoiaJoinRoom(roomCode, playerName, playerId);
-            break;
-          case "5-sec":
-            success = await fiveSecJoinRoom(roomCode, playerName, playerId);
-            break;
-        }
-
-        if (!success) {
-          console.log("Session recovery failed, clearing session");
-          clearSession();
-          setGameMode("select");
-        } else {
-          console.log("Session recovery successful!");
-        }
-      } catch (error) {
-        console.error("Session recovery error:", error);
-        clearSession();
-        setGameMode("select");
-      } finally {
-        setIsRecoveringSession(false);
-      }
-    };
-
-    // Run recovery when hasSession changes to true (session loaded)
-    if (hasSession) {
-      attemptRecovery();
-    } else {
-      setIsRecoveringSession(false);
-    }
-  }, [
-    hasSession,
-    sessionData,
-    authDisplayName,
-    clearSession,
-    joinRoom,
-    pokDengJoinRoom,
-    paranoiaJoinRoom,
-    fiveSecJoinRoom,
-  ]);
-
-  // Wrapper functions to save session when creating/joining rooms
-  const handleCreateRoom = useCallback(
-    async (hostName: string, gameType: GameMode) => {
-      let result;
-      switch (gameType) {
-        case "kingscup":
-          result = await createRoom(hostName);
-          break;
-        case "pokdeng":
-          result = await pokDengCreateRoom(hostName);
-          break;
-        case "paranoia":
-          result = await paranoiaCreateRoom(hostName);
-          break;
-        case "5-sec":
-          result = await fiveSecCreateRoom(hostName);
-          break;
-      }
-
-      if (result) {
-        // Extract roomCode and playerId from result
-        const roomCode =
-          typeof result === "string"
-            ? result
-            : result.code || (result as { code?: string }).code;
-        const playerId =
-          typeof result === "object" && result !== null && "playerId" in result
-            ? (result as { playerId: string }).playerId
-            : undefined;
-
-        saveSession({
-          playerName: hostName,
-          roomCode,
-          gameType,
-          playerId,
-        });
-      }
-      return result;
-    },
-    [
-      createRoom,
-      pokDengCreateRoom,
-      paranoiaCreateRoom,
-      fiveSecCreateRoom,
-      saveSession,
-    ]
-  );
-
-  const handleJoinRoom = useCallback(
-    async (code: string, playerName: string, gameType: GameMode) => {
-      let result: unknown = null;
-      switch (gameType) {
-        case "kingscup":
-          result = await joinRoom(code, playerName);
-          break;
-        case "pokdeng":
-          result = await pokDengJoinRoom(code, playerName);
-          break;
-        case "paranoia":
-          result = await paranoiaJoinRoom(code, playerName);
-          break;
-        case "5-sec":
-          result = await fiveSecJoinRoom(code, playerName);
-          break;
-      }
-
-      if (result) {
-        // Extract playerId from result if available
-        const playerId =
-          typeof result === "object" && result !== null && "playerId" in result
-            ? (result as { playerId: string }).playerId
-            : undefined;
-
-        saveSession({
-          playerName,
-          roomCode: code.toUpperCase(),
-          gameType,
-          playerId,
-        });
-      }
-      return !!result;
-    },
-    [joinRoom, pokDengJoinRoom, paranoiaJoinRoom, fiveSecJoinRoom, saveSession]
-  );
-
-  // Handle joining room from friend invite
-  const handleJoinFromInvite = useCallback(
-    async (roomCode: string, gameType: string) => {
-      console.log("🎮 handleJoinFromInvite called:", { roomCode, gameType });
-
-      // Use Firebase displayName first, fallback to localStorage
-      const savedName =
-        authDisplayName ||
-        localStorage.getItem("playerName") ||
-        `Player_${Math.random().toString(36).slice(2, 6)}`;
-
-      console.log("👤 Player name:", savedName);
-
-      // Map game type to our game mode
-      const gameTypeMap: Record<string, GameMode> = {
-        kingscup: "kingscup",
-        doraemon: "kingscup",
-        pokdeng: "pokdeng",
-        paranoia: "paranoia",
-        "5-sec": "5-sec",
-      };
-
-      const targetGameMode = gameTypeMap[gameType] || "kingscup";
-      console.log("🎯 Target game mode:", targetGameMode);
-
-      // Join the room first, then switch game mode
-      const success = await handleJoinRoom(roomCode, savedName, targetGameMode);
-      console.log("✅ Join result:", success);
-
-      if (success) {
-        // Only switch to game mode after successful join
-        setGameMode(targetGameMode);
-        console.log("🚀 Game mode switched to:", targetGameMode);
-      } else {
-        console.log("❌ Failed to join room");
-      }
-
-      return success;
-    },
-    [handleJoinRoom, authDisplayName, setGameMode]
-  );
-
-  const handleLeaveRoom = useCallback(
-    (gameType: GameMode) => {
-      clearSession();
-      switch (gameType) {
-        case "kingscup":
-          leaveRoom();
-          break;
-        case "pokdeng":
-          pokDengLeaveRoom();
-          break;
-        case "paranoia":
-          paranoiaLeaveRoom();
-          break;
-        case "5-sec":
-          fiveSecLeaveRoom();
-          break;
-      }
-      setGameMode("select");
-    },
-    [
-      clearSession,
-      leaveRoom,
-      pokDengLeaveRoom,
-      paranoiaLeaveRoom,
-      fiveSecLeaveRoom,
-    ]
-  );
+  // Session recovery removed - all games are external now
 
   // Load floating names, game covers, and profiles
   useEffect(() => {
@@ -570,23 +224,15 @@ const Index = () => {
       if (e.key === "ArrowLeft") prevGame();
       if (e.key === "Enter") {
         const selectedGame = games[selectedGameIndex];
-        setGameMode(selectedGame.id as GameMode);
+        // All games are external links now
+        if (selectedGame.externalLink) {
+          window.open(selectedGame.externalLink, "_blank");
+        }
       }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [gameMode, selectedGameIndex, nextGame, prevGame, games]);
-
-  // Show loading screen during session recovery
-  if (isRecoveringSession) {
-    return (
-      <div className="min-h-screen min-h-[100dvh] bg-zinc-900 flex flex-col items-center justify-center gap-4">
-        <Loader2 className="w-12 h-12 animate-spin text-cyan-400" />
-        <p className="text-white text-xl font-medium">กำลังกลับเข้าห้อง...</p>
-        <p className="text-zinc-400 text-sm">Recovering session...</p>
-      </div>
-    );
-  }
 
   if (gameMode === "select") {
     return (
@@ -1143,12 +789,7 @@ const Index = () => {
 
         {/* Hidden LoginButton for mobile - triggered by Profile button */}
         <div className="hidden">
-          <LoginButton
-            currentRoomCode={currentRoomInfo?.code}
-            currentGameType={currentRoomInfo?.type}
-            currentGameName={currentRoomInfo?.name}
-            onJoinRoom={handleJoinFromInvite}
-          />
+          <LoginButton />
         </div>
 
         {/* Main App Container - Single View (h-screen, no scroll) */}
@@ -1166,12 +807,7 @@ const Index = () => {
 
             <div className="flex items-center gap-2 md:gap-3">
               <div className="hidden md:block">
-                <LoginButton
-                  currentRoomCode={currentRoomInfo?.code}
-                  currentGameType={currentRoomInfo?.type}
-                  currentGameName={currentRoomInfo?.name}
-                  onJoinRoom={handleJoinFromInvite}
-                />
+                <LoginButton />
               </div>
               <LanguageSwitcher />
               <ThemeSwitcher />
@@ -1544,12 +1180,7 @@ const Index = () => {
                             {user ? "Logged in" : "Not logged in"}
                           </p>
                         </div>
-                        <LoginButton
-                          currentRoomCode={currentRoomInfo?.code}
-                          currentGameType={currentRoomInfo?.type}
-                          currentGameName={currentRoomInfo?.name}
-                          onJoinRoom={handleJoinFromInvite}
-                        />
+                        <LoginButton />
                       </div>
                     </div>
                   </div>
@@ -1604,173 +1235,8 @@ const Index = () => {
     );
   }
 
-  // ไพ่ป๊อกเด้ง Multiplayer
-  if (gameMode === "pokdeng") {
-    // ยังไม่ได้เข้าห้อง - แสดง Lobby
-    if (!pokDengRoom) {
-      return (
-        <PokDengLobby
-          onCreateRoom={async (name) => {
-            const result = await handleCreateRoom(name, "pokdeng");
-            return result;
-          }}
-          onJoinRoom={async (code, name) => {
-            return handleJoinRoom(code, name, "pokdeng");
-          }}
-          onQuickStart={async (name) => {
-            setIsPokDengLiveMode(true);
-            const result = await pokDengQuickStart(name, true);
-            if (result) {
-              const roomCode =
-                typeof result === "string" ? result : result.code;
-              saveSession({
-                playerName: name,
-                roomCode,
-                gameType: "pokdeng",
-              });
-            }
-            return result;
-          }}
-          isLoading={pokDengIsLoading}
-          onBack={() => setGameMode("select")}
-        />
-      );
-    }
-
-    // เข้าห้องแล้ว - แสดง Game Room
-    return (
-      <PokDengGameRoomMultiplayer
-        room={pokDengRoom}
-        players={pokDengPlayers}
-        currentPlayerId={pokDengCurrentPlayerId}
-        isHost={isPokDengHost}
-        isLiveMode={isPokDengLiveMode}
-        onStartGame={pokDengStartGame}
-        onDrawCard={pokDengDrawCard}
-        onStandCard={pokDengStandCard}
-        onDealerDraw={pokDengDealerDraw}
-        onDealerStand={pokDengDealerStand}
-        onShowdown={pokDengShowdown}
-        onNextRound={pokDengNextRound}
-        onLeave={() => {
-          setIsPokDengLiveMode(false);
-          handleLeaveRoom("pokdeng");
-        }}
-        onSetDealer={pokDengSetDealer}
-      />
-    );
-  }
-
-  // Paranoia
-  if (gameMode === "paranoia") {
-    if (!paranoiaRoom) {
-      return (
-        <ParanoiaLobby
-          onCreateRoom={async (name) => {
-            return handleCreateRoom(name, "paranoia");
-          }}
-          onJoinRoom={async (code, name) => {
-            return handleJoinRoom(code, name, "paranoia");
-          }}
-          onBack={() => setGameMode("select")}
-          isLoading={paranoiaIsLoading}
-        />
-      );
-    }
-    const isHost =
-      paranoiaPlayers.find((p) => p.id === paranoiaCurrentPlayerId)?.is_host ||
-      false;
-    return (
-      <ParanoiaGameRoom
-        room={paranoiaRoom}
-        players={paranoiaPlayers}
-        currentPlayerId={paranoiaCurrentPlayerId}
-        isHost={isHost}
-        totalQuestions={paranoiaQuestions.length}
-        onStartGame={paranoiaStartGame}
-        onStartRound={paranoiaStartRound}
-        onSelectVictim={paranoiaSelectVictim}
-        onRevealQuestion={paranoiaRevealQuestion}
-        onSkipQuestion={paranoiaSkipQuestion}
-        onLeave={() => handleLeaveRoom("paranoia")}
-      />
-    );
-  }
-
-  // 5 Second Rule
-  if (gameMode === "5-sec") {
-    if (!fiveSecRoom) {
-      return (
-        <FiveSecLobby
-          onCreateRoom={async (name) => {
-            return handleCreateRoom(name, "5-sec");
-          }}
-          onJoinRoom={async (code, name) => {
-            return handleJoinRoom(code, name, "5-sec");
-          }}
-          onBack={() => setGameMode("select")}
-          isLoading={fiveSecIsLoading}
-        />
-      );
-    }
-    const isHost =
-      fiveSecPlayers.find((p) => p.id === fiveSecCurrentPlayerId)?.is_host ||
-      false;
-    return (
-      <FiveSecGameRoom
-        room={fiveSecRoom}
-        players={fiveSecPlayers}
-        currentPlayerId={fiveSecCurrentPlayerId}
-        isHost={isHost}
-        onStartGame={fiveSecStartGame}
-        onStartRound={fiveSecStartRound}
-        onFinishAnswering={fiveSecFinishAnswering}
-        onVote={fiveSecVote}
-        onLeave={() => handleLeaveRoom("5-sec")}
-      />
-    );
-  }
-
-  // ไพ่โดเรม่อน (เกมเดิม)
-  if (!room) {
-    return (
-      <Lobby
-        onCreateRoom={async (name) => {
-          return handleCreateRoom(name, "kingscup");
-        }}
-        onJoinRoom={async (code, name) => {
-          return handleJoinRoom(code, name, "kingscup");
-        }}
-        onQuickStart={async (name) => {
-          const result = await quickStart(name);
-          if (result) {
-            const roomCode = typeof result === "string" ? result : result.code;
-            saveSession({
-              playerName: name,
-              roomCode,
-              gameType: "kingscup",
-            });
-          }
-          return result;
-        }}
-        isLoading={isLoading}
-        onBack={() => setGameMode("select")}
-      />
-    );
-  }
-
-  return (
-    <GameRoom
-      room={room}
-      players={players}
-      currentPlayerId={currentPlayerId}
-      isHost={isHost}
-      onStartGame={startGame}
-      onDrawCard={drawCard}
-      onReshuffle={reshuffleDeck}
-      onLeave={() => handleLeaveRoom("kingscup")}
-    />
-  );
+  // All games removed - they are now external links
+  return <div>Unknown game mode</div>;
 };
 
 export default Index;
