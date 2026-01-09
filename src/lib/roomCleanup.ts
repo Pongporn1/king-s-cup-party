@@ -1,6 +1,6 @@
 // Room cleanup utility - Uses MySQL API instead of Supabase
+import { API_CONFIG } from "@/lib/api/config";
 
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
 const ROOM_MAX_AGE = 3 * 60 * 60 * 1000; // 3 hours
 const TEST_MAX_AGE = 5 * 60 * 1000; // 5 minutes
 const TEST_MODE = import.meta.env.VITE_ROOM_CLEANUP_TEST_MODE === "true";
@@ -20,9 +20,11 @@ type CleanupResult =
 export async function cleanupOldRooms(): Promise<CleanupResult | undefined> {
   try {
     const maxAgeMinutes = Math.floor(ACTUAL_MAX_AGE / 60000);
-    console.log(`🧹 Running room cleanup (max age: ${maxAgeMinutes} minutes)...`);
+    console.log(
+      `🧹 Running room cleanup (max age: ${maxAgeMinutes} minutes)...`
+    );
 
-    const response = await fetch(`${API_URL}/api/cleanup-rooms`, {
+    const response = await fetch(`${API_CONFIG.BASE_URL}/api/cleanup-rooms`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -39,7 +41,10 @@ export async function cleanupOldRooms(): Promise<CleanupResult | undefined> {
     }
 
     if (data.deletedCount > 0) {
-      console.log(`✅ Cleaned up ${data.deletedCount} old rooms:`, data.deletedCodes);
+      console.log(
+        `✅ Cleaned up ${data.deletedCount} old rooms:`,
+        data.deletedCodes
+      );
     } else {
       console.log("✅ No old rooms to clean up");
     }
@@ -63,7 +68,7 @@ export async function cleanupOnCreate() {
  */
 export async function getRoomsWithAge() {
   try {
-    const response = await fetch(`${API_URL}/api/rooms`);
+    const response = await fetch(`${API_CONFIG.BASE_URL}/api/rooms`);
     if (!response.ok) {
       console.error("❌ Failed to get rooms");
       return [];
@@ -72,19 +77,21 @@ export async function getRoomsWithAge() {
     const data = await response.json();
     const now = Date.now();
 
-    const roomsWithAge = (data || []).map((room: { created_at: string; [key: string]: unknown }) => {
-      const createdAt = new Date(room.created_at).getTime();
-      const ageMs = now - createdAt;
-      const ageMinutes = Math.floor(ageMs / 60000);
-      const ageHours = Math.floor(ageMinutes / 60);
-      return {
-        ...room,
-        ageMs,
-        ageMinutes,
-        ageHours,
-        willBeDeleted: ageMs > ACTUAL_MAX_AGE,
-      };
-    });
+    const roomsWithAge = (data || []).map(
+      (room: { created_at: string; [key: string]: unknown }) => {
+        const createdAt = new Date(room.created_at).getTime();
+        const ageMs = now - createdAt;
+        const ageMinutes = Math.floor(ageMs / 60000);
+        const ageHours = Math.floor(ageMinutes / 60);
+        return {
+          ...room,
+          ageMs,
+          ageMinutes,
+          ageHours,
+          willBeDeleted: ageMs > ACTUAL_MAX_AGE,
+        };
+      }
+    );
 
     console.log("📊 Room ages:", roomsWithAge);
     return roomsWithAge;

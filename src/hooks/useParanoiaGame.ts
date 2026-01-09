@@ -3,6 +3,27 @@ import { supabase } from "@/integrations/supabase/client";
 import { ParanoiaState, ParanoiaQuestion } from "@/lib/partyGameTypes";
 import { useToast } from "@/hooks/use-toast";
 import { cleanupOnCreate } from "@/lib/roomCleanup";
+import {
+  createRoom as apiCreateRoom,
+  getRoomByCode,
+  deleteRoom,
+  updateRoom,
+} from "@/lib/api/roomsApi";
+import {
+  createPlayer as apiCreatePlayer,
+  getPlayersByRoomId,
+  deletePlayer,
+} from "@/lib/api/playersApi";
+import {
+  createRoomCode,
+  getRandomAvatar,
+  generatePlayerId,
+  removeDuplicatePlayers,
+} from "@/lib/utils/roomHelpers";
+import {
+  getUserFriendlyErrorMessage,
+  logError,
+} from "@/lib/utils/errorHandler";
 
 interface Player {
   id: string;
@@ -295,48 +316,90 @@ export function useParanoiaGame() {
     async (hostName: string) => {
       setIsLoading(true);
       try {
-        // Cleanup old rooms opportunistically
         await cleanupOnCreate();
 
-        const code = Math.random().toString(36).substring(2, 8).toUpperCase();
+        let roomData: any = null;
+        let playerData: any = null;
+        let attempts = 0;
+        const maxAttempts = 5;
 
-        const { data: roomData, error: roomError } = await supabase
-          .from("rooms")
-          .insert({
-            code,
-            host_name: hostName,
-            game_type: "paranoia",
-            game_started: false,
-            game_state: null,
-            current_player_index: 0,
-          })
-          .select()
-          .single();
+        while (attempts < maxAttempts && !roomData) {
+          attempts++;
+          const code = createRoomCode();
 
-        if (roomError) throw roomError;
+          try {
+            const roomResult = await apiCreateRoom({
+              code,
+              host_name: hostName,
+              game_type: "paranoia",
+              game_started: false,
+              game_state: null,
+              current_player_index: 0,
+              cards_remaining: 1,
+            });
 
-        const { data: playerData, error: playerError } = await supabase
-          .from("players")
-          .insert({
-            room_id: roomData.id,
-            name: hostName,
-            is_host: true,
-            player_order: 0,
-          })
-          .select()
-          .single();
+            const roomId = roomResult.id;
 
-        if (playerError) throw playerError;
+            try {
+              const playerResult = await apiCreatePlayer({
+                room_id: roomId,
+                name: hostName,
+                is_host: true,
+                player_order: 0,
+              });
+
+              roomData = {
+                id: roomId,
+                code,
+                host_name: hostName,
+                game_type: "paranoia",
+                game_started: false,
+                game_state: null,
+                current_player_index: 0,
+              };
+              playerData = {
+                id: playerResult.id,
+                room_id: roomId,
+                name: hostName,
+                is_host: true,
+                player_order: 0,
+              };
+            } catch (playerError: any) {
+              await deleteRoom(roomId);
+              throw playerError;
+            }
+          } catch (error: any) {
+            if (error.errorCode === "DUPLICATE_CODE") {
+              console.log(
+                `🔄 Room code ${code} already exists, retrying... (${attempts}/${maxAttempts})`
+              );
+              continue;
+            }
+            throw error;
+          }
+        }
+
+        if (!roomData || !playerData) {
+          throw new Error("ไม่สามารถสร้างห้องได้ กรุณาลองใหม่อีกครั้ง");
+        }
 
         setRoom(roomData);
         setCurrentPlayerId(playerData.id);
         setPlayers([playerData]);
+        toast({
+          title: "สร้างห้องสำเร็จ! 🎉",
+          description: `รหัสห้อง: ${roomData.code}`,
+        });
 
-        // Return room code with playerId for session recovery
         return { code: roomData.code, playerId: playerData.id };
-      } catch (error) {
-        console.error("Error creating room:", error);
-        toast({ title: "Error", description: "Failed to create room" });
+      } catch (error: any) {
+        logError(error, "Error creating room");
+        toast({
+          title: "เกิดข้อผิดพลาด",
+          description:
+            getUserFriendlyErrorMessage(error) || "ไม่สามารถสร้างห้องได้",
+          variant: "destructive",
+        });
         return null;
       } finally {
         setIsLoading(false);
@@ -463,12 +526,22 @@ export function useParanoiaGame() {
   const leaveRoom = useCallback(async () => {
     if (!currentPlayerId) return;
 
-    await supabase.from("players").delete().eq("id", currentPlayerId);
+    try {
+      await deletePlayer(currentPlayerId);
 
-    setRoom(null);
-    setCurrentPlayerId(null);
-    setPlayers([]);
-  }, [currentPlayerId]);
+      setRoom(null);
+      setCurrentPlayerId(null);
+      setPlayers([]);
+    } catch (error: any) {
+      logError(error, "Error leaving room");
+      toast({
+        title: "Error",
+        description:
+          getUserFriendlyErrorMessage(error) || "Failed to leave room",
+        variant: "destructive",
+      });
+    }
+  }, [currentPlayerId, toast]);
 
   // Subscribe to realtime updates
   useEffect(() => {

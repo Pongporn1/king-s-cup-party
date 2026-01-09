@@ -1,7 +1,6 @@
 // MySQL Database Connection for King's Cup Party
 // This replaces Supabase with a local MySQL database
-
-const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:3001";
+import { API_CONFIG } from "@/lib/api/config";
 
 // Helper function to make API calls
 async function apiCall<T>(
@@ -9,7 +8,7 @@ async function apiCall<T>(
   options?: RequestInit
 ): Promise<T | null> {
   try {
-    const response = await fetch(`${API_BASE}${endpoint}`, {
+    const response = await fetch(`${API_CONFIG.BASE_URL}${endpoint}`, {
       headers: {
         "Content-Type": "application/json",
         ...options?.headers,

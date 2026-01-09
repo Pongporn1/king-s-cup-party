@@ -1,15 +1,30 @@
 import { useState, useEffect, useCallback } from "react";
 import socketClient from "@/lib/socketClient";
-import {
-  createDeck,
-  shuffleDeck,
-  generateRoomCode,
-  PlayingCard,
-} from "@/lib/cardRules";
+import { PlayingCard } from "@/lib/cardRules";
 import { useToast } from "@/hooks/use-toast";
 import { cleanupOnCreate } from "@/lib/roomCleanup";
-
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
+import {
+  createRoom as apiCreateRoom,
+  getRoomByCode,
+  deleteRoom,
+  updateRoom,
+} from "@/lib/api/roomsApi";
+import {
+  createPlayer as apiCreatePlayer,
+  getPlayersByRoomId,
+  deletePlayer,
+} from "@/lib/api/playersApi";
+import {
+  createRoomCode,
+  getRandomAvatar,
+  generatePlayerId,
+  removeDuplicatePlayers,
+} from "@/lib/utils/roomHelpers";
+import { initializeGame } from "@/lib/games/kingscup";
+import {
+  getUserFriendlyErrorMessage,
+  logError,
+} from "@/lib/utils/errorHandler";
 
 interface Room {
   id: string;
@@ -31,18 +46,6 @@ interface Player {
   avatar?: number;
 }
 
-const TOTAL_AVATARS = 11;
-
-function getRandomAvatar(usedAvatars: number[]): number {
-  const availableAvatars = Array.from({ length: TOTAL_AVATARS }, (_, i) => i + 1).filter(
-    (num) => !usedAvatars.includes(num)
-  );
-  if (availableAvatars.length === 0) {
-    return Math.floor(Math.random() * TOTAL_AVATARS) + 1;
-  }
-  return availableAvatars[Math.floor(Math.random() * availableAvatars.length)];
-}
-
 export function useGameRoom() {
   const [room, setRoom] = useState<Room | null>(null);
   const [players, setPlayers] = useState<Player[]>([]);
@@ -54,7 +57,9 @@ export function useGameRoom() {
   useEffect(() => {
     const handleBeforeUnload = async () => {
       if (currentPlayerId && room) {
-        await fetch(`${API_URL}/api/players/${currentPlayerId}`, { method: "DELETE" });
+        await fetch(`${API_URL}/api/players/${currentPlayerId}`, {
+          method: "DELETE",
+        });
         const res = await fetch(`${API_URL}/api/rooms/${room.id}/players`);
         const remaining = await res.json();
         if (!remaining || remaining.length === 0) {
@@ -73,28 +78,46 @@ export function useGameRoom() {
 
     const unsubRoom = socketClient.on("room-changed", (data: any) => {
       setRoom((prev) =>
-        prev ? {
-          ...prev,
-          deck: data.deck ? (typeof data.deck === "string" ? JSON.parse(data.deck) : data.deck) : prev.deck,
-          current_card: data.current_card !== undefined ? (typeof data.current_card === "string" ? JSON.parse(data.current_card) : data.current_card) : prev.current_card,
-          cards_remaining: data.cards_remaining ?? prev.cards_remaining,
-          game_started: data.game_started ?? prev.game_started,
-          is_active: data.is_active ?? prev.is_active,
-        } : null
+        prev
+          ? {
+              ...prev,
+              deck: data.deck
+                ? typeof data.deck === "string"
+                  ? JSON.parse(data.deck)
+                  : data.deck
+                : prev.deck,
+              current_card:
+                data.current_card !== undefined
+                  ? typeof data.current_card === "string"
+                    ? JSON.parse(data.current_card)
+                    : data.current_card
+                  : prev.current_card,
+              cards_remaining: data.cards_remaining ?? prev.cards_remaining,
+              game_started: data.game_started ?? prev.game_started,
+              is_active: data.is_active ?? prev.is_active,
+            }
+          : null
       );
     });
 
     const unsubPlayerJoined = socketClient.on("player-joined", (data: any) => {
-      setPlayers((prev) => prev.some((p) => p.id === data.id) ? prev : [...prev, data as Player]);
+      setPlayers((prev) =>
+        prev.some((p) => p.id === data.id) ? prev : [...prev, data as Player]
+      );
     });
 
     const unsubPlayerLeft = socketClient.on("player-left", (data: any) => {
       setPlayers((prev) => prev.filter((p) => p.id !== data.playerId));
     });
 
-    const unsubPlayerChanged = socketClient.on("player-changed", (data: any) => {
-      setPlayers((prev) => prev.map((p) => (p.id === data.playerId ? { ...p, ...data } : p)));
-    });
+    const unsubPlayerChanged = socketClient.on(
+      "player-changed",
+      (data: any) => {
+        setPlayers((prev) =>
+          prev.map((p) => (p.id === data.playerId ? { ...p, ...data } : p))
+        );
+      }
+    );
 
     const unsubRoomDeleted = socketClient.on("room-deleted", () => {
       setRoom(null);
@@ -112,101 +135,192 @@ export function useGameRoom() {
     };
   }, [room?.code, currentPlayerId]);
 
-  const createRoom = useCallback(async (hostName: string) => {
-    setIsLoading(true);
-    try {
-      await cleanupOnCreate();
-      const code = generateRoomCode();
-      const deck = shuffleDeck(createDeck());
-      const roomId = crypto.randomUUID();
+  const createRoom = useCallback(
+    async (hostName: string) => {
+      setIsLoading(true);
+      try {
+        await cleanupOnCreate();
 
-      const roomRes = await fetch(`${API_URL}/api/rooms`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: roomId, code, host_name: hostName, deck, cards_remaining: 52 }),
-      });
-      if (!roomRes.ok) throw new Error("Failed to create room");
+        // Initialize game
+        const gameState = initializeGame();
+        let attempts = 0;
+        const maxAttempts = 5;
 
-      const playerId = crypto.randomUUID();
-      const playerRes = await fetch(`${API_URL}/api/players`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: playerId, room_id: roomId, name: hostName, is_host: true, avatar: getRandomAvatar([]) }),
-      });
-      if (!playerRes.ok) throw new Error("Failed to create player");
+        while (attempts < maxAttempts) {
+          attempts++;
+          const code = createRoomCode();
 
-      const roomData: Room = { id: roomId, code, host_name: hostName, is_active: true, deck, current_card: null, cards_remaining: 52, game_started: false };
-      const playerData: Player = { id: playerId, room_id: roomId, name: hostName, is_host: true, is_active: true, avatar: 1 };
+          try {
+            // Create room using API service
+            const roomResult = await apiCreateRoom({
+              code,
+              host_name: hostName,
+              game_type: "kingscup",
+              deck: gameState.deck,
+              cards_remaining: gameState.cardsRemaining,
+            });
 
-      setRoom(roomData);
-      setPlayers([playerData]);
-      setCurrentPlayerId(playerId);
-      toast({ title: "สร้างห้องสำเร็จ! 🎉", description: `รหัสห้อง: ${code}` });
-      return { ...roomData, playerId };
-    } catch (error: any) {
-      toast({ title: "เกิดข้อผิดพลาด", description: error.message, variant: "destructive" });
-      return null;
-    } finally {
-      setIsLoading(false);
-    }
-  }, [toast]);
+            // Create player using API service
+            const playerId = generatePlayerId();
+            await apiCreatePlayer({
+              room_id: roomResult.id,
+              name: hostName,
+              is_host: true,
+              avatar: getRandomAvatar([]),
+              player_order: 0,
+            });
 
-  const joinRoom = useCallback(async (code: string, playerName: string, savedPlayerId?: string) => {
-    setIsLoading(true);
-    try {
-      const roomRes = await fetch(`${API_URL}/api/rooms/${code.toUpperCase()}`);
-      if (!roomRes.ok) throw new Error("ไม่พบห้อง หรือห้องถูกปิดแล้ว");
-      const roomData = await roomRes.json();
+            const roomData: Room = {
+              id: roomResult.id,
+              code: roomResult.code,
+              host_name: hostName,
+              is_active: true,
+              deck: gameState.deck,
+              current_card: null,
+              cards_remaining: gameState.cardsRemaining,
+              game_started: false,
+            };
 
-      const playersRes = await fetch(`${API_URL}/api/rooms/${roomData.id}/players`);
-      const existingPlayers = await playersRes.json();
+            const playerData: Player = {
+              id: playerId,
+              room_id: roomResult.id,
+              name: hostName,
+              is_host: true,
+              is_active: true,
+              avatar: getRandomAvatar([]),
+            };
 
-      let existingPlayer = savedPlayerId ? (existingPlayers || []).find((p: any) => p.id === savedPlayerId) : null;
-      if (!existingPlayer) {
-        existingPlayer = (existingPlayers || []).find((p: any) => p.name === playerName);
-      }
+            setRoom(roomData);
+            setPlayers([playerData]);
+            setCurrentPlayerId(playerId);
+            toast({
+              title: "สร้างห้องสำเร็จ! 🎉",
+              description: `รหัสห้อง: ${roomResult.code}`,
+            });
 
-      let playerData: Player;
-      if (existingPlayer) {
-        playerData = existingPlayer;
-      } else {
-        const usedAvatars = (existingPlayers || []).map((p: Player) => p.avatar).filter(Boolean) as number[];
-        const playerId = crypto.randomUUID();
-        await fetch(`${API_URL}/api/players`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ id: playerId, room_id: roomData.id, name: playerName, is_host: false, avatar: getRandomAvatar(usedAvatars) }),
+            return { ...roomData, playerId };
+          } catch (error: any) {
+            if (
+              error.errorCode === "DUPLICATE_CODE" &&
+              attempts < maxAttempts
+            ) {
+              console.log(`🔄 Retrying... (${attempts}/${maxAttempts})`);
+              continue;
+            }
+            throw error;
+          }
+        }
+
+        throw new Error("ไม่สามารถสร้างห้องได้หลังจากพยายามหลายครั้ง");
+      } catch (error: any) {
+        logError("CreateRoom", error);
+        const message = getUserFriendlyErrorMessage(error);
+        toast({
+          title: "เกิดข้อผิดพลาด",
+          description: message,
+          variant: "destructive",
         });
-        playerData = { id: playerId, room_id: roomData.id, name: playerName, is_host: false, is_active: true, avatar: getRandomAvatar(usedAvatars) };
+        return null;
+      } finally {
+        setIsLoading(false);
       }
+    },
+    [toast]
+  );
 
-      setRoom({
-        ...roomData,
-        deck: typeof roomData.deck === "string" ? JSON.parse(roomData.deck) : roomData.deck || [],
-        current_card: typeof roomData.current_card === "string" ? JSON.parse(roomData.current_card) : roomData.current_card,
-      });
-      const uniqueMap = new Map();
-      for (const p of existingPlayers || []) uniqueMap.set(p.id, p);
-      uniqueMap.set(playerData.id, playerData);
-      setPlayers(Array.from(uniqueMap.values()));
-      setCurrentPlayerId(playerData.id);
-      toast({ title: "เข้าร่วมห้องสำเร็จ! 🎮", description: `ยินดีต้อนรับ ${playerName}` });
-      return { room: roomData, playerId: playerData.id };
-    } catch (error: any) {
-      toast({ title: "เกิดข้อผิดพลาด", description: error.message, variant: "destructive" });
-      return null;
-    } finally {
-      setIsLoading(false);
-    }
-  }, [toast]);
+  const joinRoom = useCallback(
+    async (code: string, playerName: string, savedPlayerId?: string) => {
+      setIsLoading(true);
+      try {
+        // Get room data using API service
+        const roomData = await getRoomByCode(code.toUpperCase());
+        if (!roomData) {
+          throw new Error("ไม่พบห้อง หรือห้องถูกปิดแล้ว");
+        }
+
+        // Get existing players using API service
+        const existingPlayers = await getPlayersByRoomId(roomData.id);
+
+        // Check if player already exists
+        let existingPlayer = savedPlayerId
+          ? existingPlayers.find((p) => p.id === savedPlayerId)
+          : null;
+        if (!existingPlayer) {
+          existingPlayer = existingPlayers.find((p) => p.name === playerName);
+        }
+
+        let playerData: Player;
+        if (existingPlayer) {
+          playerData = existingPlayer;
+        } else {
+          // Create new player using API service
+          const usedAvatars = existingPlayers
+            .map((p) => p.avatar)
+            .filter(Boolean) as number[];
+          const playerId = generatePlayerId();
+          const newPlayer = await apiCreatePlayer({
+            room_id: roomData.id,
+            name: playerName,
+            is_host: false,
+            avatar: getRandomAvatar(usedAvatars),
+          });
+          playerData = {
+            id: newPlayer.id || playerId,
+            room_id: roomData.id,
+            name: playerName,
+            is_host: false,
+            is_active: true,
+            avatar: newPlayer.avatar || getRandomAvatar(usedAvatars),
+          };
+        }
+
+        setRoom({
+          ...roomData,
+          deck:
+            typeof roomData.deck === "string"
+              ? JSON.parse(roomData.deck)
+              : roomData.deck || [],
+          current_card:
+            typeof roomData.current_card === "string"
+              ? JSON.parse(roomData.current_card)
+              : roomData.current_card,
+        });
+
+        // Remove duplicates using utility function
+        const allPlayers = removeDuplicatePlayers([
+          ...existingPlayers,
+          playerData,
+        ]);
+        setPlayers(allPlayers);
+        setCurrentPlayerId(playerData.id);
+
+        toast({
+          title: "เข้าร่วมห้องสำเร็จ! 🎮",
+          description: `ยินดีต้อนรับ ${playerName}`,
+        });
+        return { room: roomData, playerId: playerData.id };
+      } catch (error: any) {
+        toast({
+          title: "เกิดข้อผิดพลาด",
+          description: error.message,
+          variant: "destructive",
+        });
+        return null;
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [toast]
+  );
 
   const startGame = useCallback(async () => {
     if (!room) return;
-    const deck = shuffleDeck(createDeck());
-    await fetch(`${API_URL}/api/rooms/${room.id}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ game_started: true, deck, cards_remaining: 52, current_card: null }),
+    const gameState = initializeGame();
+    await updateRoom(room.id, {
+      game_started: true,
+      deck: gameState.deck,
+      cards_remaining: gameState.cardsRemaining,
+      current_card: null,
     });
   }, [room]);
 
@@ -215,70 +329,113 @@ export function useGameRoom() {
     const deck = [...(room.deck || [])];
     const drawnCard = deck.pop();
     if (!drawnCard) return;
-    await fetch(`${API_URL}/api/rooms/${room.id}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ deck, current_card: drawnCard, cards_remaining: deck.length }),
+    await updateRoom(room.id, {
+      deck,
+      current_card: drawnCard,
+      cards_remaining: deck.length,
     });
   }, [room]);
 
   const reshuffleDeck = useCallback(async () => {
     if (!room) return;
-    const deck = shuffleDeck(createDeck());
-    await fetch(`${API_URL}/api/rooms/${room.id}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ deck, cards_remaining: 52, current_card: null }),
+    const gameState = initializeGame();
+    await updateRoom(room.id, {
+      deck: gameState.deck,
+      cards_remaining: gameState.cardsRemaining,
+      current_card: null,
     });
     toast({ title: "สับไพ่ใหม่แล้ว! 🎴", description: "พร้อมเล่นรอบใหม่" });
   }, [room, toast]);
 
   const leaveRoom = useCallback(async () => {
     if (!currentPlayerId || !room) return;
-    await fetch(`${API_URL}/api/players/${currentPlayerId}`, { method: "DELETE" });
-    const res = await fetch(`${API_URL}/api/rooms/${room.id}/players`);
-    const remaining = await res.json();
+    await deletePlayer(currentPlayerId);
+    const remaining = await getPlayersByRoomId(room.id);
     if (!remaining || remaining.length === 0) {
-      await fetch(`${API_URL}/api/rooms/${room.id}`, { method: "DELETE" });
+      await deleteRoom(room.id);
     }
     setRoom(null);
     setPlayers([]);
     setCurrentPlayerId(null);
   }, [currentPlayerId, room]);
 
-  const quickStart = useCallback(async (hostName: string) => {
-    setIsLoading(true);
-    try {
-      const code = generateRoomCode();
-      const deck = shuffleDeck(createDeck());
-      const roomId = crypto.randomUUID();
+  const quickStart = useCallback(
+    async (hostName: string) => {
+      setIsLoading(true);
+      try {
+        const code = createRoomCode();
+        const gameState = initializeGame();
 
-      await fetch(`${API_URL}/api/rooms`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: roomId, code, host_name: hostName, deck, cards_remaining: 52, game_started: true }),
-      });
+        const roomResult = await apiCreateRoom({
+          code,
+          host_name: hostName,
+          game_type: "kingscup",
+          deck: gameState.deck,
+          cards_remaining: gameState.cardsRemaining,
+          game_started: true,
+        });
 
-      const playerId = crypto.randomUUID();
-      await fetch(`${API_URL}/api/players`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: playerId, room_id: roomId, name: hostName, is_host: true, avatar: 1 }),
-      });
+        const playerId = generatePlayerId();
+        await apiCreatePlayer({
+          room_id: roomResult.id,
+          name: hostName,
+          is_host: true,
+          avatar: 1,
+          player_order: 0,
+        });
 
-      const roomData: Room = { id: roomId, code, host_name: hostName, is_active: true, deck, current_card: null, cards_remaining: 52, game_started: true };
-      setRoom(roomData);
-      setPlayers([{ id: playerId, room_id: roomId, name: hostName, is_host: true, is_active: true, avatar: 1 }]);
-      setCurrentPlayerId(playerId);
-      toast({ title: "🚀 Quick Start!", description: `ห้อง ${code} พร้อมเล่น` });
-      return roomData;
-    } catch (error: any) {
-      toast({ title: "เกิดข้อผิดพลาด", description: error.message, variant: "destructive" });
-      return null;
-    } finally {
-      setIsLoading(false);
-    }
-  }, [toast]);
+        const roomData: Room = {
+          id: roomResult.id,
+          code: roomResult.code,
+          host_name: hostName,
+          is_active: true,
+          deck: gameState.deck,
+          current_card: null,
+          cards_remaining: gameState.cardsRemaining,
+          game_started: true,
+        };
+        setRoom(roomData);
+        setPlayers([
+          {
+            id: playerId,
+            room_id: roomResult.id,
+            name: hostName,
+            is_host: true,
+            is_active: true,
+            avatar: 1,
+          },
+        ]);
+        setCurrentPlayerId(playerId);
+        toast({
+          title: "🚀 Quick Start!",
+          description: `ห้อง ${code} พร้อมเล่น`,
+        });
+        return roomData;
+      } catch (error: any) {
+        toast({
+          title: "เกิดข้อผิดพลาด",
+          description: error.message,
+          variant: "destructive",
+        });
+        return null;
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [toast]
+  );
 
-  return { room, players, currentPlayerId, isLoading, createRoom, joinRoom, startGame, drawCard, reshuffleDeck, leaveRoom, quickStart };
+  return {
+    room,
+    players,
+    currentPlayerId,
+    isLoading,
+    createRoom,
+    joinRoom,
+    startGame,
+    drawCard,
+    reshuffleDeck,
+    leaveRoom,
+    quickStart,
+  };
 }

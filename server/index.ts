@@ -262,8 +262,29 @@ app.get("/api/rooms/:code", async (req, res) => {
 
 app.post("/api/rooms", async (req, res) => {
   try {
-    const { code, host_name, game_type, deck, current_card, cards_remaining } =
-      req.body;
+    const {
+      code,
+      host_name,
+      game_type,
+      deck,
+      current_card,
+      cards_remaining,
+      game_state,
+      game_phase,
+      current_player_index,
+    } = req.body;
+
+    // ตรวจสอบว่า room code ซ้ำหรือไม่
+    const [existing] = await pool.query(
+      "SELECT id FROM rooms WHERE code = ? AND is_active = true",
+      [code]
+    );
+
+    if ((existing as any[]).length > 0) {
+      return res
+        .status(409)
+        .json({ error: "Room code already exists", code: "DUPLICATE_CODE" });
+    }
 
     // Generate UUID for room id
     const roomId = `${Date.now()}_${Math.random()
@@ -271,7 +292,7 @@ app.post("/api/rooms", async (req, res) => {
       .substring(2, 15)}`;
 
     await pool.query(
-      `INSERT INTO rooms (id, code, host_name, game_type, deck, current_card, cards_remaining, is_active, game_started, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, true, false, NOW())`,
+      `INSERT INTO rooms (id, code, host_name, game_type, deck, current_card, cards_remaining, is_active, game_started, game_state, game_phase, current_player_index, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, true, false, ?, ?, ?, NOW())`,
       [
         roomId,
         code,
@@ -280,10 +301,14 @@ app.post("/api/rooms", async (req, res) => {
         JSON.stringify(deck || []),
         JSON.stringify(current_card),
         cards_remaining || 52,
+        JSON.stringify(game_state || null),
+        game_phase || null,
+        current_player_index || 0,
       ]
     );
     res.json({ success: true, id: roomId, code });
   } catch (error) {
+    console.error("Error creating room:", error);
     res.status(500).json({ error: (error as Error).message });
   }
 });
@@ -298,11 +323,14 @@ app.put("/api/rooms/:id", async (req, res) => {
       "cards_remaining",
       "game_started",
       "is_active",
+      "game_state",
+      "game_phase",
+      "current_player_index",
     ].forEach((f) => {
       if (req.body[f] !== undefined) {
         updates.push(`${f} = ?`);
         values.push(
-          ["deck", "current_card"].includes(f)
+          ["deck", "current_card", "game_state"].includes(f)
             ? JSON.stringify(req.body[f])
             : req.body[f]
         );
@@ -348,6 +376,48 @@ app.get("/api/rooms/:roomId/players", async (req, res) => {
       [req.params.roomId]
     );
     res.json(rows);
+  } catch (error) {
+    res.status(500).json({ error: (error as Error).message });
+  }
+});
+
+// ✅ เพิ่ม Route เพื่อดึงข้อมูลผู้เล่นทั้งหมด (fallback - ไม่ควรใช้บ่อย)
+app.get("/api/players", async (req, res) => {
+  try {
+    const [rows] = await pool.query(
+      "SELECT * FROM players WHERE is_active = true ORDER BY joined_at DESC"
+    );
+    res.json(rows);
+  } catch (error) {
+    res.status(500).json({ error: (error as Error).message });
+  }
+});
+
+// ✅ เพิ่ม Route เพื่อดึงผู้เล่นทั้งหมดในห้อง
+app.get("/api/rooms/:id/players", async (req, res) => {
+  try {
+    const [rows] = await pool.query(
+      "SELECT * FROM players WHERE room_id = ? AND is_active = true ORDER BY joined_at ASC",
+      [req.params.id]
+    );
+    res.json(rows);
+  } catch (error) {
+    res.status(500).json({ error: (error as Error).message });
+  }
+});
+
+// ✅ เพิ่ม Route เพื่อดึงข้อมูลผู้เล่นรายคนตาม ID (สำหรับ Session Recovery)
+app.get("/api/players/:id", async (req, res) => {
+  try {
+    const [rows] = await pool.query(
+      "SELECT * FROM players WHERE id = ? AND is_active = true",
+      [req.params.id]
+    );
+    const player = (rows as any[])[0];
+    if (!player) {
+      return res.status(404).json({ error: "Player not found" });
+    }
+    res.json(player);
   } catch (error) {
     res.status(500).json({ error: (error as Error).message });
   }

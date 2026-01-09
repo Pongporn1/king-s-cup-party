@@ -13,16 +13,27 @@ import {
   getCategories,
 } from "@/lib/undercoverRules";
 import { useToast } from "@/hooks/use-toast";
-
-// Generate 6-character room code
-function generateRoomCode(): string {
-  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-  let code = "";
-  for (let i = 0; i < 6; i++) {
-    code += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return code;
-}
+import {
+  createRoom as apiCreateRoom,
+  getRoomByCode,
+  deleteRoom,
+  updateRoom,
+} from "@/lib/api/roomsApi";
+import {
+  createPlayer as apiCreatePlayer,
+  getPlayersByRoomId,
+  deletePlayer,
+} from "@/lib/api/playersApi";
+import {
+  createRoomCode,
+  getRandomAvatar,
+  generatePlayerId,
+  removeDuplicatePlayers,
+} from "@/lib/utils/roomHelpers";
+import {
+  getUserFriendlyErrorMessage,
+  logError,
+} from "@/lib/utils/errorHandler";
 
 export interface UndercoverRoom {
   id: string;
@@ -36,21 +47,6 @@ export interface UndercoverRoom {
   timer_seconds: number;
   include_mr_white: boolean;
   selected_category: string;
-}
-
-const TOTAL_AVATARS = 15;
-
-function getRandomAvatar(usedAvatars: number[]): number {
-  const availableAvatars = Array.from(
-    { length: TOTAL_AVATARS },
-    (_, i) => i + 1
-  ).filter((num) => !usedAvatars.includes(num));
-
-  if (availableAvatars.length === 0) {
-    return Math.floor(Math.random() * TOTAL_AVATARS) + 1;
-  }
-
-  return availableAvatars[Math.floor(Math.random() * availableAvatars.length)];
 }
 
 export function useUndercoverRoom() {
@@ -218,41 +214,84 @@ export function useUndercoverRoom() {
     async (hostName: string) => {
       setIsLoading(true);
       try {
-        // Cleanup old rooms opportunistically
         await cleanupOnCreate();
 
-        const code = generateRoomCode();
+        let roomData: any = null;
+        let playerData: any = null;
+        let attempts = 0;
+        const maxAttempts = 5;
         const hostAvatar = getRandomAvatar([]);
 
-        const { data: roomData, error: roomError } = await supabase
-          .from("rooms")
-          .insert({
-            code,
-            host_name: hostName,
-            game_type: "undercover",
-            game_phase: "WAITING",
-            cards_remaining: 1, // round number
-          })
-          .select()
-          .single();
+        while (attempts < maxAttempts && !roomData) {
+          attempts++;
+          const code = createRoomCode();
 
-        if (roomError) throw roomError;
+          try {
+            const roomResult = await apiCreateRoom({
+              code,
+              host_name: hostName,
+              game_type: "undercover",
+              game_phase: "WAITING",
+              cards_remaining: 1,
+            });
 
-        const { data: playerData, error: playerError } = await supabase
-          .from("players")
-          .insert({
-            room_id: roomData.id,
-            name: hostName,
-            is_host: true,
-            avatar: hostAvatar,
-            is_alive: true,
-            vote_count: 0,
-            has_voted: false,
-          })
-          .select()
-          .single();
+            const roomId = roomResult.id;
 
-        if (playerError) throw playerError;
+            try {
+              const playerResult = await apiCreatePlayer({
+                room_id: roomId,
+                name: hostName,
+                is_host: true,
+                avatar: hostAvatar,
+                is_alive: true,
+                vote_count: 0,
+                has_voted: false,
+                role: "CIVILIAN",
+                word: "",
+              });
+
+              roomData = {
+                id: roomId,
+                code,
+                host_name: hostName,
+                is_active: true,
+                game_phase: "WAITING",
+                current_turn_index: 0,
+                vocabulary: null,
+                round: 1,
+                timer_seconds: 30,
+                include_mr_white: false,
+                selected_category: "ทั้งหมด",
+              };
+              playerData = {
+                id: playerResult.id,
+                name: hostName,
+                avatar: hostAvatar,
+                role: "CIVILIAN",
+                word: "",
+                is_alive: true,
+                vote_count: 0,
+                has_voted: false,
+                is_host: true,
+              };
+            } catch (playerError: any) {
+              await deleteRoom(roomId);
+              throw playerError;
+            }
+          } catch (error: any) {
+            if (error.errorCode === "DUPLICATE_CODE") {
+              console.log(
+                `🔄 Room code ${code} already exists, retrying... (${attempts}/${maxAttempts})`
+              );
+              continue;
+            }
+            throw error;
+          }
+        }
+
+        if (!roomData || !playerData) {
+          throw new Error("ไม่สามารถสร้างห้องได้ กรุณาลองใหม่อีกครั้ง");
+        }
 
         setRoom({
           id: roomData.id,
@@ -267,6 +306,9 @@ export function useUndercoverRoom() {
           include_mr_white: false,
           selected_category: "ทั้งหมด",
         });
+        setCurrentPlayerId(playerData.id);
+
+        // Set initial player (host) - duplicate check in INSERT event will prevent doubles
         setPlayers([
           {
             id: playerData.id,
@@ -280,19 +322,19 @@ export function useUndercoverRoom() {
             is_host: true,
           },
         ]);
-        setCurrentPlayerId(playerData.id);
 
         toast({
           title: "สร้างห้องสำเร็จ!",
-          description: `รหัสห้อง: ${code}`,
+          description: `รหัสห้อง: ${roomData.code}`,
         });
 
-        // Return room data with playerId for session recovery
         return { ...roomData, playerId: playerData.id };
       } catch (error: any) {
+        logError(error, "Error creating room");
         toast({
           title: "เกิดข้อผิดพลาด",
-          description: error.message,
+          description:
+            getUserFriendlyErrorMessage(error) || "ไม่สามารถสร้างห้องได้",
           variant: "destructive",
         });
         return null;
@@ -805,42 +847,34 @@ export function useUndercoverRoom() {
   const leaveRoom = useCallback(async () => {
     if (!currentPlayerId || !room) return;
 
-    console.log("Leaving room - deleting player:", currentPlayerId);
-    const { error: deleteError } = await supabase
-      .from("players")
-      .delete()
-      .eq("id", currentPlayerId);
+    try {
+      console.log("Leaving room - deleting player:", currentPlayerId);
+      await deletePlayer(currentPlayerId);
+      console.log("Player deleted successfully");
 
-    if (deleteError) {
-      console.error("Error deleting player:", deleteError);
+      const remainingPlayers = await getPlayersByRoomId(room.id);
+
+      if (!remainingPlayers || remainingPlayers.length === 0) {
+        console.log("No remaining players, deleting room");
+        await deleteRoom(room.id);
+      }
+
+      setRoom(null);
+      setPlayers([]);
+      setCurrentPlayerId(null);
+
+      toast({
+        title: "👋 ออกจากห้องแล้ว",
+      });
+    } catch (error: any) {
+      logError(error, "Error leaving room");
       toast({
         title: "เกิดข้อผิดพลาด",
-        description: "ไม่สามารถออกจากห้องได้",
+        description:
+          getUserFriendlyErrorMessage(error) || "ไม่สามารถออกจากห้องได้",
         variant: "destructive",
       });
-      return;
     }
-
-    console.log("Player deleted successfully");
-
-    const { data: remainingPlayers } = await supabase
-      .from("players")
-      .select("id")
-      .eq("room_id", room.id)
-      .eq("is_active", true);
-
-    if (!remainingPlayers || remainingPlayers.length === 0) {
-      console.log("No remaining players, deleting room");
-      await supabase.from("rooms").delete().eq("id", room.id);
-    }
-
-    setRoom(null);
-    setPlayers([]);
-    setCurrentPlayerId(null);
-
-    toast({
-      title: "👋 ออกจากห้องแล้ว",
-    });
   }, [currentPlayerId, room, toast]);
 
   return {

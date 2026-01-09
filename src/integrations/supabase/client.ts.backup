@@ -1,10 +1,15 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 // MySQL-backed Supabase-compatible client
-import socketClient from "@/lib/socketClient";
-import { API_CONFIG } from "@/lib/api/config";
+// This provides a Supabase-like interface that uses MySQL API instead
 
+import socketClient from "@/lib/socketClient";
+
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
+
+// Helper function to convert table names from underscore to dash for API endpoints
 const toApiEndpoint = (table: string) => table.replace(/_/g, "-");
 
+// Create a mock Supabase client that uses MySQL API
 function createMockClient() {
   const channels = new Map<string, { unsubscribe: () => void }>();
 
@@ -12,96 +17,78 @@ function createMockClient() {
     from: (table: string) => ({
       select: (columns = "*") => ({
         eq: (col: string, val: any) => ({
-          eq: (col2: string, val2: any) => {
-            const promise = (async () => {
+          eq: (col2: string, val2: any) => ({
+            single: async () => {
               try {
                 let endpoint;
-                if (table === "rooms" && col === "code") {
-                  endpoint = `${API_CONFIG.BASE_URL}/api/rooms/${val}`;
+                // ✅ FIX 1: เพิ่ม Logic เช็ค ID สำหรับ Nested Query
+                if (table === "rooms" && (col === "code" || col2 === "code")) {
+                  const codeVal = col === "code" ? val : val2;
+                  endpoint = `${API_URL}/api/rooms/${codeVal}`;
+                } else if (col === "id") {
+                  endpoint = `${API_URL}/api/${toApiEndpoint(table)}/${val}`;
+                } else if (col2 === "id") {
+                  endpoint = `${API_URL}/api/${toApiEndpoint(table)}/${val2}`;
                 } else if (table === "players" && col === "room_id") {
-                  endpoint = `${API_CONFIG.BASE_URL}/api/rooms/${val}/players`;
+                  endpoint = `${API_URL}/api/rooms/${val}/players`;
+                } else if (table === "rooms" && col === "room_id") {
+                  endpoint = `${API_URL}/api/rooms/${val}/players`;
                 } else {
-                  endpoint = `${API_CONFIG.BASE_URL}/api/${toApiEndpoint(
-                    table
-                  )}`;
+                  endpoint = `${API_URL}/api/${toApiEndpoint(table)}`;
                 }
-                const res = await fetch(endpoint);
-                if (!res.ok) {
-                  return {
-                    data: [],
-                    error: new Error(`Failed: ${res.statusText}`),
-                  };
-                }
-                let data = await res.json();
-                // Filter by second condition if needed
-                if (Array.isArray(data) && col2 && val2 !== undefined) {
-                  data = data.filter((item: any) => item[col2] === val2);
-                }
-                return {
-                  data: Array.isArray(data) ? data : [data],
-                  error: null,
-                };
-              } catch (e) {
-                return { data: [], error: e };
-              }
-            })();
 
-            return {
-              single: async () => {
-                try {
-                  let endpoint;
-                  if (
-                    table === "rooms" &&
-                    (col === "code" || col2 === "code")
-                  ) {
-                    const codeVal = col === "code" ? val : val2;
-                    endpoint = `${API_CONFIG.BASE_URL}/api/rooms/${codeVal}`;
-                  } else if (col === "id") {
-                    endpoint = `${API_CONFIG.BASE_URL}/api/${toApiEndpoint(
-                      table
-                    )}/${val}`;
-                  } else if (col2 === "id") {
-                    endpoint = `${API_CONFIG.BASE_URL}/api/${toApiEndpoint(
-                      table
-                    )}/${val2}`;
-                  } else if (table === "players" && col === "room_id") {
-                    endpoint = `${API_CONFIG.BASE_URL}/api/rooms/${val}/players`;
-                  } else {
-                    endpoint = `${API_CONFIG.BASE_URL}/api/${toApiEndpoint(
-                      table
-                    )}`;
-                  }
-                  const res = await fetch(endpoint);
-                  if (!res.ok)
-                    return { data: null, error: new Error("Not found") };
-                  const data = await res.json();
-                  return { data, error: null };
-                } catch (e) {
-                  return { data: null, error: e };
-                }
-              },
-              then: (onfulfilled: any, onrejected?: any) => {
-                return promise.then(onfulfilled, onrejected);
-              },
-              catch: (onrejected: any) => {
-                return promise.catch(onrejected);
-              },
-            };
-          },
+                console.log(
+                  "🔗 [Nested eq().eq().single()] Endpoint:",
+                  endpoint,
+                  "| Col:",
+                  col,
+                  "| Val:",
+                  val,
+                  "| Col2:",
+                  col2,
+                  "| Val2:",
+                  val2
+                );
+                const res = await fetch(endpoint);
+                if (!res.ok)
+                  return { data: null, error: new Error("Not found") };
+                const data = await res.json();
+                return { data, error: null };
+              } catch (e) {
+                return { data: null, error: e };
+              }
+            },
+            async then(resolve: any) {
+              const result = await this.single();
+              resolve(result);
+            },
+          }),
           single: async () => {
             try {
               let endpoint;
+              // ✅ FIX 2: เพิ่ม Logic เช็ค ID สำหรับ Single Query
               if (table === "rooms" && col === "code") {
-                endpoint = `${API_CONFIG.BASE_URL}/api/rooms/${val}`;
+                endpoint = `${API_URL}/api/rooms/${val}`;
               } else if (col === "id") {
-                endpoint = `${API_CONFIG.BASE_URL}/api/${toApiEndpoint(
-                  table
-                )}/${val}`;
+                endpoint = `${API_URL}/api/${toApiEndpoint(table)}/${val}`;
               } else if (table === "players" && col === "room_id") {
-                endpoint = `${API_CONFIG.BASE_URL}/api/rooms/${val}/players`;
+                endpoint = `${API_URL}/api/rooms/${val}/players`;
+              } else if (table === "rooms" && col === "room_id") {
+                endpoint = `${API_URL}/api/rooms/${val}/players`;
               } else {
-                endpoint = `${API_CONFIG.BASE_URL}/api/${toApiEndpoint(table)}`;
+                endpoint = `${API_URL}/api/${toApiEndpoint(table)}`;
               }
+
+              console.log(
+                "🔗 [eq().single()] Endpoint:",
+                endpoint,
+                "| Table:",
+                table,
+                "| Col:",
+                col,
+                "| Val:",
+                val
+              );
               const res = await fetch(endpoint);
               if (!res.ok) return { data: null, error: new Error("Not found") };
               const data = await res.json();
@@ -110,62 +97,35 @@ function createMockClient() {
               return { data: null, error: e };
             }
           },
-          order: (column: string, options?: { ascending?: boolean }) => ({
-            async then(resolve: any) {
-              try {
-                let endpoint;
-                if (table === "players" && col === "room_id") {
-                  endpoint = `${API_CONFIG.BASE_URL}/api/rooms/${val}/players`;
-                } else {
-                  endpoint = `${API_CONFIG.BASE_URL}/api/${toApiEndpoint(
-                    table
-                  )}`;
-                }
-                const res = await fetch(endpoint);
-                if (!res.ok) {
-                  resolve({
-                    data: [],
-                    error: new Error(`Failed: ${res.statusText}`),
-                  });
-                  return;
-                }
-                let data = await res.json();
-                if (Array.isArray(data) && column) {
-                  const ascending = options?.ascending !== false;
-                  data = data.sort((a: any, b: any) => {
-                    const valA = a[column];
-                    const valB = b[column];
-                    if (valA < valB) return ascending ? -1 : 1;
-                    if (valA > valB) return ascending ? 1 : -1;
-                    return 0;
-                  });
-                }
-                resolve({
-                  data: Array.isArray(data) ? data : [data],
-                  error: null,
-                });
-              } catch (e) {
-                resolve({ data: [], error: e });
-              }
-            },
-          }),
           async then(resolve: any) {
             try {
+              // Handle single filter condition
               let endpoint;
               if (table === "players" && col === "room_id") {
-                endpoint = `${API_CONFIG.BASE_URL}/api/rooms/${val}/players`;
+                endpoint = `${API_URL}/api/rooms/${val}/players`;
+              } else if (table === "rooms" && col === "room_id") {
+                endpoint = `${API_URL}/api/rooms/${val}/players`;
               } else if (col === "id") {
-                endpoint = `${API_CONFIG.BASE_URL}/api/${toApiEndpoint(
-                  table
-                )}/${val}`;
+                endpoint = `${API_URL}/api/${toApiEndpoint(table)}/${val}`;
               } else {
-                endpoint = `${API_CONFIG.BASE_URL}/api/${toApiEndpoint(table)}`;
+                endpoint = `${API_URL}/api/${toApiEndpoint(table)}`;
               }
+
+              console.log(
+                "🔗 [eq().then()] Endpoint:",
+                endpoint,
+                "| Table:",
+                table,
+                "| Col:",
+                col,
+                "| Val:",
+                val
+              );
               const res = await fetch(endpoint);
               if (!res.ok) {
                 resolve({
                   data: [],
-                  error: new Error(`Failed: ${res.statusText}`),
+                  error: new Error(`Failed to fetch: ${res.statusText}`),
                 });
                 return;
               }
@@ -182,9 +142,10 @@ function createMockClient() {
         order: () => ({
           async then(resolve: any) {
             try {
-              const res = await fetch(
-                `${API_CONFIG.BASE_URL}/api/${toApiEndpoint(table)}`
+              console.log(
+                "🔗 [order().then()] Endpoint: /api/" + toApiEndpoint(table)
               );
+              const res = await fetch(`${API_URL}/api/${toApiEndpoint(table)}`);
               const data = await res.json();
               resolve({ data: Array.isArray(data) ? data : [], error: null });
             } catch (e) {
@@ -194,9 +155,10 @@ function createMockClient() {
         }),
         async then(resolve: any) {
           try {
-            const res = await fetch(
-              `${API_CONFIG.BASE_URL}/api/${toApiEndpoint(table)}`
+            console.log(
+              "🔗 [select().then()] Endpoint: /api/" + toApiEndpoint(table)
             );
+            const res = await fetch(`${API_URL}/api/${toApiEndpoint(table)}`);
             const data = await res.json();
             resolve({ data: Array.isArray(data) ? data : [], error: null });
           } catch (e) {
@@ -208,15 +170,12 @@ function createMockClient() {
         select: () => ({
           single: async () => {
             try {
-              const res = await fetch(
-                `${API_CONFIG.BASE_URL}/api/${toApiEndpoint(table)}`,
-
-                {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify(row),
-                }
-              );
+              const endpoint = `${API_URL}/api/${toApiEndpoint(table)}`;
+              const res = await fetch(endpoint, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(row),
+              });
               if (!res.ok) {
                 const errorText = await res.text();
                 return {
@@ -232,11 +191,11 @@ function createMockClient() {
           },
           async then(resolve: any) {
             try {
-              const endpoint = `${API_CONFIG.BASE_URL}/api/${toApiEndpoint(
-                table
-              )}`;
+              const endpoint = `${API_URL}/api/${toApiEndpoint(table)}`;
               const isArray = Array.isArray(row);
+
               if (isArray) {
+                // Insert multiple rows
                 const results = [];
                 for (const item of row) {
                   const res = await fetch(endpoint, {
@@ -244,10 +203,13 @@ function createMockClient() {
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify(item),
                   });
-                  if (res.ok) results.push(await res.json());
+                  if (res.ok) {
+                    results.push(await res.json());
+                  }
                 }
                 resolve({ data: results, error: null });
               } else {
+                // Insert single row
                 const res = await fetch(endpoint, {
                   method: "POST",
                   headers: { "Content-Type": "application/json" },
@@ -271,11 +233,11 @@ function createMockClient() {
         }),
         async then(resolve: any) {
           try {
-            const endpoint = `${API_CONFIG.BASE_URL}/api/${toApiEndpoint(
-              table
-            )}`;
+            const endpoint = `${API_URL}/api/${toApiEndpoint(table)}`;
             const isArray = Array.isArray(row);
+
             if (isArray) {
+              // Insert multiple rows
               const results = [];
               for (const item of row) {
                 const res = await fetch(endpoint, {
@@ -283,10 +245,13 @@ function createMockClient() {
                   headers: { "Content-Type": "application/json" },
                   body: JSON.stringify(item),
                 });
-                if (res.ok) results.push(await res.json());
+                if (res.ok) {
+                  results.push(await res.json());
+                }
               }
               resolve({ data: results, error: null });
             } else {
+              // Insert single row
               const res = await fetch(endpoint, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -313,15 +278,14 @@ function createMockClient() {
           eq: (col2: string, val2: any) => ({
             async then(resolve: any) {
               try {
-                const res = await fetch(
-                  `${API_CONFIG.BASE_URL}/api/${toApiEndpoint(table)}/${val}`,
-
-                  {
-                    method: "PUT",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify(data),
-                  }
-                );
+                const endpoint = `${API_URL}/api/${toApiEndpoint(
+                  table
+                )}/${val}`;
+                const res = await fetch(endpoint, {
+                  method: "PUT",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify(data),
+                });
                 if (!res.ok) {
                   const errorText = await res.text();
                   resolve({ error: new Error(errorText || "Update failed") });
@@ -335,14 +299,12 @@ function createMockClient() {
           }),
           async then(resolve: any) {
             try {
-              const res = await fetch(
-                `${API_CONFIG.BASE_URL}/api/${toApiEndpoint(table)}/${val}`,
-                {
-                  method: "PUT",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify(data),
-                }
-              );
+              const endpoint = `${API_URL}/api/${toApiEndpoint(table)}/${val}`;
+              const res = await fetch(endpoint, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(data),
+              });
               if (!res.ok) {
                 const errorText = await res.text();
                 resolve({
@@ -362,10 +324,10 @@ function createMockClient() {
         eq: (col: string, val: any) => ({
           async then(resolve: any) {
             try {
-              const res = await fetch(
-                `${API_CONFIG.BASE_URL}/api/${toApiEndpoint(table)}/${val}`,
-                { method: "DELETE" }
-              );
+              const endpoint = `${API_URL}/api/${toApiEndpoint(table)}/${val}`;
+              const res = await fetch(endpoint, {
+                method: "DELETE",
+              });
               if (!res.ok) {
                 const errorText = await res.text();
                 resolve({ error: new Error(errorText || "Delete failed") });
@@ -381,12 +343,12 @@ function createMockClient() {
           async then(resolve: any) {
             try {
               for (const val of vals) {
-                await fetch(
-                  `${API_CONFIG.BASE_URL}/api/${toApiEndpoint(table)}/${val}`,
-                  {
-                    method: "DELETE",
-                  }
-                );
+                const endpoint = `${API_URL}/api/${toApiEndpoint(
+                  table
+                )}/${val}`;
+                await fetch(endpoint, {
+                  method: "DELETE",
+                });
               }
               resolve({ error: null });
             } catch (e) {
@@ -400,8 +362,11 @@ function createMockClient() {
       const callbacks: { event: string; callback: (payload: any) => void }[] =
         [];
       let roomCode: string | null = null;
+
+      // Extract room ID from channel name (e.g., "room-abc123")
       const match = name.match(/room-([a-zA-Z0-9-]+)/);
       if (match) roomCode = match[1];
+
       const channel = {
         on: (event: string, filter: any, callback: (payload: any) => void) => {
           callbacks.push({ event, callback });
@@ -410,6 +375,8 @@ function createMockClient() {
         subscribe: (statusCallback?: (status: string) => void) => {
           if (roomCode) {
             socketClient.joinRoom(roomCode);
+
+            // Map Socket.IO events to Supabase-like payloads
             socketClient.on("room-changed", (data: any) => {
               callbacks.forEach(({ callback }) =>
                 callback({ eventType: "UPDATE", new: data })
@@ -431,30 +398,33 @@ function createMockClient() {
               );
             });
           }
-          if (statusCallback)
+
+          if (statusCallback) {
             setTimeout(() => statusCallback("SUBSCRIBED"), 100);
+          }
           return channel;
         },
       };
+
       channels.set(name, {
         unsubscribe: () => {
           if (roomCode) socketClient.leaveRoom(roomCode);
         },
       });
+
       return channel;
     },
-    removeChannel: (channel: any) => {},
+    removeChannel: (channel: any) => {
+      // Cleanup handled by channel.unsubscribe
+    },
     functions: {
       invoke: async <T>(name: string, options: { body: any }) => {
         try {
-          const res = await fetch(
-            `${API_CONFIG.BASE_URL}/api/${name.replace("-", "/")}`,
-            {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify(options.body),
-            }
-          );
+          const res = await fetch(`${API_URL}/api/${name.replace("-", "/")}`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(options.body),
+          });
           const data = await res.json();
           return { data: data as T, error: null };
         } catch (e) {

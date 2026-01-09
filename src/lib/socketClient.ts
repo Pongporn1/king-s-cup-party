@@ -1,8 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 // Socket.IO Client for realtime communication (replaces Supabase Realtime)
 import { io, Socket } from "socket.io-client";
-
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
+import { API_CONFIG } from "@/lib/api/config";
 
 class SocketClient {
   private socket: Socket | null = null;
@@ -12,7 +11,7 @@ class SocketClient {
   connect(): Socket {
     if (this.socket?.connected) return this.socket;
 
-    this.socket = io(API_URL, {
+    this.socket = io(API_CONFIG.BASE_URL, {
       transports: ["websocket", "polling"],
       reconnection: true,
       reconnectionAttempts: 10,

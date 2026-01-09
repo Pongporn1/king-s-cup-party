@@ -10,16 +10,27 @@ import {
   compareHands,
 } from "@/lib/pokDengRules";
 import { useToast } from "@/hooks/use-toast";
-
-// Generate 6-character room code
-function generateRoomCode(): string {
-  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-  let code = "";
-  for (let i = 0; i < 6; i++) {
-    code += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return code;
-}
+import {
+  createRoom as apiCreateRoom,
+  getRoomByCode,
+  deleteRoom,
+  updateRoom,
+} from "@/lib/api/roomsApi";
+import {
+  createPlayer as apiCreatePlayer,
+  getPlayersByRoomId,
+  deletePlayer,
+} from "@/lib/api/playersApi";
+import {
+  createRoomCode,
+  getRandomAvatar,
+  generatePlayerId,
+  removeDuplicatePlayers,
+} from "@/lib/utils/roomHelpers";
+import {
+  getUserFriendlyErrorMessage,
+  logError,
+} from "@/lib/utils/errorHandler";
 
 export interface PokDengRoom {
   id: string;
@@ -47,22 +58,6 @@ export interface PokDengPlayer {
   result?: "player_win" | "dealer_win" | null;
   multiplier: number;
   player_order: number;
-}
-
-// Available avatar images
-const TOTAL_AVATARS = 11;
-
-function getRandomAvatar(usedAvatars: number[]): number {
-  const availableAvatars = Array.from(
-    { length: TOTAL_AVATARS },
-    (_, i) => i + 1
-  ).filter((num) => !usedAvatars.includes(num));
-
-  if (availableAvatars.length === 0) {
-    return Math.floor(Math.random() * TOTAL_AVATARS) + 1;
-  }
-
-  return availableAvatars[Math.floor(Math.random() * availableAvatars.length)];
 }
 
 export function usePokDengRoom() {
@@ -229,76 +224,97 @@ export function usePokDengRoom() {
     async (hostName: string) => {
       setIsLoading(true);
       try {
-        // Cleanup old rooms opportunistically
         await cleanupOnCreate();
 
-        const code = generateRoomCode();
+        let attempts = 0;
+        const maxAttempts = 5;
         const deck = shuffleDeck(createDeck());
         const hostAvatar = getRandomAvatar([]);
 
-        const { data: roomData, error: roomError } = await supabase
-          .from("rooms")
-          .insert({
-            code,
-            host_name: hostName,
-            deck: deck as any,
-            cards_remaining: 52,
-            game_type: "pokdeng",
-            game_phase: "waiting",
-          })
-          .select()
-          .single();
+        while (attempts < maxAttempts) {
+          attempts++;
+          const code = createRoomCode();
 
-        if (roomError) throw roomError;
+          try {
+            const roomResult = await apiCreateRoom({
+              code,
+              host_name: hostName,
+              game_type: "pokdeng",
+              deck: deck,
+              cards_remaining: 52,
+              game_phase: "waiting",
+            });
 
-        const { data: playerData, error: playerError } = await supabase
-          .from("players")
-          .insert({
-            room_id: roomData.id,
-            name: hostName,
-            is_host: true,
-            is_dealer: true, // Host เป็นเจ้ามือคนแรก
-            avatar: hostAvatar,
-            player_order: 0,
-            cards: [] as any,
-            points: 0,
-            bet: 0,
-            has_drawn: false,
-          })
-          .select()
-          .single();
+            const playerId = generatePlayerId();
+            const playerResult = await apiCreatePlayer({
+              room_id: roomResult.id,
+              name: hostName,
+              is_host: true,
+              is_dealer: true,
+              avatar: hostAvatar,
+              player_order: 0,
+              cards: [],
+              points: 0,
+              bet: 0,
+              has_drawn: false,
+            });
 
-        if (playerError) throw playerError;
+            const roomData: PokDengRoom = {
+              id: roomResult.id,
+              code: roomResult.code,
+              host_name: hostName,
+              is_active: true,
+              deck: deck,
+              game_started: false,
+              game_phase: "waiting",
+              current_player_index: 0,
+            };
 
-        setRoom({
-          id: roomData.id,
-          code: roomData.code,
-          host_name: roomData.host_name,
-          is_active: roomData.is_active,
-          deck: roomData.deck as unknown as PokDengCard[],
-          game_started: roomData.game_started,
-          game_phase: (roomData.game_phase as any) || "waiting",
-          current_player_index: roomData.current_player_index || 0,
-        });
-        setPlayers([
-          {
-            ...playerData,
-            cards: [] as PokDengCard[],
-          } as PokDengPlayer,
-        ]);
-        setCurrentPlayerId(playerData.id);
+            const playerData: PokDengPlayer = {
+              id: playerResult.id || playerId,
+              room_id: roomResult.id,
+              name: hostName,
+              is_host: true,
+              is_dealer: true,
+              is_active: true,
+              avatar: hostAvatar,
+              player_order: 0,
+              cards: [],
+              points: 0,
+              bet: 0,
+              has_drawn: false,
+              multiplier: 1,
+            };
 
-        toast({
-          title: "สร้างห้องสำเร็จ! 🎰",
-          description: `รหัสห้อง: ${code}`,
-        });
+            setRoom(roomData);
+            setPlayers([playerData]);
+            setCurrentPlayerId(playerData.id);
 
-        // Return room data with playerId for session recovery
-        return { ...roomData, playerId: playerData.id };
+            toast({
+              title: "สร้างห้องสำเร็จ! 🎰",
+              description: `รหัสห้อง: ${roomData.code}`,
+            });
+
+            return { ...roomData, playerId: playerData.id };
+          } catch (error: any) {
+            if (
+              error.errorCode === "DUPLICATE_CODE" &&
+              attempts < maxAttempts
+            ) {
+              console.log(`🔄 Retrying... (${attempts}/${maxAttempts})`);
+              continue;
+            }
+            throw error;
+          }
+        }
+
+        throw new Error("ไม่สามารถสร้างห้องได้หลังจากพยายามหลายครั้ง");
       } catch (error: any) {
+        logError("CreatePokDengRoom", error);
+        const message = getUserFriendlyErrorMessage(error);
         toast({
           title: "เกิดข้อผิดพลาด",
-          description: error.message,
+          description: message,
           variant: "destructive",
         });
         return null;
