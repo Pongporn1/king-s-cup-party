@@ -5,15 +5,59 @@ import { API_CONFIG } from "@/lib/api/config";
 
 const toApiEndpoint = (table: string) => table.replace(/_/g, "-");
 
+// Helper to create a proper Promise with extra methods
+function createQueryPromise<T>(
+  executor: () => Promise<T>,
+  extras: Record<string, any> = {}
+): Promise<T> & Record<string, any> {
+  const promise = executor() as Promise<T> & Record<string, any>;
+  Object.assign(promise, extras);
+  return promise;
+}
+
 function createMockClient() {
   const channels = new Map<string, { unsubscribe: () => void }>();
 
   return {
     from: (table: string) => ({
-      select: (columns = "*") => ({
-        eq: (col: string, val: any) => ({
-          eq: (col2: string, val2: any) => {
-            const promise = (async () => {
+      select: (columns = "*") => {
+        // Create base query builder
+        const createEqChain = (
+          col: string,
+          val: any
+        ): Promise<any> & Record<string, any> => {
+          const executeQuery = async () => {
+            try {
+              let endpoint;
+              if (table === "players" && col === "room_id") {
+                endpoint = `${API_CONFIG.BASE_URL}/api/rooms/${val}/players`;
+              } else if (col === "id") {
+                endpoint = `${API_CONFIG.BASE_URL}/api/${toApiEndpoint(
+                  table
+                )}/${val}`;
+              } else {
+                endpoint = `${API_CONFIG.BASE_URL}/api/${toApiEndpoint(table)}`;
+              }
+              const res = await fetch(endpoint);
+              if (!res.ok) {
+                return {
+                  data: [],
+                  error: new Error(`Failed: ${res.statusText}`),
+                };
+              }
+              const data = await res.json();
+              return { data: Array.isArray(data) ? data : [data], error: null };
+            } catch (e) {
+              return { data: [], error: e };
+            }
+          };
+
+          // Second .eq() handler
+          const createSecondEq = (
+            col2: string,
+            val2: any
+          ): Promise<any> & Record<string, any> => {
+            const executeWithFilter = async () => {
               try {
                 let endpoint;
                 if (table === "rooms" && col === "code") {
@@ -33,7 +77,7 @@ function createMockClient() {
                   };
                 }
                 let data = await res.json();
-                // Filter by second condition if needed
+                // Filter by second condition
                 if (Array.isArray(data) && col2 && val2 !== undefined) {
                   data = data.filter((item: any) => item[col2] === val2);
                 }
@@ -44,9 +88,9 @@ function createMockClient() {
               } catch (e) {
                 return { data: [], error: e };
               }
-            })();
+            };
 
-            return {
+            return createQueryPromise(executeWithFilter, {
               single: async () => {
                 try {
                   let endpoint;
@@ -80,41 +124,21 @@ function createMockClient() {
                   return { data: null, error: e };
                 }
               },
-              then: (onfulfilled: any, onrejected?: any) => {
-                return promise.then(onfulfilled, onrejected);
-              },
-              catch: (onrejected: any) => {
-                return promise.catch(onrejected);
-              },
-            };
-          },
-          single: async () => {
-            try {
-              let endpoint;
-              if (table === "rooms" && col === "code") {
-                endpoint = `${API_CONFIG.BASE_URL}/api/rooms/${val}`;
-              } else if (col === "id") {
-                endpoint = `${API_CONFIG.BASE_URL}/api/${toApiEndpoint(
-                  table
-                )}/${val}`;
-              } else if (table === "players" && col === "room_id") {
-                endpoint = `${API_CONFIG.BASE_URL}/api/rooms/${val}/players`;
-              } else {
-                endpoint = `${API_CONFIG.BASE_URL}/api/${toApiEndpoint(table)}`;
-              }
-              const res = await fetch(endpoint);
-              if (!res.ok) return { data: null, error: new Error("Not found") };
-              const data = await res.json();
-              return { data, error: null };
-            } catch (e) {
-              return { data: null, error: e };
-            }
-          },
-          order: (column: string, options?: { ascending?: boolean }) => ({
-            async then(resolve: any) {
+            });
+          };
+
+          return createQueryPromise(executeQuery, {
+            eq: createSecondEq,
+            single: async () => {
               try {
                 let endpoint;
-                if (table === "players" && col === "room_id") {
+                if (table === "rooms" && col === "code") {
+                  endpoint = `${API_CONFIG.BASE_URL}/api/rooms/${val}`;
+                } else if (col === "id") {
+                  endpoint = `${API_CONFIG.BASE_URL}/api/${toApiEndpoint(
+                    table
+                  )}/${val}`;
+                } else if (table === "players" && col === "room_id") {
                   endpoint = `${API_CONFIG.BASE_URL}/api/rooms/${val}/players`;
                 } else {
                   endpoint = `${API_CONFIG.BASE_URL}/api/${toApiEndpoint(
@@ -122,115 +146,78 @@ function createMockClient() {
                   )}`;
                 }
                 const res = await fetch(endpoint);
-                if (!res.ok) {
-                  resolve({
-                    data: [],
-                    error: new Error(`Failed: ${res.statusText}`),
-                  });
-                  return;
-                }
-                let data = await res.json();
-                if (Array.isArray(data) && column) {
-                  const ascending = options?.ascending !== false;
-                  data = data.sort((a: any, b: any) => {
-                    const valA = a[column];
-                    const valB = b[column];
-                    if (valA < valB) return ascending ? -1 : 1;
-                    if (valA > valB) return ascending ? 1 : -1;
-                    return 0;
-                  });
-                }
-                resolve({
-                  data: Array.isArray(data) ? data : [data],
-                  error: null,
-                });
+                if (!res.ok)
+                  return { data: null, error: new Error("Not found") };
+                const data = await res.json();
+                return { data, error: null };
               } catch (e) {
-                resolve({ data: [], error: e });
+                return { data: null, error: e };
               }
             },
-          }),
-          async then(resolve: any) {
-            try {
-              let endpoint;
-              if (table === "players" && col === "room_id") {
-                endpoint = `${API_CONFIG.BASE_URL}/api/rooms/${val}/players`;
-              } else if (col === "id") {
-                endpoint = `${API_CONFIG.BASE_URL}/api/${toApiEndpoint(
-                  table
-                )}/${val}`;
-              } else {
-                endpoint = `${API_CONFIG.BASE_URL}/api/${toApiEndpoint(table)}`;
-              }
-              const res = await fetch(endpoint);
-              if (!res.ok) {
-                resolve({
-                  data: [],
-                  error: new Error(`Failed: ${res.statusText}`),
-                });
-                return;
-              }
-              const data = await res.json();
-              resolve({
-                data: Array.isArray(data) ? data : [data],
-                error: null,
-              });
-            } catch (e) {
-              resolve({ data: [], error: e });
-            }
-          },
-        }),
-        order: () => ({
-          async then(resolve: any) {
-            try {
-              const res = await fetch(
-                `${API_CONFIG.BASE_URL}/api/${toApiEndpoint(table)}`
-              );
-              const data = await res.json();
-              resolve({ data: Array.isArray(data) ? data : [], error: null });
-            } catch (e) {
-              resolve({ data: [], error: e });
-            }
-          },
-        }),
-        async then(resolve: any) {
+            order: (column: string, options?: { ascending?: boolean }) => {
+              const executeWithOrder = async () => {
+                try {
+                  let endpoint;
+                  if (table === "players" && col === "room_id") {
+                    endpoint = `${API_CONFIG.BASE_URL}/api/rooms/${val}/players`;
+                  } else {
+                    endpoint = `${API_CONFIG.BASE_URL}/api/${toApiEndpoint(
+                      table
+                    )}`;
+                  }
+                  const res = await fetch(endpoint);
+                  if (!res.ok) {
+                    return {
+                      data: [],
+                      error: new Error(`Failed: ${res.statusText}`),
+                    };
+                  }
+                  let data = await res.json();
+                  if (Array.isArray(data) && column) {
+                    const ascending = options?.ascending !== false;
+                    data = data.sort((a: any, b: any) => {
+                      const valA = a[column];
+                      const valB = b[column];
+                      if (valA < valB) return ascending ? -1 : 1;
+                      if (valA > valB) return ascending ? 1 : -1;
+                      return 0;
+                    });
+                  }
+                  return {
+                    data: Array.isArray(data) ? data : [data],
+                    error: null,
+                  };
+                } catch (e) {
+                  return { data: [], error: e };
+                }
+              };
+              return createQueryPromise(executeWithOrder, {});
+            },
+          });
+        };
+
+        // Select query builder
+        const selectQuery = async () => {
           try {
             const res = await fetch(
               `${API_CONFIG.BASE_URL}/api/${toApiEndpoint(table)}`
             );
             const data = await res.json();
-            resolve({ data: Array.isArray(data) ? data : [], error: null });
+            return { data: Array.isArray(data) ? data : [], error: null };
           } catch (e) {
-            resolve({ data: [], error: e });
+            return { data: [], error: e };
           }
-        },
-      }),
-      insert: (row: any) => ({
-        select: () => ({
-          single: async () => {
-            try {
-              const res = await fetch(
-                `${API_CONFIG.BASE_URL}/api/${toApiEndpoint(table)}`,
+        };
 
-                {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify(row),
-                }
-              );
-              if (!res.ok) {
-                const errorText = await res.text();
-                return {
-                  data: null,
-                  error: new Error(errorText || "Insert failed"),
-                };
-              }
-              const data = await res.json();
-              return { data, error: null };
-            } catch (e) {
-              return { data: null, error: e };
-            }
-          },
-          async then(resolve: any) {
+        return createQueryPromise(selectQuery, {
+          eq: createEqChain,
+          order: () => createQueryPromise(selectQuery, {}),
+        });
+      },
+
+      insert: (row: any) => ({
+        select: () => {
+          const executeInsert = async () => {
             try {
               const endpoint = `${API_CONFIG.BASE_URL}/api/${toApiEndpoint(
                 table
@@ -246,7 +233,7 @@ function createMockClient() {
                   });
                   if (res.ok) results.push(await res.json());
                 }
-                resolve({ data: results, error: null });
+                return { data: results, error: null };
               } else {
                 const res = await fetch(endpoint, {
                   method: "POST",
@@ -255,85 +242,50 @@ function createMockClient() {
                 });
                 if (!res.ok) {
                   const errorText = await res.text();
-                  resolve({
+                  return {
                     data: null,
                     error: new Error(errorText || "Insert failed"),
-                  });
-                  return;
+                  };
                 }
                 const data = await res.json();
-                resolve({ data: [data], error: null });
+                return { data: [data], error: null };
               }
             } catch (e) {
-              resolve({ data: null, error: e });
+              return { data: null, error: e };
             }
-          },
-        }),
-        async then(resolve: any) {
-          try {
-            const endpoint = `${API_CONFIG.BASE_URL}/api/${toApiEndpoint(
-              table
-            )}`;
-            const isArray = Array.isArray(row);
-            if (isArray) {
-              const results = [];
-              for (const item of row) {
-                const res = await fetch(endpoint, {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify(item),
-                });
-                if (res.ok) results.push(await res.json());
-              }
-              resolve({ data: results, error: null });
-            } else {
-              const res = await fetch(endpoint, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(row),
-              });
-              if (!res.ok) {
-                const errorText = await res.text();
-                resolve({
-                  data: null,
-                  error: new Error(errorText || "Insert failed"),
-                });
-                return;
-              }
-              const data = await res.json();
-              resolve({ data, error: null });
-            }
-          } catch (e) {
-            resolve({ data: null, error: e });
-          }
-        },
-      }),
-      update: (data: any) => ({
-        eq: (col: string, val: any) => ({
-          eq: (col2: string, val2: any) => ({
-            async then(resolve: any) {
+          };
+
+          return createQueryPromise(executeInsert, {
+            single: async () => {
               try {
                 const res = await fetch(
-                  `${API_CONFIG.BASE_URL}/api/${toApiEndpoint(table)}/${val}`,
-
+                  `${API_CONFIG.BASE_URL}/api/${toApiEndpoint(table)}`,
                   {
-                    method: "PUT",
+                    method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify(data),
+                    body: JSON.stringify(row),
                   }
                 );
                 if (!res.ok) {
                   const errorText = await res.text();
-                  resolve({ error: new Error(errorText || "Update failed") });
-                  return;
+                  return {
+                    data: null,
+                    error: new Error(errorText || "Insert failed"),
+                  };
                 }
-                resolve({ error: null });
+                const data = await res.json();
+                return { data, error: null };
               } catch (e) {
-                resolve({ error: e });
+                return { data: null, error: e };
               }
             },
-          }),
-          async then(resolve: any) {
+          });
+        },
+      }),
+
+      update: (data: any) => ({
+        eq: (col: string, val: any): Promise<any> & Record<string, any> => {
+          const executeUpdate = async () => {
             try {
               const res = await fetch(
                 `${API_CONFIG.BASE_URL}/api/${toApiEndpoint(table)}/${val}`,
@@ -345,40 +297,45 @@ function createMockClient() {
               );
               if (!res.ok) {
                 const errorText = await res.text();
-                resolve({
-                  error: new Error(errorText || "Update failed"),
-                  data: null,
-                });
-                return;
+                return { error: new Error(errorText || "Update failed") };
               }
-              resolve({ error: null, data: null });
+              return { error: null };
             } catch (e) {
-              resolve({ error: e });
+              return { error: e };
             }
-          },
-        }),
+          };
+
+          return createQueryPromise(executeUpdate, {
+            eq: (col2: string, val2: any) =>
+              createQueryPromise(executeUpdate, {}),
+          });
+        },
       }),
+
       delete: () => ({
-        eq: (col: string, val: any) => ({
-          async then(resolve: any) {
+        eq: (col: string, val: any): Promise<any> & Record<string, any> => {
+          const executeDelete = async () => {
             try {
               const res = await fetch(
                 `${API_CONFIG.BASE_URL}/api/${toApiEndpoint(table)}/${val}`,
-                { method: "DELETE" }
+                {
+                  method: "DELETE",
+                }
               );
               if (!res.ok) {
                 const errorText = await res.text();
-                resolve({ error: new Error(errorText || "Delete failed") });
-                return;
+                return { error: new Error(errorText || "Delete failed") };
               }
-              resolve({ error: null });
+              return { error: null };
             } catch (e) {
-              resolve({ error: e });
+              return { error: e };
             }
-          },
-        }),
-        in: (col: string, vals: any[]) => ({
-          async then(resolve: any) {
+          };
+
+          return createQueryPromise(executeDelete, {});
+        },
+        in: (col: string, vals: any[]): Promise<any> & Record<string, any> => {
+          const executeDeleteMany = async () => {
             try {
               for (const val of vals) {
                 await fetch(
@@ -388,20 +345,24 @@ function createMockClient() {
                   }
                 );
               }
-              resolve({ error: null });
+              return { error: null };
             } catch (e) {
-              resolve({ error: e });
+              return { error: e };
             }
-          },
-        }),
+          };
+
+          return createQueryPromise(executeDeleteMany, {});
+        },
       }),
     }),
+
     channel: (name: string) => {
       const callbacks: { event: string; callback: (payload: any) => void }[] =
         [];
       let roomCode: string | null = null;
       const match = name.match(/room-([a-zA-Z0-9-]+)/);
       if (match) roomCode = match[1];
+
       const channel = {
         on: (event: string, filter: any, callback: (payload: any) => void) => {
           callbacks.push({ event, callback });
@@ -436,14 +397,18 @@ function createMockClient() {
           return channel;
         },
       };
+
       channels.set(name, {
         unsubscribe: () => {
           if (roomCode) socketClient.leaveRoom(roomCode);
         },
       });
+
       return channel;
     },
+
     removeChannel: (channel: any) => {},
+
     functions: {
       invoke: async <T>(name: string, options: { body: any }) => {
         try {
@@ -462,6 +427,7 @@ function createMockClient() {
         }
       },
     },
+
     realtime: {
       connect: () => {
         socketClient.connect();
